@@ -1,0 +1,103 @@
+import type { Currency, Money } from "@/lib/money";
+
+export class PayPalError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly issue?: string,
+    readonly body?: unknown,
+  ) {
+    super(message);
+    this.name = "PayPalError";
+  }
+}
+
+export function paypalBaseUrl(): string {
+  const configured = process.env.PAYPAL_BASE_URL?.trim();
+  return (configured || "https://api-m.sandbox.paypal.com").replace(/\/$/, "");
+}
+
+type CachedToken = { value: string; expiresAt: number };
+
+let tokenCache: CachedToken | null = null;
+
+/** Test hook: the cache is module state, so a test that stubs `fetch` clears it first. */
+export function resetTokenCache(): void {
+  tokenCache = null;
+}
+
+export async function getAccessToken(): Promise<string> {
+  if (tokenCache && tokenCache.expiresAt > Date.now()) {
+    return tokenCache.value;
+  }
+
+  const clientId = process.env.PAYPAL_CLIENT_ID;
+  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
+  if (!clientId || !clientSecret) {
+    throw new Error("PayPal credentials are not configured.");
+  }
+
+  const response = await fetch(`${paypalBaseUrl()}/v1/oauth2/token`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: "grant_type=client_credentials",
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new PayPalError("PayPal rejected the credentials.", response.status);
+  }
+
+  const body = (await response.json()) as { access_token: string; expires_in: number };
+  const lifetimeMs = Math.max(body.expires_in - 60, 0) * 1000;
+  tokenCache = { value: body.access_token, expiresAt: Date.now() + lifetimeMs };
+  return tokenCache.value;
+}
+
+async function readJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function firstIssue(body: unknown): string | undefined {
+  const details = (body as { details?: Array<{ issue?: string }> } | null)?.details;
+  return Array.isArray(details) ? details[0]?.issue : undefined;
+}
+
+export async function paypalRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const token = await getAccessToken();
+
+  const response = await fetch(`${paypalBaseUrl()}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init.headers ?? {}),
+    },
+    cache: "no-store",
+  });
+
+  const body = await readJson(response);
+
+  if (!response.ok) {
+    const issue = firstIssue(body);
+    throw new PayPalError(
+      issue ? `PayPal returned ${issue}.` : `PayPal request failed with ${response.status}.`,
+      response.status,
+      issue,
+      body,
+    );
+  }
+
+  return body as T;
+}
+
+export function toPayPalAmount(amount: Money): { currency_code: Currency; value: string } {
+  return { currency_code: amount.currency, value: (amount.minor / 100).toFixed(2) };
+}
