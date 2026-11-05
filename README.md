@@ -1,36 +1,77 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Accessible Commerce Companion
 
-## Getting Started
+A demo store that states the whole commitment — what is charged today, what it costs across its
+term, and what it costs to leave — at the moment a shopper agrees to pay.
 
-First, run the development server:
+Built for the PayPal AI Hackathon 2026. PayPal supplies the money; a language model supplies only
+the words.
+
+## What it does
+
+A shopper picks one of three products, each with a different commitment shape:
+
+| Product | Shape |
+|---|---|
+| Noise-Cancelling Headphones | paid once |
+| Coffee Subscription | paid every month for 12 months |
+| Mattress — 12 Months | financed over 12 instalments |
+
+Before the payment is taken, the consent screen shows three figures and an itemised breakdown:
+
+- **Charged today** — what leaves the account now
+- **Across the term** — every charge the commitment adds up to
+- **Cost to leave** — or "Not stated" when the seller has not published one, never `$0.00`
+
+An optional recognition check shows the amount again and asks only whether it matches what the
+shopper expected. It is never a gate; skipping it leaves the payment path untouched.
+
+## How the split works
+
+- **PayPal** is the source of truth for amounts. Orders API v2 creates and captures one-time
+  purchases; Subscriptions v1 with Billing Plans carries the recurring product.
+- **Deterministic code** does every calculation, in integer minor units (`lib/money.ts`,
+  `lib/commitment/compute.ts`). No floating point touches money, and no model is asked for a figure.
+- **The language model** reads merchant copy and returns labels and one plain summary. Its response
+  schema has no monetary field, and every string it returns is checked for a figure before it can
+  reach a screen (`lib/ai/guard.ts`). If extraction fails, the page shows the PayPal amount with a
+  plain statement that the terms could not be read.
+
+## Setup
+
+Requirements: Node 20 or newer.
 
 ```bash
+npm install
+cp env.example .env.local   # then fill it in
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+`env.example` lists the five variables:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Variable | Purpose |
+|---|---|
+| `PAYPAL_CLIENT_ID` | PayPal REST app client id (server-side) |
+| `PAYPAL_CLIENT_SECRET` | PayPal REST app secret (server-side) |
+| `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` for sandbox |
+| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Public client id for the JS SDK |
+| `ANTHROPIC_API_KEY` | Key for term extraction |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Only
+`NEXT_PUBLIC_PAYPAL_CLIENT_ID` is exposed to the browser; every other value stays server-side.
 
-## Learn More
+## Commands
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev     # start on http://localhost:3000
+npm test        # run the Vitest suite
+npm run build   # production build
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Demo script
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+See [`docs/demo-script.md`](docs/demo-script.md) for the five screens a three-minute video covers.
 
-## Deploy on Vercel
+## Scope
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+No accounts, no profiles, no database, no stored session. The demo is USD only. The catalog is a
+curated local file (`lib/catalog/products.ts`) behind a replaceable layer.
