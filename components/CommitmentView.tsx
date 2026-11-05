@@ -40,7 +40,9 @@ export function CommitmentView({ translation, labels, summary }: CommitmentViewP
         </div>
       </dl>
 
-      <h3>Where these figures come from</h3>
+      <h3 id="commitment-breakdown-heading" tabIndex={-1}>
+        Where these figures come from
+      </h3>
       <dl className="commitment-breakdown">
         <div>
           <dt>{labels.item}</dt>

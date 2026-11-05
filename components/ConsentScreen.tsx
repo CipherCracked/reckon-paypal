@@ -153,7 +153,17 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
             labels={payload.labels}
             summary={payload.summary}
           />
-          <RecognitionCheck amount={payload.translation.today} onResult={() => undefined} />
+          <RecognitionCheck
+            amount={payload.translation.today}
+            onResult={(matched) => {
+              if (matched) return;
+              // Saying "no" must take the shopper somewhere, not leave them
+              // where they were: focus moves to the itemisation right above.
+              const heading = document.getElementById("commitment-breakdown-heading");
+              heading?.scrollIntoView?.({ block: "start" });
+              heading?.focus();
+            }}
+          />
         </>
       )}
 

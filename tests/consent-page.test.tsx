@@ -64,6 +64,15 @@ describe("consent screen", () => {
     expect(screen.getByText("$12.00")).toBeInTheDocument();
   });
 
+  it("moves focus to the breakdown when the shopper says the amount does not match", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(screen.getByRole("button", { name: /show me the breakdown/i }));
+
+    expect(document.activeElement?.textContent).toBe("Where these figures come from");
+  });
+
   it("sends a repeating purchase to PayPal's subscription approval, not to a capture", async () => {
     const fetchMock = vi
       .fn()
