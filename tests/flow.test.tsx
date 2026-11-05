@@ -76,4 +76,25 @@ describe("demo flow", () => {
     expect(screen.getByText("Across the term")).toBeInTheDocument();
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
   });
+
+  it("sends a repeating product to the consent screen without creating an order", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(
+      <ProductScreen
+        slug="coffee-subscription"
+        name="Coffee Subscription"
+        description="Delivered every month."
+        shape="recurring"
+      />,
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+
+    await waitFor(() =>
+      expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=coffee-subscription"),
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

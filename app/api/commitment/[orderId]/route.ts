@@ -19,6 +19,7 @@ export async function GET(request: Request, context: RouteContext) {
     const terms = await extractTerms({ productText: product.description });
     return Response.json({
       orderId,
+      shape: product.terms.shape,
       translation,
       labels: terms.labels,
       summary: terms.summary,
@@ -30,6 +31,7 @@ export async function GET(request: Request, context: RouteContext) {
     // and the page says so rather than leaving a gap.
     return Response.json({
       orderId,
+      shape: product.terms.shape,
       translation,
       labels: { item: product.name, shipping: "Shipping", tax: "Sales tax" },
       summary: "",

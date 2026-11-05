@@ -8,6 +8,12 @@ export type EnsurePlanInput = {
   interval: "MONTH" | "YEAR";
 };
 
+export type Subscription = { id: string; status: string; approveUrl: string | null };
+
+function planName(planId: string): string {
+  return `Commitment demo plan ${planId}`;
+}
+
 function isDuplicate(error: unknown): boolean {
   return (
     error instanceof PayPalError &&
@@ -16,10 +22,29 @@ function isDuplicate(error: unknown): boolean {
 }
 
 /**
+ * Finds the plan this demo created on an earlier run. PayPal refuses a second
+ * plan with the same name, and its plan-create call takes no client id, so the
+ * only way back to the existing plan is to list the product's plans and match
+ * by name.
+ */
+async function findExistingPlan(productId: string, planId: string): Promise<string> {
+  const list = await paypalRequest<{ plans?: Array<{ id: string; name?: string }> }>(
+    `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20&page=1`,
+    { method: "GET" },
+  );
+
+  const match = list.plans?.find((plan) => plan.name === planName(planId));
+  if (!match) {
+    throw new Error("PayPal reports the plan exists, but it could not be found.");
+  }
+  return match.id;
+}
+
+/**
  * Creates the catalog product and billing plan this demo reuses on every run.
- * PayPal mints its own ids, so a repeated run answers DUPLICATE_RESOURCE for
- * the same product and plan names; that reply means the objects exist, which
- * is exactly what this function needs, so it is treated as success.
+ * A repeat run answers DUPLICATE_RESOURCE for the same product and plan names;
+ * that reply means the objects exist, which is what this function needs, so it
+ * resolves to the existing plan instead of failing.
  */
 export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
   const product = await paypalRequest<{ id: string }>("/v1/catalogs/products", {
@@ -35,40 +60,49 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     throw error;
   });
 
-  const plan = await paypalRequest<{ id: string }>("/v1/billing/plans", {
-    method: "POST",
-    body: JSON.stringify({
-      id: input.planId,
-      product_id: product.id,
-      name: `Commitment demo plan ${input.planId}`,
-      status: "ACTIVE",
-      billing_cycles: [
-        {
-          frequency: { interval_unit: input.interval, interval_count: 1 },
-          tenure_type: "REGULAR",
-          sequence: 1,
-          total_cycles: 0,
-          pricing_scheme: { fixed_price: toPayPalAmount(input.amount) },
+  try {
+    const plan = await paypalRequest<{ id: string }>("/v1/billing/plans", {
+      method: "POST",
+      body: JSON.stringify({
+        product_id: product.id,
+        name: planName(input.planId),
+        status: "ACTIVE",
+        billing_cycles: [
+          {
+            frequency: { interval_unit: input.interval, interval_count: 1 },
+            tenure_type: "REGULAR",
+            sequence: 1,
+            total_cycles: 0,
+            pricing_scheme: { fixed_price: toPayPalAmount(input.amount) },
+          },
+        ],
+        payment_preferences: {
+          auto_bill_outstanding: true,
+          payment_failure_threshold: 1,
         },
-      ],
-      payment_preferences: {
-        auto_bill_outstanding: true,
-        payment_failure_threshold: 1,
-      },
-    }),
-  }).catch((error: unknown) => {
-    if (isDuplicate(error)) return { id: input.planId };
-    throw error;
-  });
+      }),
+    });
 
-  return plan.id;
+    return plan.id;
+  } catch (error) {
+    if (isDuplicate(error)) {
+      return findExistingPlan(product.id, input.planId);
+    }
+    throw error;
+  }
 }
 
-export async function createSubscription(
-  planId: string,
-): Promise<{ id: string; status: string }> {
-  return paypalRequest<{ id: string; status: string }>("/v1/billing/subscriptions", {
+export async function createSubscription(planId: string): Promise<Subscription> {
+  const subscription = await paypalRequest<{
+    id: string;
+    status: string;
+    links?: Array<{ href: string; rel: string }>;
+  }>("/v1/billing/subscriptions", {
     method: "POST",
     body: JSON.stringify({ plan_id: planId }),
   });
+
+  const approveUrl = subscription.links?.find((link) => link.rel === "approve")?.href ?? null;
+
+  return { id: subscription.id, status: subscription.status, approveUrl };
 }

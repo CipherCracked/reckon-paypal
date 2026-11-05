@@ -2,20 +2,34 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import type { CommitmentShape } from "@/lib/commitment/types";
 
 export type ProductScreenProps = {
   slug: string;
   name: string;
   description: string;
+  shape?: CommitmentShape;
 };
 
 type OrderState = { status: "idle" | "creating" } | { status: "failed"; message: string };
 
-export function ProductScreen({ slug, name, description }: ProductScreenProps) {
+export function ProductScreen({
+  slug,
+  name,
+  description,
+  shape = "one_time",
+}: ProductScreenProps) {
   const router = useRouter();
   const [state, setState] = useState<OrderState>({ status: "idle" });
 
   async function continueToPayment() {
+    // A repeating commitment is created at PayPal only when the shopper
+    // approves it, so nothing is created here — the consent screen hands off.
+    if (shape === "recurring") {
+      router.push(`/consent/pending?slug=${encodeURIComponent(slug)}`);
+      return;
+    }
+
     setState({ status: "creating" });
 
     try {

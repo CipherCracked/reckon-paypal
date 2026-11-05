@@ -4,9 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import { formatMoney } from "@/lib/money";
-import type { CommitmentTranslation } from "@/lib/commitment/types";
+import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
 
 export type CommitmentPayload = {
+  shape: CommitmentShape;
   translation: CommitmentTranslation;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
@@ -21,6 +22,7 @@ type LoadState =
 type PaymentState =
   | { status: "idle" }
   | { status: "paying" }
+  | { status: "approve"; url: string }
   | { status: "paid"; note: string }
   | { status: "failed"; message: string };
 
@@ -58,9 +60,33 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
   }, [load]);
 
   async function pay() {
+    if (state.status !== "ready") return;
+    const { shape } = state.payload;
     setPayment({ status: "paying" });
 
     try {
+      // A repeating commitment is approved at PayPal, not captured: capturing
+      // it as an order would charge one period and call it the whole term.
+      if (shape === "recurring") {
+        const response = await fetch("/api/paypal/subscriptions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ slug }),
+        });
+        const body = (await response.json()) as { approveUrl?: string | null; error?: string };
+
+        if (!response.ok || !body.approveUrl) {
+          setPayment({
+            status: "failed",
+            message: body.error ?? "PayPal could not start this subscription. Nothing was charged.",
+          });
+          return;
+        }
+
+        setPayment({ status: "approve", url: body.approveUrl });
+        return;
+      }
+
       const response = await fetch(
         `/api/paypal/orders/${encodeURIComponent(orderId)}/capture`,
         { method: "POST" },
@@ -136,11 +162,26 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
           type="button"
           className="button-primary"
           onClick={() => void pay()}
-          disabled={payment.status === "paying" || payment.status === "paid"}
+          disabled={
+            payment.status === "paying" || payment.status === "paid" || payment.status === "approve"
+          }
         >
-          {payment.status === "paying" ? "Paying…" : "Pay now"}
+          {payment.status === "paying"
+            ? "Paying…"
+            : payload.shape === "recurring"
+              ? "Approve subscription with PayPal"
+              : "Pay now"}
         </button>
       </div>
+
+      {payment.status === "approve" ? (
+        <p className="notice" role="status">
+          PayPal needs you to approve this repeating payment.{" "}
+          <a className="button-secondary" href={payment.url} rel="noopener noreferrer">
+            Approve the subscription with PayPal
+          </a>
+        </p>
+      ) : null}
 
       {payment.status === "paid" ? (
         <p className="notice-success" role="status">

@@ -40,6 +40,13 @@ describe("POST /api/paypal/orders", () => {
     expect(createPayPalOrder).not.toHaveBeenCalled();
   });
 
+  it("refuses a repeating product, which needs a subscription instead of an order", async () => {
+    const response = await post({ slug: "coffee-subscription" });
+
+    expect(response.status).toBe(400);
+    expect(createPayPalOrder).not.toHaveBeenCalled();
+  });
+
   it("returns 502 with no translation when PayPal fails", async () => {
     vi.mocked(createPayPalOrder).mockRejectedValueOnce(new Error("PayPal is down"));
 

@@ -63,26 +63,57 @@ describe("ensurePlan", () => {
         .fn()
         .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
         .mockResolvedValueOnce(duplicate())
-        .mockResolvedValueOnce(duplicate()),
+        .mockResolvedValueOnce(duplicate())
+        .mockResolvedValueOnce(
+          json({
+            plans: [
+              { id: "P-EXISTING", name: "Commitment demo plan P-DEMO-COFFEE-MONTHLY" },
+            ],
+          }),
+        ),
     );
 
-    await expect(ensurePlan(planInput)).resolves.toBe(planInput.planId);
+    await expect(ensurePlan(planInput)).resolves.toBe("P-EXISTING");
+  });
+
+  it("does not send a plan id, which PayPal does not accept on creation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan(planInput);
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest).not.toHaveProperty("id");
+    expect(planRequest.product_id).toBe("PROD-1");
   });
 });
 
 describe("createSubscription", () => {
-  it("creates a subscription against the plan", async () => {
+  it("creates a subscription against the plan and returns the approval link", async () => {
     vi.stubGlobal(
       "fetch",
       vi
         .fn()
         .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
-        .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" })),
+        .mockResolvedValueOnce(
+          json({
+            id: "I-SUB-1",
+            status: "APPROVAL_PENDING",
+            links: [
+              { href: "https://www.sandbox.paypal.com/webapps/billing/x", rel: "approve" },
+            ],
+          }),
+        ),
     );
 
     await expect(createSubscription("P-1")).resolves.toEqual({
       id: "I-SUB-1",
       status: "APPROVAL_PENDING",
+      approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
     });
   });
 });

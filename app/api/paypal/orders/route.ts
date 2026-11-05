@@ -23,6 +23,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unknown product." }, { status: 404 });
   }
 
+  // A repeating commitment is a subscription, not an order: capturing it as a
+  // one-time payment would charge one period and call it the whole term.
+  if (product.terms.shape === "recurring") {
+    return Response.json(
+      { error: "This product is paid over a repeating term and needs a subscription." },
+      { status: 400 },
+    );
+  }
+
   const translation = computeCommitment(product.terms);
 
   try {

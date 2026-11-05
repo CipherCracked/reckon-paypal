@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { GET } from "@/app/api/commitment/[orderId]/route";
 import { extractTerms } from "@/lib/ai/extract-terms";
@@ -61,6 +62,38 @@ describe("consent screen", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("$12.00")).toBeInTheDocument();
+  });
+
+  it("sends a repeating purchase to PayPal's subscription approval, not to a capture", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "recurring" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          subscriptionId: "I-SUB-1",
+          status: "APPROVAL_PENDING",
+          approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="I-SUB-1" slug="coffee-subscription" />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(screen.getByRole("button", { name: /approve subscription/i }));
+
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "coffee-subscription" }),
+    });
+    expect(
+      await screen.findByRole("link", { name: /approve .* with paypal/i }),
+    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/webapps/billing/x");
   });
 });
 
