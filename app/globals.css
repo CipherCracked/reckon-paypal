@@ -284,3 +284,35 @@ a {
   text-underline-offset: 3px;
   cursor: pointer;
 }
+
+.consent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.consent-amount {
+  font-size: 2.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.consent-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.notice {
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 0.875rem 1rem;
+}
+
+.notice-success {
+  border-left: 4px solid #1f7a4d;
+  background: var(--surface);
+  border-radius: 4px;
+  padding: 0.875rem 1rem;
+}
