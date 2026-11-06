@@ -52,9 +52,10 @@ describe("consent screen", () => {
     render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
 
     expect(
-      await screen.findByText(
-        /in production this check belongs on the payment provider's approval step/i,
-      ),
+      await screen.findByText(/this is a demonstration store\. the check needs only the amount/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/it fits any checkout, not just this one/i),
     ).toBeInTheDocument();
   });
 

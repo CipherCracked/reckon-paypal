@@ -75,3 +75,8 @@ See [`docs/demo-script.md`](docs/demo-script.md) for the five screens a three-mi
 
 No accounts, no profiles, no database, no stored session. The demo is USD only. The catalog is a
 curated local file (`lib/catalog/products.ts`) behind a replaceable layer.
+
+The check needs only two things: the amount being charged, and the terms the seller publishes. That
+is why it fits any checkout rather than this one. At scale it belongs on the payment layer, where it
+needs no merchant's cooperation — but it runs today in an ordinary store, on any order total.
+
