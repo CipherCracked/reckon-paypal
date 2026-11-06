@@ -30,6 +30,11 @@ without trusting the page.
 An optional recognition check shows the amount again and asks only whether it matches what the
 shopper expected. It is never a gate; skipping it leaves the payment path untouched.
 
+After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?slug=…` reads the
+order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
+entry for the next charge. Nothing is stored — the record survives because the shopper keeps it and
+PayPal holds the agreement.
+
 ## How the split works
 
 - **PayPal** is the source of truth for amounts. Orders API v2 creates and captures one-time

@@ -271,7 +271,13 @@ export function ConsentScreen({
 
       {payment.status === "paid" ? (
         <p className="notice-success" role="status">
-          {payment.note}
+          {payment.note}{" "}
+          <a
+            className="button-secondary"
+            href={`/receipt/${encodeURIComponent(orderId)}?slug=${encodeURIComponent(slug)}`}
+          >
+            Keep a record of this payment
+          </a>
         </p>
       ) : null}
 

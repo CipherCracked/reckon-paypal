@@ -327,3 +327,26 @@ a {
   border-radius: 4px;
   padding: 0.875rem 1rem;
 }
+
+/* The record the shopper keeps: printable, and readable as a document rather
+   than as a checkout screen. */
+.receipt {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.receipt-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  line-height: 1.6;
+}
+
+@media print {
+  .receipt-actions {
+    display: none;
+  }
+}

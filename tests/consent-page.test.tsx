@@ -143,6 +143,9 @@ describe("consent screen", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders/ORDER-1/capture", {
       method: "POST",
     });
+    expect(
+      await screen.findByRole("link", { name: /keep a record of this payment/i }),
+    ).toHaveAttribute("href", "/receipt/ORDER-1?slug=coffee-subscription");
   });
 
   it("reassures the shopper that nothing was charged when they back out at PayPal", async () => {

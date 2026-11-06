@@ -111,3 +111,14 @@ a follow-up.
   numbers, not a second computation.
 - What this IPD does not decide: whether the shopper should be able to *see* the record again without
   having downloaded it. Any answer other than "no" reintroduces storage.
+
+---
+
+**Implemented — 2026-11-07.** After a completed payment the screen offers "Keep a record of this
+payment", which opens `/receipt/{paypal-id}?slug=…`. That page asks PayPal what the order or
+subscription actually is and refuses to render anything unless it is settled, so the record is a
+statement by PayPal formatted by us rather than a claim of ours. It lists the next charge (or says
+there is none), the term total, the exit cost, the reference, and the route to PayPal's own
+subscription management. A recurring commitment additionally offers an `.ics` with a one-day alarm,
+built from `next_billing_time` — the reminder the shopper configures on their own device, because we
+cannot send one.
