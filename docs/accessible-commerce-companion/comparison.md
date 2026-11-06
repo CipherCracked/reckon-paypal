@@ -34,6 +34,8 @@ it is the one measure computable for both texts — not because a lower grade pr
 
 Rendered as one line: Across the term: $58.95 (1 payment); Cost to leave: $0.00; Charged today: $58.95 ($47.99 + $6.95 + $4.01).
 
+Schedule: Paid once. Nothing further is charged, so there is no term to run out.
+
 ## Coffee Subscription
 
 **The seller says**
@@ -55,6 +57,8 @@ Rendered as one line: Across the term: $58.95 (1 payment); Cost to leave: $0.00;
 
 Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: $0.00; Charged today: $12.00 ($12.00).
 
+Schedule: 12 payments of $12.00, one a month — today's is the first of the 12. What happens if a payment is missed is not stated on this screen.
+
 ## Mattress — 12 Months
 
 **The seller says**
@@ -75,6 +79,8 @@ Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: $0
 | Reading level (Flesch–Kincaid) | 0.1 | 0 |
 
 Rendered as one line: Across the term: $1,320.00 (12 × $105.00 + $60.00 fee); Cost to leave: not stated; Charged today: $105.00 (1 of 12 payments).
+
+Schedule: 12 payments of $105.00, one a month — today's is the first of the 12. What happens if a payment is missed is not stated on this screen.
 
 ---
 

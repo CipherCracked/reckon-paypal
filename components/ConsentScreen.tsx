@@ -19,6 +19,7 @@ export type CommitmentPayload = {
   shape: CommitmentShape;
   translation: CommitmentTranslation;
   figures: RenderedFigure[];
+  schedule: string;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
   degraded: boolean;
@@ -251,6 +252,7 @@ export function ConsentScreen({
         breakdown={payload.translation.breakdown}
         labels={payload.labels}
         summary={payload.summary}
+        schedule={payload.schedule}
         progressive={preferences.progressive}
       />
 

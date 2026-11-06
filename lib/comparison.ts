@@ -1,6 +1,7 @@
 import { products } from "./catalog/products.ts";
 import { computeCommitment } from "./commitment/compute.ts";
 import { presentFigures } from "./commitment/present.ts";
+import { describeSchedule } from "./commitment/schedule.ts";
 import { formatMoney, type Currency, type Money } from "./money.ts";
 import { measureReadability } from "./readability.ts";
 
@@ -91,6 +92,8 @@ export function buildComparison(): string {
       `| Reading level (Flesch–Kincaid) | ${merchant.grade} | ${screen.grade} |`,
       "",
       `Rendered as one line: ${rendered}.`,
+      "",
+      `Schedule: ${describeSchedule(product.terms)}`,
       "",
     );
   }

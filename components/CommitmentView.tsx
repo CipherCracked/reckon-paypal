@@ -11,6 +11,8 @@ export type CommitmentViewProps = {
   breakdown: CommitmentBreakdown;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
+  /** When the money leaves, in one sentence — a fact, not a fourth figure. */
+  schedule?: string | null;
   /** Reveal the figures one at a time, at the reader's pace. */
   progressive?: boolean;
 };
@@ -20,6 +22,7 @@ export function CommitmentView({
   breakdown,
   labels,
   summary,
+  schedule = null,
   progressive = false,
 }: CommitmentViewProps) {
   const [revealed, setRevealed] = useState(figures.length);
@@ -35,6 +38,12 @@ export function CommitmentView({
       <h2 id="commitment-heading">What this commitment asks of you</h2>
 
       {summary ? <p className="commitment-summary">{summary}</p> : null}
+
+      {schedule ? (
+        <p className="commitment-schedule" data-schedule="terms">
+          {schedule}
+        </p>
+      ) : null}
 
       <dl className="commitment-figures">
         {figures.map((figure, index) => (

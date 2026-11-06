@@ -55,6 +55,8 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           breakdown={translation.breakdown}
           labels={{ item: "Before tax", shipping: "Additional charge", tax: "Tax" }}
           summary={bill.description}
+          // PayPal did not answer, so there is no due date to state either.
+          schedule="No due date stated — PayPal could not be reached to read this bill."
         />
       </main>
     );
@@ -73,18 +75,6 @@ export default async function BillPage({ params, searchParams }: PageProps) {
         <h1>{bill.name}</h1>
       </header>
 
-      <p className="commitment-schedule" data-schedule="due">
-        {dueDate ? (
-          <>
-            <strong>Due {dueDate}</strong> — the date {bill.biller} set on the bill.
-          </>
-        ) : (
-          <>
-            <strong>No due date stated</strong> — the biller did not put one on this invoice.
-          </>
-        )}
-      </p>
-
       {disagreement ? (
         <p className="notice" role="alert">
           PayPal holds {record.amount ? formatMoney(record.amount) : "an amount"} for this bill, but
@@ -97,6 +87,11 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           breakdown={translation.breakdown}
           labels={{ item: "Before tax", shipping: "Additional charge", tax: "Tax" }}
           summary={bill.description}
+          schedule={
+            dueDate
+              ? `Due ${dueDate} — the date ${bill.biller} set on the bill.`
+              : "No due date stated — the biller did not put one on this invoice."
+          }
         />
       )}
 
