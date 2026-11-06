@@ -142,6 +142,36 @@ describe("POST /api/paypal/subscriptions", () => {
     expect(body.subscriptionId).toBe("I-SUB-1");
   });
 
+  it("passes PayPal's approval link through to the browser", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+        .mockResolvedValueOnce(json({ id: "PROD-1" }))
+        .mockResolvedValueOnce(json({ id: "P-1" }))
+        .mockResolvedValueOnce(
+          json({
+            id: "I-SUB-1",
+            status: "APPROVAL_PENDING",
+            links: [
+              { href: "https://www.sandbox.paypal.com/webapps/billing/x", rel: "approve" },
+            ],
+          }),
+        ),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "coffee-subscription" }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(body.approveUrl).toBe("https://www.sandbox.paypal.com/webapps/billing/x");
+  });
+
   it("refuses a product that does not repeat", async () => {
     const response = await POST(
       new Request("http://localhost/api/paypal/subscriptions", {

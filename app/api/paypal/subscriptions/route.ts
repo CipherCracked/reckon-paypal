@@ -36,7 +36,13 @@ export async function POST(request: Request) {
     });
 
     const subscription = await createSubscription(planId);
-    return Response.json({ subscriptionId: subscription.id, status: subscription.status });
+    return Response.json({
+      subscriptionId: subscription.id,
+      status: subscription.status,
+      // The shopper approves the commitment in PayPal itself; without this
+      // link the consent screen has nowhere to send them.
+      approveUrl: subscription.approveUrl,
+    });
   } catch (error) {
     const message =
       error instanceof PayPalError
