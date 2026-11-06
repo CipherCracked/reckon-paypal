@@ -19,14 +19,21 @@ describe("the front door", () => {
     expect(screen.getByText(/what it costs to leave/i)).toBeInTheDocument();
   });
 
-  it("offers the three ways money is asked of a person, not three products", () => {
+  it("offers the ways money is asked of a person, not a catalogue of products", () => {
     render(<Home />);
 
     const doors = screen.getAllByRole("listitem");
-    expect(doors).toHaveLength(3);
+    expect(doors).toHaveLength(4);
     expect(screen.getByText("A purchase")).toBeInTheDocument();
     expect(screen.getByText("A subscription")).toBeInTheDocument();
     expect(screen.getByText("A bill")).toBeInTheDocument();
+    expect(screen.getByText("A document")).toBeInTheDocument();
+  });
+
+  it("reaches the reader from the document door", () => {
+    render(<Home />);
+
+    expect(screen.getByRole("link", { name: /read a document/i })).toHaveAttribute("href", "/read");
   });
 
   it("puts a real figure on each door", () => {

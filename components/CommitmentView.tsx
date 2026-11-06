@@ -13,6 +13,10 @@ export type CommitmentViewProps = {
   summary: string;
   /** When the money leaves, in one sentence — a fact, not a fourth figure. */
   schedule?: string | null;
+  /** What to say instead of the default sentence when a figure is absent. */
+  figureNotes?: Partial<Record<RenderedFigure["id"], string>>;
+  /** Where the figures came from. Defaults to the PayPal order wording. */
+  sourceNote?: string;
   /** Reveal the figures one at a time, at the reader's pace. */
   progressive?: boolean;
 };
@@ -23,6 +27,8 @@ export function CommitmentView({
   labels,
   summary,
   schedule = null,
+  figureNotes,
+  sourceNote = "Figures calculated from the PayPal order for this purchase. This page gives you no advice about whether to buy.",
   progressive = false,
 }: CommitmentViewProps) {
   const [revealed, setRevealed] = useState(figures.length);
@@ -61,7 +67,8 @@ export function CommitmentView({
                 <>
                   Not stated
                   <span className="commitment-hint">
-                    This seller has not published what it costs to cancel.
+                    {figureNotes?.[figure.id] ??
+                      "This seller has not published what it costs to cancel."}
                   </span>
                 </>
               ) : (
@@ -104,8 +111,7 @@ export function CommitmentView({
       </dl>
 
       <p className="commitment-source">
-        Figures calculated from the PayPal order for this purchase. This page gives you no advice
-        about whether to buy.
+        {sourceNote}
       </p>
     </section>
   );

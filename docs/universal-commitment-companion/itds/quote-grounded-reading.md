@@ -113,3 +113,22 @@ says less rather than saying something wrong.
   invoice we issued; anything else is read-only, and the screen says so.
 - If the model is unavailable, the reading path returns the candidates Option 3 can find and states
   plainly that nothing was interpreted — the same degradation the consent screen already has.
+
+---
+
+## Build notes — 2026-11-07
+
+- **`BillingPeriod` was widened to `"month" | "year"`.** A document saying "$20.00 per year for 2
+  years" is $40.00. Converting the count to twelve monthly payments gives $480.00 — a tenfold error
+  produced by a "helpful" conversion. `computeCommitment` multiplies the amount by the count and never
+  reads the period, so keeping the cadence as written costs nothing and the schedule sentence now
+  says "one a year" when the document said so.
+- **A stated total is the whole charge.** When a document states both a total and its parts, the
+  parts are not added to the total; they are already inside it. Only when no total is stated are the
+  parts summed, which is the one case where our arithmetic is doing real work.
+- **A repeating charge with no stated count zeroes the total across the term explicitly** — the
+  figure is replaced with an absence and its own sentence, rather than being computed from a count of
+  one. `CommitmentView` gained `figureNotes` for that: an absence now says *why* it is absent.
+- **Implementing it changed one shape**: `presentReading` returns the breakdown too, because a screen
+  that says "these are the document's own amounts" cannot invent a breakdown from the figure it just
+  computed.

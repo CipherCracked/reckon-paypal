@@ -61,6 +61,18 @@ export default function Home() {
             amount={formatMoney(computeCommitment(bill.terms).today)}
           />
         ) : null}
+
+        <li className="product-card" data-door="document">
+          <p className="door-label">A document</p>
+          <h2>Something someone sent you</h2>
+          <p>
+            A bill, a contract, a payment plan. Paste the text and read the same three figures — each
+            one beside the sentence it came from.
+          </p>
+          <Link className="button-secondary" href="/read">
+            Read a document
+          </Link>
+        </li>
       </ul>
 
       <p className="door-more">

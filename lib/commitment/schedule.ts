@@ -18,7 +18,7 @@ export function describeSchedule(terms: CommitmentTerms): string {
         currency: terms.itemPrice.currency,
         minor: terms.itemPrice.minor + terms.tax.minor,
       });
-      return `${count} payments of ${perPeriod}, one a month — today's is the first of the ${count}. ${notStatedIfMissed()}`;
+      return `${count} payments of ${perPeriod}, ${cadence(terms)} — today's is the first of the ${count}. ${notStatedIfMissed()}`;
     }
 
     case "financed": {
@@ -36,6 +36,11 @@ export function describeSchedule(terms: CommitmentTerms): string {
 
 function notStatedIfMissed(): string {
   return "What happens if a payment is missed is not stated on this screen.";
+}
+
+/** The words that say how often — never a number, always a phrase. */
+function cadence(terms: CommitmentTerms): string {
+  return terms.recurrence?.period === "year" ? "one a year" : "one a month";
 }
 
 function notStated(): string {
