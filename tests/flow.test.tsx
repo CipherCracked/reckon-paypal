@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Home from "@/app/page";
+import Shop from "@/app/shop/page";
 import { ProductScreen } from "@/components/ProductScreen";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { findProduct } from "@/lib/catalog/products";
@@ -27,7 +27,7 @@ afterEach(() => {
 describe("demo flow", () => {
   it("takes a shopper from the storefront to a stated commitment", async () => {
     // 1. The storefront offers the product.
-    render(<Home />);
+    render(<Shop />);
     const productLinks = screen.getAllByRole("link", { name: /Noise-Cancelling Headphones/ });
     expect(productLinks.length).toBeGreaterThan(0);
     for (const link of productLinks) {
