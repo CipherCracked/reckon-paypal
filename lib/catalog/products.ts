@@ -1,5 +1,5 @@
-import { money } from "@/lib/money";
-import type { CommitmentTerms } from "@/lib/commitment/types";
+import { money } from "../money.ts";
+import type { CommitmentTerms } from "../commitment/types";
 
 export type Product = {
   slug: string;

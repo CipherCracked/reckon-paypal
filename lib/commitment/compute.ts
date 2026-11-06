@@ -1,4 +1,4 @@
-import { addMoney, multiplyMoney, zeroMoney, type Money } from "@/lib/money";
+import { addMoney, multiplyMoney, zeroMoney, type Money } from "../money.ts";
 import type { CommitmentTerms, CommitmentTranslation, ExitTerms } from "./types";
 
 function translateExit(exit: ExitTerms): Money | null {

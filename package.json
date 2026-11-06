@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest run"
+    "test": "vitest run",
+    "comparison": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/comparison.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.5.0",

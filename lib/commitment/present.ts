@@ -1,4 +1,4 @@
-import { formatMoney, type Money } from "@/lib/money";
+import { formatMoney, type Money } from "../money.ts";
 import type { CommitmentTerms, CommitmentTranslation } from "./types";
 
 /**

@@ -1,4 +1,4 @@
-import type { Money } from "@/lib/money";
+import type { Money } from "../money";
 
 export type CommitmentShape = "one_time" | "recurring" | "financed";
 

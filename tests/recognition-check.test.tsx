@@ -1,10 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import { money } from "@/lib/money";
 
 describe("RecognitionCheck", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
   it("shows the amount and asks a recognition question, never a recall question", () => {
     render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
 
@@ -39,5 +42,29 @@ describe("RecognitionCheck", () => {
     expect(onResult).not.toHaveBeenCalled();
     expect(screen.queryByText(/does this match what you expected\?/i)).toBeNull();
     expect(screen.getByText(/check skipped/i)).toBeInTheDocument();
+  });
+
+  it("sends nothing anywhere, whichever answer is given", async () => {
+    const fetchSpy = vi.fn();
+    const beaconSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: beaconSpy,
+      configurable: true,
+    });
+
+    const answered = render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Yes" }));
+    answered.unmount();
+
+    const asked = render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /show me the breakdown/i }));
+    asked.unmount();
+
+    render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    await userEvent.click(screen.getByRole("button", { name: /skip/i }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(beaconSpy).not.toHaveBeenCalled();
   });
 });

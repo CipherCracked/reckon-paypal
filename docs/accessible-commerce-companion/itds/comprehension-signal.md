@@ -24,3 +24,20 @@ the enforcement of IPD 9's promise in the only place promises are kept.
 **What it deliberately does not add.** No page-view counting, no timings, no "did you understand?"
 score, no cookies. The app's observability is the server's own logs of its API routes, which contain
 a slug and an order id and nothing about a person.
+
+**Built — 2026-11-07.** `lib/comparison.ts` builds the document; `scripts/comparison.ts` writes it;
+`npm run comparison` runs that script under plain Node. So the generator can run outside the test
+suite, the runtime imports in the handful of files it reaches (`lib/comparison.ts`,
+`lib/catalog/products.ts`, `lib/commitment/compute.ts`, `lib/commitment/present.ts`) now carry
+explicit `.ts` extensions — Node's type stripping resolves files, not extensionless specifiers. The
+app build and the suite both accept the explicit form, so the same source runs in both places.
+
+`tests/comparison.test.ts` holds five assertions: the committed file equals what the functions
+produce, every product is present with the seller's words quoted before ours, the copy's own money
+amounts are counted rather than dismissed, the document states its own limits, and `measureReadability`
+behaves (word/sentence counts, a plain sentence scoring below a dense one, no negative grade, no
+division by zero). The reading-level row survives with a caveat paragraph attached: it is reported
+because it is the one measure computable for both texts, not because a low grade proves anything,
+and a list of short lines scores near zero by construction. `tests/recognition-check.test.tsx` now
+stubs `fetch` and `navigator.sendBeacon` and answers yes, no and skip — none of the three reaches the
+network. Suite 104/104.

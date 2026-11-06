@@ -76,10 +76,16 @@ Create a sandbox app at <https://developer.paypal.com/dashboard/applications/san
 ## Commands
 
 ```bash
-npm run dev     # start on http://localhost:3000
-npm test        # run the Vitest suite
-npm run build   # production build
+npm run dev         # start on http://localhost:3000
+npm test            # run the Vitest suite
+npm run comparison  # regenerate docs/accessible-commerce-companion/comparison.md
+npm run build       # production build
 ```
+
+`npm run comparison` rewrites [`docs/accessible-commerce-companion/comparison.md`](docs/accessible-commerce-companion/comparison.md)
+from the same functions the consent screen runs — the seller's copy beside the figures the shopper
+reads, for every product. The suite fails if the committed file and the code disagree, so the
+document cannot drift from the behaviour it describes.
 
 ## Demo script
 
