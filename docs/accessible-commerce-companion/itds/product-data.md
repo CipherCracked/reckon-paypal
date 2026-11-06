@@ -26,3 +26,22 @@ it.
 page, 2026-11-07). Against that: product data solves the part of the problem that is already solved by
 three fixtures, and leaves the part that is actually hard — merchant terms — untouched. Reconsider
 only if the commitment-terms question is answered another way first.
+
+---
+
+**Addendum — 2026-11-07: what a real terms source has to carry (follows IPD 7 and ITD 2's revision).**
+
+The catalogue's `CommitmentTerms` is a *destination*, not an input. In the wild, the same facts arrive
+as prose — "cancel any time, no fee", "cancellation terms not shown on this page" — and the shipped
+catalogue quietly performs the extraction by hand. A real source therefore has to provide three things
+per commitment, not one:
+
+1. **The merchant's own words**, verbatim, as the reader would meet them.
+2. **The structured terms** the computation consumes, with every field attributable to a span of
+   the text it came from.
+3. **The absence of a term as a fact** — "not stated" is a value the source must be able to express,
+   because the shipped catalogue already relies on it (`exit: { kind: "unknown" }`).
+
+Any substitute for the catalogue that cannot express (3) reintroduces the failure the product exists
+to catch: a seller's silence rendering as a zero.
+

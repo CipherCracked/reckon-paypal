@@ -171,3 +171,19 @@ A checklist to judge candidate extensions against, not a set of answers:
 5. **Which reader do we design the universal rendering against** — the median shopper, or the least
    numerate reader — and what does that cost the median reader?
 6. **Does the financed shape belong** in a product that cannot offer real financing?
+
+---
+
+## Where each question is answered (2026-11-07)
+
+| Tree question | Product decision | Technical decision |
+|---|---|---|
+| Q1 — is three dollar figures the right intervention | [`ipds/rendering-model.md`](../accessible-commerce-companion/ipds/rendering-model.md) — order by decision weight, dollars with arithmetic | [`itds/rendering-strategy.md`](../accessible-commerce-companion/itds/rendering-strategy.md) |
+| Q2 — who hosts it | [`ipds/host-and-ownership.md`](../accessible-commerce-companion/ipds/host-and-ownership.md) — the payment platform's approval step | [`itds/delivery-surface.md`](../accessible-commerce-companion/itds/delivery-surface.md) |
+| Q3 — is consent the right moment | [`ipds/commitment-continuity.md`](../accessible-commerce-companion/ipds/commitment-continuity.md) — the shopper carries the record | [`itds/carrying-the-commitment.md`](../accessible-commerce-companion/itds/carrying-the-commitment.md) |
+| Q4 — what outcome is it accountable for | [`ipds/outcome-and-evidence.md`](../accessible-commerce-companion/ipds/outcome-and-evidence.md) — legibility, shown by comparison | [`itds/comprehension-signal.md`](../accessible-commerce-companion/itds/comprehension-signal.md) |
+| Q5 — how it reaches people who never declare a need | [`ipds/adaptation.md`](../accessible-commerce-companion/ipds/adaptation.md) — accessible default, reader-owned controls | [`itds/adaptation-without-profiling.md`](../accessible-commerce-companion/itds/adaptation-without-profiling.md) |
+
+Every decision above is **proposed**; none of the four new pairs is implemented. The one consequence
+already shipped is IPD 6's production-placement line on the consent screen.
+

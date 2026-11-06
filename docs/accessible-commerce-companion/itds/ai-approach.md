@@ -34,3 +34,37 @@ money.
 **Note for the demo.** With no key configured, the shipped app runs the degraded path on every
 screen. The AI half of the product is invisible until a key exists, which is a demonstration problem
 before it is an engineering one.
+
+---
+
+**Revision — 2026-11-07 (2): the model's job, now that the rendering is a hypothesis.**
+
+IPD 7 took the model out of presentation entirely — the ordering, the unit and the arithmetic are
+templated from computed data — and named the work it should be doing instead: **reading merchant
+language the catalogue cannot anticipate.** That changes what this ITD's decision means in practice.
+
+**The extraction the product actually needs** is not three labels. It is the terms the computation
+consumes, taken from prose: does this commitment repeat, how many times, over what period; is there an
+exit fee, and what does the seller say about cancelling; is a term genuinely absent or merely buried.
+The shipped catalogue supplies all of this by hand — `{ kind: "unknown" }` for the mattress is a
+human having decided the page says nothing — which is exactly the judgement a real deployment cannot
+make in advance.
+
+**The risk this introduces, stated plainly.** A model that reads a fee out of prose can read it
+wrongly, and unlike a label, a wrong term produces a wrong figure downstream — the guard cannot catch
+it, because the guard only inspects output, and the number was computed afterwards by code that
+trusted the input. Two mitigations belong with any move in this direction, and neither is optional:
+
+1. **Every extracted term carries the merchant's own span**, shown to the shopper beside the figure it
+   produced. A misreading then becomes visible and attributable rather than silently authoritative.
+2. **The drift guard keeps its authority over the total actually charged**, so a misread still cannot
+   survive a disagreement with PayPal.
+
+**What does not change.** The model still never emits a figure. Its schema still contains no monetary
+field, and the guard still runs on whatever it returns. Moving work into extraction moves it toward
+the numbers, which is why the two mitigations above are the price of the move rather than a
+refinement of it.
+
+**Honest status.** None of this is built. The extraction stays hand-performed in the catalogue, and
+the app therefore does the right thing with terms it was given and nothing with terms it was not.
+
