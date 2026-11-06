@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
-import { formatMoney } from "@/lib/money";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
 
 export type CommitmentPayload = {
@@ -205,31 +204,32 @@ export function ConsentScreen({
   return (
     <section className="consent">
       {payload.degraded ? (
-        <>
-          <p className="notice">
-            We could not read the terms for this purchase. Here is the amount PayPal will charge.
-          </p>
-          <p className="consent-amount">{formatMoney(payload.translation.today)}</p>
-        </>
-      ) : (
-        <>
-          <CommitmentView
-            translation={payload.translation}
-            labels={payload.labels}
-            summary={payload.summary}
-          />
-          <RecognitionCheck
-            amount={payload.translation.today}
-            onResult={(matched) => {
-              if (matched) return;
-              // Saying "no" must take the shopper somewhere, not leave them
-              // where they were: focus moves to the itemisation right above.
-              const heading = document.getElementById("commitment-breakdown-heading");
-              heading?.scrollIntoView?.({ block: "start" });
-              heading?.focus();
-            }}
-          />
-        </>
+        // Only the wording failed. The figures are calculated from the order
+        // itself, so they are still the ones to show.
+        <p className="notice">
+          We could not write a plain-language summary for this purchase. The figures below are
+          still calculated from the order, but the item labels are the seller&apos;s own.
+        </p>
+      ) : null}
+
+      <CommitmentView
+        translation={payload.translation}
+        labels={payload.labels}
+        summary={payload.summary}
+      />
+
+      {payload.degraded ? null : (
+        <RecognitionCheck
+          amount={payload.translation.today}
+          onResult={(matched) => {
+            if (matched) return;
+            // Saying "no" must take the shopper somewhere, not leave them
+            // where they were: focus moves to the itemisation right above.
+            const heading = document.getElementById("commitment-breakdown-heading");
+            heading?.scrollIntoView?.({ block: "start" });
+            heading?.focus();
+          }}
+        />
       )}
 
       <div className="consent-actions">

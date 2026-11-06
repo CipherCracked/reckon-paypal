@@ -48,7 +48,7 @@ describe("consent screen", () => {
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
   });
 
-  it("shows the PayPal amount and says plainly that the terms could not be read", async () => {
+  it("keeps the three figures when only the wording is unavailable", async () => {
     vi.mocked(fetch as unknown as () => Promise<unknown>).mockResolvedValueOnce({
       ok: true,
       json: async () => ({ ...payload, degraded: true, summary: "" }),
@@ -57,11 +57,10 @@ describe("consent screen", () => {
     render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
 
     expect(
-      await screen.findByText(
-        /we could not read the terms for this purchase\. here is the amount paypal will charge\./i,
-      ),
+      await screen.findByText(/we could not write a plain-language summary for this purchase/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("$12.00")).toBeInTheDocument();
+    expect(screen.getByText("Charged today")).toBeInTheDocument();
+    expect(screen.getByText("$144.00")).toBeInTheDocument();
   });
 
   it("moves focus to the breakdown when the shopper says the amount does not match", async () => {
