@@ -16,11 +16,16 @@ A shopper picks one of three products, each with a different commitment shape:
 | Coffee Subscription | paid every month for 12 months |
 | Mattress — 12 Months | financed over 12 instalments |
 
-Before the payment is taken, the consent screen shows three figures and an itemised breakdown:
+Before the payment is taken, the consent screen shows three figures and an itemised breakdown, in
+the order that matters most to the decision:
 
-- **Charged today** — what leaves the account now
 - **Across the term** — every charge the commitment adds up to
 - **Cost to leave** — or "Not stated" when the seller has not published one, never `$0.00`
+- **Charged today** — what leaves the account now, last because the seller has already made it
+  unmissable
+
+Each figure carries the arithmetic that produced it (`12 × $12.00`), so a stranger can check it
+without trusting the page.
 
 An optional recognition check shows the amount again and asks only whether it matches what the
 shopper expected. It is never a gate; skipping it leaves the payment path untouched.

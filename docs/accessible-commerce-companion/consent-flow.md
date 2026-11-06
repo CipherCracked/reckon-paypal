@@ -41,7 +41,7 @@ sequenceDiagram
         API-->>C: translation + fallback labels<br/>degraded: true
     end
 
-    C->>S: Charged today / Across the term / Cost to leave<br/>+ itemised breakdown + source line
+    C->>S: Across the term / Cost to leave / Charged today<br/>+ arithmetic + itemised breakdown + source line
     C->>S: "Does $X match what you expected?"
     S->>C: No, show me the breakdown
     C->>C: focus moves to "Where these figures come from"

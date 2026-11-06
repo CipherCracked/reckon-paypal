@@ -212,6 +212,17 @@ a {
   color: var(--muted);
 }
 
+/* The arithmetic sits under the figure it explains, quieter than the figure —
+   it is there to be checked, not to compete. */
+.commitment-arithmetic {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .commitment-breakdown {
   display: flex;
   flex-direction: column;

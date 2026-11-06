@@ -1,47 +1,82 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CommitmentView } from "@/components/CommitmentView";
+import { computeCommitment } from "@/lib/commitment/compute";
+import { presentFigures } from "@/lib/commitment/present";
 import { money } from "@/lib/money";
-import type { CommitmentTranslation } from "@/lib/commitment/types";
+import type { CommitmentTerms } from "@/lib/commitment/types";
 
 const labels = { item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" };
 
-const known: CommitmentTranslation = {
-  today: money(1200),
-  acrossTerm: money(14400),
-  exit: money(0),
-  breakdown: { item: money(1000), shipping: money(100), tax: money(100) },
+const knownTerms: CommitmentTerms = {
+  shape: "recurring",
+  itemPrice: money(1100),
+  shipping: money(0),
+  tax: money(100),
+  recurrence: { count: 12, period: "month" },
+  exit: { kind: "fee", fee: money(0) },
 };
 
+function renderView(terms: CommitmentTerms, summary = "") {
+  return render(
+    <CommitmentView
+      figures={presentFigures(terms, computeCommitment(terms))}
+      breakdown={computeCommitment(terms).breakdown}
+      labels={labels}
+      summary={summary}
+    />,
+  );
+}
+
 describe("CommitmentView", () => {
-  it("states today, the term, and exit as three labelled figures", () => {
-    render(<CommitmentView translation={known} labels={labels} summary="You pay monthly for 12 months." />);
+  const figure = (container: HTMLElement, id: string) =>
+    container.querySelector(`[data-figure="${id}"]`) as HTMLElement;
+
+  it("states the term, the exit and today's charge as three labelled figures", () => {
+    const { container } = renderView(knownTerms, "You pay monthly for 12 months.");
 
     expect(screen.getByText("Charged today")).toBeInTheDocument();
-    expect(screen.getByText("$12.00")).toBeInTheDocument();
+    expect(figure(container, "today")).toHaveTextContent("$12.00");
 
     expect(screen.getByText("Across the term")).toBeInTheDocument();
-    expect(screen.getByText("$144.00")).toBeInTheDocument();
+    expect(figure(container, "acrossTerm")).toHaveTextContent("$144.00");
 
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
-    expect(screen.getByText("$0.00")).toBeInTheDocument();
+    expect(figure(container, "exit")).toHaveTextContent("$0.00");
 
     expect(screen.getByText("You pay monthly for 12 months.")).toBeInTheDocument();
   });
 
+  it("reads the figures in the order it is given, largest commitment first", () => {
+    const { container } = renderView(knownTerms);
+
+    const labelsInOrder = Array.from(container.querySelectorAll(".commitment-figure dt")).map(
+      (term) => term.textContent,
+    );
+
+    expect(labelsInOrder).toEqual(["Across the term", "Cost to leave", "Charged today"]);
+  });
+
+  it("shows the arithmetic behind each figure", () => {
+    renderView(knownTerms);
+
+    expect(screen.getByText("12 × $12.00")).toBeInTheDocument();
+    expect(screen.getByText("$11.00 + $1.00")).toBeInTheDocument();
+  });
+
   it("itemises where the figures come from", () => {
-    render(<CommitmentView translation={known} labels={labels} summary="" />);
+    renderView(knownTerms);
 
     expect(screen.getByText("Coffee, one bag")).toBeInTheDocument();
     expect(screen.getByText("Shipping")).toBeInTheDocument();
     expect(screen.getByText("Sales tax")).toBeInTheDocument();
-    expect(screen.getByText("$10.00")).toBeInTheDocument();
+    expect(screen.getByText("$11.00")).toBeInTheDocument();
   });
 
   it("renders an unknown exit cost as Not stated, never as zero", () => {
-    render(<CommitmentView translation={{ ...known, exit: null }} labels={labels} summary="" />);
+    const { container } = renderView({ ...knownTerms, exit: { kind: "unknown" } });
 
     expect(screen.getByText(/not stated/i)).toBeInTheDocument();
-    expect(screen.queryByText("$0.00")).toBeNull();
+    expect(figure(container, "exit")).not.toHaveTextContent("$0.00");
   });
 });

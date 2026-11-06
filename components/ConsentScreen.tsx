@@ -3,11 +3,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
+import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
 
 export type CommitmentPayload = {
   shape: CommitmentShape;
   translation: CommitmentTranslation;
+  figures: RenderedFigure[];
   labels: { item: string; shipping: string; tax: string };
   summary: string;
   degraded: boolean;
@@ -213,7 +215,8 @@ export function ConsentScreen({
       ) : null}
 
       <CommitmentView
-        translation={payload.translation}
+        figures={payload.figures}
+        breakdown={payload.translation.breakdown}
         labels={payload.labels}
         summary={payload.summary}
       />

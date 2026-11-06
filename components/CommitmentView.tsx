@@ -1,13 +1,16 @@
 import { formatMoney } from "@/lib/money";
-import type { CommitmentTranslation } from "@/lib/commitment/types";
+import type { RenderedFigure } from "@/lib/commitment/present";
+import type { CommitmentBreakdown } from "@/lib/commitment/types";
 
 export type CommitmentViewProps = {
-  translation: CommitmentTranslation;
+  /** Already ordered by the server: the screen renders what it is given. */
+  figures: RenderedFigure[];
+  breakdown: CommitmentBreakdown;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
 };
 
-export function CommitmentView({ translation, labels, summary }: CommitmentViewProps) {
+export function CommitmentView({ figures, breakdown, labels, summary }: CommitmentViewProps) {
   return (
     <section className="commitment" aria-labelledby="commitment-heading">
       <h2 id="commitment-heading">What this commitment asks of you</h2>
@@ -15,29 +18,26 @@ export function CommitmentView({ translation, labels, summary }: CommitmentViewP
       {summary ? <p className="commitment-summary">{summary}</p> : null}
 
       <dl className="commitment-figures">
-        <div className="commitment-figure">
-          <dt>Charged today</dt>
-          <dd>{formatMoney(translation.today)}</dd>
-        </div>
-        <div className="commitment-figure">
-          <dt>Across the term</dt>
-          <dd>{formatMoney(translation.acrossTerm)}</dd>
-        </div>
-        <div className="commitment-figure">
-          <dt>Cost to leave</dt>
-          <dd>
-            {translation.exit === null ? (
-              <>
-                Not stated
-                <span className="commitment-hint">
-                  This seller has not published what it costs to cancel.
-                </span>
-              </>
-            ) : (
-              formatMoney(translation.exit)
-            )}
-          </dd>
-        </div>
+        {figures.map((figure) => (
+          <div className="commitment-figure" key={figure.id} data-figure={figure.id}>
+            <dt>{figure.label}</dt>
+            <dd>
+              {figure.amount === null ? (
+                <>
+                  Not stated
+                  <span className="commitment-hint">
+                    This seller has not published what it costs to cancel.
+                  </span>
+                </>
+              ) : (
+                formatMoney(figure.amount)
+              )}
+              {figure.arithmetic ? (
+                <span className="commitment-arithmetic">{figure.arithmetic}</span>
+              ) : null}
+            </dd>
+          </div>
+        ))}
       </dl>
 
       <h3 id="commitment-breakdown-heading" tabIndex={-1}>
@@ -46,15 +46,15 @@ export function CommitmentView({ translation, labels, summary }: CommitmentViewP
       <dl className="commitment-breakdown">
         <div>
           <dt>{labels.item}</dt>
-          <dd>{formatMoney(translation.breakdown.item)}</dd>
+          <dd>{formatMoney(breakdown.item)}</dd>
         </div>
         <div>
           <dt>{labels.shipping}</dt>
-          <dd>{formatMoney(translation.breakdown.shipping)}</dd>
+          <dd>{formatMoney(breakdown.shipping)}</dd>
         </div>
         <div>
           <dt>{labels.tax}</dt>
-          <dd>{formatMoney(translation.breakdown.tax)}</dd>
+          <dd>{formatMoney(breakdown.tax)}</dd>
         </div>
       </dl>
 

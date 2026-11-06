@@ -28,3 +28,10 @@ built from (`12 × $12.00`, `$10.00 + $1.00 + $1.00`). It may not compute anythi
 unit the merchant did not state, or express the commitment as a percentage. Where the inputs are
 not enough to show the sum honestly — a financed commitment with an undisclosed interest rate — the
 string says what is missing instead of inventing a figure.
+
+**Built — 2026-11-07.** `lib/commitment/present.ts` projects a finished translation into
+`RenderedFigure[]`, with `FIGURE_ORDER` as the one place the sequence lives. The route computes the
+figures from the same terms the totals came from, so the client never decides either. `CommitmentView`
+maps over the list and adds `data-figure` per row, which is what lets the tests assert a specific
+figure rather than searching the whole page. Where an arithmetic line cannot be written honestly it
+is `null` and nothing renders, rather than a plausible-looking sum.

@@ -6,6 +6,7 @@ import { ProductScreen } from "@/components/ProductScreen";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
+import { presentFigures } from "@/lib/commitment/present";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
@@ -57,6 +58,7 @@ describe("demo flow", () => {
         ok: true,
         json: async () => ({
           translation: computeCommitment(headphones!.terms),
+          figures: presentFigures(headphones!.terms, computeCommitment(headphones!.terms)),
           labels: { item: "Headphones", shipping: "Shipping", tax: "Sales tax" },
           summary: "You pay once, today.",
           degraded: false,

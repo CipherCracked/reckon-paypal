@@ -1,4 +1,5 @@
 import { computeCommitment } from "@/lib/commitment/compute";
+import { presentFigures } from "@/lib/commitment/present";
 import { findProduct } from "@/lib/catalog/products";
 import { extractTerms } from "@/lib/ai/extract-terms";
 
@@ -14,6 +15,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const translation = computeCommitment(product.terms);
+  // The ordering and the arithmetic are derived here, from the same terms the
+  // totals came from, so the screen never decides either.
+  const figures = presentFigures(product.terms, translation);
 
   try {
     const terms = await extractTerms({ productText: product.description });
@@ -21,6 +25,7 @@ export async function GET(request: Request, context: RouteContext) {
       orderId,
       shape: product.terms.shape,
       translation,
+      figures,
       labels: terms.labels,
       summary: terms.summary,
       degraded: false,
@@ -33,6 +38,7 @@ export async function GET(request: Request, context: RouteContext) {
       orderId,
       shape: product.terms.shape,
       translation,
+      figures,
       labels: { item: product.name, shipping: "Shipping", tax: "Sales tax" },
       summary: "",
       degraded: true,

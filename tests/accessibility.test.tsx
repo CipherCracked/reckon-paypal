@@ -2,15 +2,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConsentScreen } from "@/components/ConsentScreen";
+import { computeCommitment } from "@/lib/commitment/compute";
+import { presentFigures } from "@/lib/commitment/present";
 import { money } from "@/lib/money";
+import type { CommitmentTerms } from "@/lib/commitment/types";
+
+const terms: CommitmentTerms = {
+  shape: "recurring",
+  itemPrice: money(1100),
+  shipping: money(0),
+  tax: money(100),
+  recurrence: { count: 12, period: "month" },
+  exit: { kind: "fee", fee: money(0) },
+};
+
+const translation = computeCommitment(terms);
 
 const payload = {
-  translation: {
-    today: money(1200),
-    acrossTerm: money(14400),
-    exit: money(0),
-    breakdown: { item: money(1000), shipping: money(100), tax: money(100) },
-  },
+  translation,
+  figures: presentFigures(terms, translation),
   labels: { item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" },
   summary: "You pay monthly for one year.",
   degraded: false,

@@ -114,3 +114,10 @@ merchant did not state. The itemised breakdown remains beneath, with its source 
 - What this IPD does *not* decide: where the merchant's own words should appear, if anywhere. A
   shopper may want the seller's framing available for comparison, and that is a question for the
   next revision, not an omission to be filled by guesswork.
+
+---
+
+**Implemented — 2026-11-07.** The screen now reads Across the term, Cost to leave, Charged today,
+each with its arithmetic in a quieter line beneath (`12 × $12.00`, `$47.99 + $6.95 + $4.01`,
+`1 of 12 payments`). Eight new tests cover the order, the three shapes, the shipping-charged-once
+case, and the rule that no arithmetic line may contain a percentage or a per-day rate. Suite 80/80.
