@@ -233,8 +233,8 @@ export function ConsentScreen({
       )}
 
       <p className="commitment-source">
-        In production this page would appear on PayPal&apos;s own approval step, before you
-        authorise the payment. This store is a demonstration.
+        In production this check belongs on the payment provider&apos;s approval step —
+        PayPal&apos;s, before you authorise the payment. This store is a demonstration.
       </p>
 
       <div className="consent-actions">

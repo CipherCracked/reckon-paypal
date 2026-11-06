@@ -116,3 +116,29 @@ Two consequences follow and are accepted:
   that requires the platform's cooperation.
 - Revisit if the payer-side option can ever verify a total against an authoritative source without
   the merchant's involvement.
+
+---
+
+**Revision — 2026-11-07: what "on the platform's approval step" can and cannot mean today.**
+
+The decision above is a statement about where the screen *belongs*, not a claim that it can be
+deployed there now. Checked against PayPal's current surfaces (developer.paypal.com hosted-checkout
+configuration; paypal.com business checkout comparison, 2026-11-07):
+
+- **A third party cannot add UI to PayPal's approval page.** What a merchant can change there is
+  branding — logo, colours, layout of the hosted template — configured in their own account. There
+  is no extension point for a translated commitment, and no API that injects a review step.
+- **The closest shippable version of the thesis is the merchant's last screen before the hand-off**,
+  which is what the demo build already is: figures, then PayPal's approval, then the return.
+- **The platform version is a product proposal to PayPal**, not an integration we can perform. That
+  is consistent with the tradeoff recorded above — this needs the platform to decide, or regulation
+  to compel — but it must be said that way rather than implied as a deployment choice.
+
+**Consequence for the copy.** The consent screen should say where the check belongs, not that it is
+running there: it now reads "this check belongs on the payment provider's approval step — PayPal's,
+before you authorise the payment". No claim of endorsement, no claim of modifying PayPal's checkout,
+and nothing in the demo that a judge could read as a screenshot of someone else's product.
+
+**Consequence for the pitch.** The honest claim is: *this is what a payment provider could show,
+at the one moment it already owns, and here is the screen working with real PayPal orders.* The
+weaker claim — *we built this into PayPal* — is false and would be caught.

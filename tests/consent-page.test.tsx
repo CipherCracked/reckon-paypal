@@ -52,7 +52,9 @@ describe("consent screen", () => {
     render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
 
     expect(
-      await screen.findByText(/in production this page would appear on paypal's own approval step/i),
+      await screen.findByText(
+        /in production this check belongs on the payment provider's approval step/i,
+      ),
     ).toBeInTheDocument();
   });
 
