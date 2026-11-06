@@ -48,6 +48,14 @@ describe("consent screen", () => {
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
   });
 
+  it("says where the screen belongs in production, so the demo store is not mistaken for the product", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+
+    expect(
+      await screen.findByText(/in production this page would appear on paypal's own approval step/i),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the three figures when only the wording is unavailable", async () => {
     vi.mocked(fetch as unknown as () => Promise<unknown>).mockResolvedValueOnce({
       ok: true,

@@ -232,6 +232,11 @@ export function ConsentScreen({
         />
       )}
 
+      <p className="commitment-source">
+        In production this page would appear on PayPal&apos;s own approval step, before you
+        authorise the payment. This store is a demonstration.
+      </p>
+
       <div className="consent-actions">
         <button
           type="button"
