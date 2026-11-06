@@ -88,3 +88,39 @@ async function retrievePlanPrice(planId: string): Promise<Money | null> {
 export function isSettled(status: string): boolean {
   return status === "COMPLETED" || status === "ACTIVE" || status === "APPROVED";
 }
+
+export type InvoiceRecord = {
+  id: string;
+  status: string;
+  amount: Money | null;
+  /** ISO date the bill falls due, when the biller stated one. */
+  dueDate: string | null;
+  /** The PayPal-hosted page a payer opens to settle it. */
+  payerUrl: string | null;
+};
+
+/**
+ * Reads a bill back from PayPal. Like the receipt, the screen is built from
+ * what PayPal holds rather than from anything we kept — a bill is the biller's
+ * to change, and an unauthorised copy of it would be a lie after the first edit.
+ */
+export async function retrieveInvoice(id: string): Promise<InvoiceRecord> {
+  const invoice = await paypalRequest<{
+    id: string;
+    status: string;
+    amount?: PayPalAmountJson;
+    detail?: { payment_term?: { due_date?: string } };
+    links?: Array<{ href?: string; rel?: string }>;
+  }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET" });
+
+  return {
+    id: invoice.id,
+    status: invoice.status,
+    amount: parsePayPalAmount(invoice.amount),
+    dueDate: invoice.detail?.payment_term?.due_date ?? null,
+    payerUrl:
+      invoice.links?.find((link) => link.rel === "payer-view")?.href ??
+      invoice.links?.find((link) => link.rel === "self")?.href ??
+      null,
+  };
+}
