@@ -9,6 +9,9 @@ out/
 build/
 .vercel
 
+# typescript build cache
+tsconfig.tsbuildinfo
+
 # env
 .env
 .env.local
