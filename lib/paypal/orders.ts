@@ -5,9 +5,12 @@ export type CreateOrderInput = {
   referenceId: string;
   description: string;
   amount: Money;
+  /** Where PayPal sends the shopper back after approving. */
+  returnUrl: string;
+  cancelUrl: string;
 };
 
-export type PayPalOrder = { id: string; amount: Money };
+export type PayPalOrder = { id: string; amount: Money; approveUrl: string | null };
 
 export type PayPalCapture = { id: string; status: string; amount: Money };
 
@@ -25,6 +28,7 @@ export async function createPayPalOrder(input: CreateOrderInput): Promise<PayPal
   const order = await paypalRequest<{
     id: string;
     purchase_units?: Array<{ amount?: PayPalAmountJson }>;
+    links?: Array<{ href?: string; rel?: string }>;
   }>("/v2/checkout/orders", {
     method: "POST",
     body: JSON.stringify({
@@ -36,6 +40,14 @@ export async function createPayPalOrder(input: CreateOrderInput): Promise<PayPal
           amount: toPayPalAmount(input.amount),
         },
       ],
+      application_context: {
+        // The amount already covers shipping, so PayPal must not ask for an
+        // address; and without a return URL the shopper has no way back.
+        shipping_preference: "NO_SHIPPING",
+        user_action: "PAY_NOW",
+        return_url: input.returnUrl,
+        cancel_url: input.cancelUrl,
+      },
     }),
   });
 
@@ -49,7 +61,14 @@ export async function createPayPalOrder(input: CreateOrderInput): Promise<PayPal
     );
   }
 
-  return { id: order.id, amount: returned };
+  // An order is never captured until the payer approves it at PayPal, and the
+  // only way to get them there is the link PayPal hands back.
+  const approveUrl =
+    order.links?.find((link) => link.rel === "approve")?.href ??
+    order.links?.find((link) => link.rel === "payer-action")?.href ??
+    null;
+
+  return { id: order.id, amount: returned, approveUrl };
 }
 
 export async function capturePayPalOrder(id: string): Promise<PayPalCapture> {

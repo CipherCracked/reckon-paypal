@@ -34,15 +34,26 @@ export async function POST(request: Request) {
 
   const translation = computeCommitment(product.terms);
 
+  // PayPal sends the shopper back here after they approve. Both URLs are built
+  // from our own origin rather than the request body, so a caller cannot point
+  // the redirect somewhere else.
+  const origin = new URL(request.url).origin;
+  const back = `${origin}/consent/pending?slug=${encodeURIComponent(product.slug)}`;
+
   try {
     const order = await createPayPalOrder({
       referenceId: product.slug,
       description: product.name,
       amount: translation.today,
+      returnUrl: `${back}&approved=1`,
+      cancelUrl: `${back}&cancelled=1`,
     });
 
     return Response.json({
       orderId: order.id,
+      // Without this the shopper can never approve, and an unapproved order can
+      // never be captured.
+      approveUrl: order.approveUrl,
       translation,
       productName: product.name,
       productText: product.description,

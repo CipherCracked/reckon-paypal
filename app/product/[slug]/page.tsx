@@ -18,7 +18,6 @@ export default async function ProductPage({ params }: PageProps) {
         slug={product.slug}
         name={product.name}
         description={product.description}
-        shape={product.terms.shape}
       />
     </main>
   );

@@ -33,11 +33,8 @@ describe("demo flow", () => {
       expect(link).toHaveAttribute("href", "/product/noise-cancelling-headphones");
     }
 
-    // 2. The product page creates the PayPal order and hands over to consent.
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => ({ ok: true, json: async () => ({ orderId: "ORDER-1" }) })),
-    );
+    // 2. The product page hands over to consent without creating anything.
+    vi.stubGlobal("fetch", vi.fn());
 
     render(
       <ProductScreen
@@ -50,9 +47,7 @@ describe("demo flow", () => {
     await userEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith(
-        "/consent/ORDER-1?slug=noise-cancelling-headphones",
-      ),
+      expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=noise-cancelling-headphones"),
     );
 
     // 3. The consent screen states all three figures for the order.
@@ -69,7 +64,7 @@ describe("demo flow", () => {
       })),
     );
 
-    render(<ConsentScreen orderId="ORDER-1" slug="noise-cancelling-headphones" />);
+    render(<ConsentScreen orderId="pending" slug="noise-cancelling-headphones" />);
 
     expect(await screen.findByText("Charged today")).toBeInTheDocument();
     expect(screen.getAllByText("$58.95").length).toBeGreaterThan(0);
@@ -86,7 +81,6 @@ describe("demo flow", () => {
         slug="coffee-subscription"
         name="Coffee Subscription"
         description="Delivered every month."
-        shape="recurring"
       />,
     );
 

@@ -6,6 +6,7 @@ vi.mock("@/lib/paypal/orders", () => ({
   createPayPalOrder: vi.fn(async () => ({
     id: "ORDER-1",
     amount: { currency: "USD", minor: 5895 },
+    approveUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1",
   })),
 }));
 
@@ -31,6 +32,19 @@ describe("POST /api/paypal/orders", () => {
     expect(body.orderId).toBe("ORDER-1");
     expect(body.translation.today.minor).toBe(5895);
     expect(body.productName).toBe("Noise-Cancelling Headphones");
+  });
+
+  it("passes the approval link through and sends the payer back to us", async () => {
+    const response = await post({ slug: "noise-cancelling-headphones" });
+    const body = await response.json();
+
+    expect(body.approveUrl).toBe("https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1");
+    expect(vi.mocked(createPayPalOrder).mock.calls[0][0].returnUrl).toBe(
+      "http://localhost/consent/pending?slug=noise-cancelling-headphones&approved=1",
+    );
+    expect(vi.mocked(createPayPalOrder).mock.calls[0][0].cancelUrl).toBe(
+      "http://localhost/consent/pending?slug=noise-cancelling-headphones&cancelled=1",
+    );
   });
 
   it("returns 404 for an unknown product", async () => {

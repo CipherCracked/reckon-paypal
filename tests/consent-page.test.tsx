@@ -73,6 +73,68 @@ describe("consent screen", () => {
     expect(document.activeElement?.textContent).toBe("Where these figures come from");
   });
 
+  it("sends a one-time purchase to PayPal's approval page before capturing", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "one_time" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          orderId: "ORDER-1",
+          approveUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="coffee-subscription" />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(screen.getByRole("button", { name: /pay now/i }));
+
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "coffee-subscription" }),
+    });
+    expect(
+      await screen.findByRole("link", { name: /approve the payment with paypal/i }),
+    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1");
+  });
+
+  it("captures the order when the shopper comes back from approving", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "one_time" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "COMPLETED", amount: { currency: "USD", minor: 1200 } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" returning />);
+
+    expect(
+      await screen.findByText(/payment complete\. paypal has charged/i),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders/ORDER-1/capture", {
+      method: "POST",
+    });
+  });
+
+  it("reassures the shopper that nothing was charged when they back out at PayPal", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" cancelled />);
+
+    expect(
+      await screen.findByText(/you left paypal before approving\. nothing has been charged\./i),
+    ).toBeInTheDocument();
+  });
+
   it("sends a repeating purchase to PayPal's subscription approval, not to a capture", async () => {
     const fetchMock = vi
       .fn()

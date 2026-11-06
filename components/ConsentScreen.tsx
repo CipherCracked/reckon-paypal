@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import { formatMoney } from "@/lib/money";
@@ -22,13 +22,31 @@ type LoadState =
 type PaymentState =
   | { status: "idle" }
   | { status: "paying" }
-  | { status: "approve"; url: string }
+  | { status: "cancelled"; message: string }
+  | { status: "approve"; url: string; message: string; linkLabel: string }
   | { status: "paid"; note: string }
   | { status: "failed"; message: string };
 
-export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string }) {
+export function ConsentScreen({
+  orderId,
+  slug,
+  returning = false,
+  cancelled = false,
+}: {
+  orderId: string;
+  slug: string;
+  /** True when the shopper has just come back from approving at PayPal. */
+  returning?: boolean;
+  /** True when the shopper backed out at PayPal without approving. */
+  cancelled?: boolean;
+}) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [payment, setPayment] = useState<PaymentState>({ status: "idle" });
+  const [payment, setPayment] = useState<PaymentState>(
+    cancelled
+      ? { status: "cancelled", message: "You left PayPal before approving. Nothing has been charged." }
+      : { status: "idle" },
+  );
+  const captured = useRef(false);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -59,6 +77,46 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
     void load();
   }, [load]);
 
+  const captureApprovedOrder = useCallback(async (id: string) => {
+    setPayment({ status: "paying" });
+
+    try {
+      const response = await fetch(`/api/paypal/orders/${encodeURIComponent(id)}/capture`, {
+        method: "POST",
+      });
+      const body = (await response.json()) as { status?: string; error?: string };
+
+      if (!response.ok) {
+        setPayment({
+          status: "failed",
+          message: body.error ?? "PayPal could not complete this payment. Nothing was charged twice.",
+        });
+        return;
+      }
+
+      setPayment({
+        status: "paid",
+        note:
+          body.status === "ALREADY_CAPTURED"
+            ? "This payment had already been completed. You have been charged once."
+            : "Payment complete. PayPal has charged the amount shown above.",
+      });
+    } catch {
+      setPayment({
+        status: "failed",
+        message: "We could not reach PayPal. No payment has been taken.",
+      });
+    }
+  }, []);
+
+  // Coming back from PayPal means the payer approved; the money moves only
+  // when the server captures, so that is the first thing this screen does.
+  useEffect(() => {
+    if (!returning || captured.current) return;
+    captured.current = true;
+    void captureApprovedOrder(orderId);
+  }, [returning, orderId, captureApprovedOrder]);
+
   async function pay() {
     if (state.status !== "ready") return;
     const { shape } = state.payload;
@@ -83,30 +141,37 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
           return;
         }
 
-        setPayment({ status: "approve", url: body.approveUrl });
+        setPayment({
+          status: "approve",
+          url: body.approveUrl,
+          message: "PayPal needs you to approve this repeating payment.",
+          linkLabel: "Approve the subscription with PayPal",
+        });
         return;
       }
 
-      const response = await fetch(
-        `/api/paypal/orders/${encodeURIComponent(orderId)}/capture`,
-        { method: "POST" },
-      );
-      const body = (await response.json()) as { status?: string; amount?: unknown; error?: string };
+      // The order is created here rather than earlier so the shopper goes
+      // straight from this screen to PayPal's approval page and back.
+      const response = await fetch("/api/paypal/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const body = (await response.json()) as { approveUrl?: string | null; error?: string };
 
-      if (!response.ok) {
+      if (!response.ok || !body.approveUrl) {
         setPayment({
           status: "failed",
-          message: body.error ?? "PayPal could not complete this payment. Nothing was charged twice.",
+          message: body.error ?? "PayPal could not set up this payment. Nothing was charged.",
         });
         return;
       }
 
       setPayment({
-        status: "paid",
-        note:
-          body.status === "ALREADY_CAPTURED"
-            ? "This payment had already been completed. You have been charged once."
-            : "Payment complete. PayPal has charged the amount shown above.",
+        status: "approve",
+        url: body.approveUrl,
+        message: "PayPal needs you to approve this payment. You will come straight back here.",
+        linkLabel: "Approve the payment with PayPal",
       });
     } catch {
       setPayment({
@@ -173,7 +238,10 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
           className="button-primary"
           onClick={() => void pay()}
           disabled={
-            payment.status === "paying" || payment.status === "paid" || payment.status === "approve"
+            returning ||
+            payment.status === "paying" ||
+            payment.status === "paid" ||
+            payment.status === "approve"
           }
         >
           {payment.status === "paying"
@@ -186,9 +254,9 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
 
       {payment.status === "approve" ? (
         <p className="notice" role="status">
-          PayPal needs you to approve this repeating payment.{" "}
+          {payment.message}{" "}
           <a className="button-secondary" href={payment.url} rel="noopener noreferrer">
-            Approve the subscription with PayPal
+            {payment.linkLabel}
           </a>
         </p>
       ) : null}
@@ -196,6 +264,12 @@ export function ConsentScreen({ orderId, slug }: { orderId: string; slug: string
       {payment.status === "paid" ? (
         <p className="notice-success" role="status">
           {payment.note}
+        </p>
+      ) : null}
+
+      {payment.status === "cancelled" ? (
+        <p className="notice" role="status">
+          {payment.message}
         </p>
       ) : null}
 
