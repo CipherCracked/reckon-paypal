@@ -107,3 +107,14 @@ proper assistive technology, and the product should not present it as one.
   a wrong symbol is worse than none for a figure whose meaning is precise.
 - What this IPD does not decide: whether the product should ever speak the commitment unprompted
   (on the payment screen, for example). That is a timing question, not an adaptation one.
+
+---
+
+**Implemented — 2026-11-07.** Beneath the figures the screen now offers a text size (Normal, Large,
+Largest), a checkbox that holds the figures back one at a time, and read-aloud through the browser's
+own speech synthesis. Preferences are kept in `localStorage` under one key, read once on mount, and
+guarded on both read and write so a browser that blocks storage still gets the controls for that
+visit. Held-back figures are visually hidden rather than removed, so the description list a screen
+reader reads is always whole. Five tests cover the controls, the blocked-storage path, the fact that
+all six terms remain in the accessibility tree while paced, and that read-aloud speaks the figures
+with their arithmetic. Suite 95/95.

@@ -350,3 +350,87 @@ a {
     display: none;
   }
 }
+
+/* Reader-owned adjustments (IPD 10). The default is already the accessible
+   rendering; these only change its scale and pace. */
+.consent[data-text-scale="large"] {
+  font-size: 1.125rem;
+}
+
+.consent[data-text-scale="larger"] {
+  font-size: 1.25rem;
+}
+
+/* Held back from sight, not from the page: a reader who navigates by list
+   still hears every figure. */
+.commitment-figure[data-held="true"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.consent-adjust {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.display-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1rem;
+  margin: 0;
+}
+
+.display-controls legend {
+  padding: 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.display-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.display-control-label {
+  font-weight: 600;
+}
+
+.display-control-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.display-control-check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+}
+
+.chip {
+  min-height: 44px;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--background);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-active {
+  border-color: var(--foreground);
+  border-width: 2px;
+}

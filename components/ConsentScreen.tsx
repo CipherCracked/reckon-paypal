@@ -2,9 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
+import { DisplayControls } from "@/components/DisplayControls";
+import { ReadAloud } from "@/components/ReadAloud";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
+import { formatMoney } from "@/lib/money";
+import {
+  DEFAULT_PREFERENCES,
+  readPreferences,
+  writePreferences,
+  type Preferences,
+} from "@/lib/preferences";
 
 export type CommitmentPayload = {
   shape: CommitmentShape;
@@ -28,6 +37,17 @@ type PaymentState =
   | { status: "paid"; note: string }
   | { status: "failed"; message: string };
 
+/** What read-aloud says: the summary, then each figure with the arithmetic behind it. */
+function spokenText(payload: CommitmentPayload): string {
+  const figures = payload.figures.map((figure) =>
+    figure.amount === null
+      ? `${figure.label}: not stated.`
+      : `${figure.label}: ${formatMoney(figure.amount)}.${figure.arithmetic ? ` That is ${figure.arithmetic}.` : ""}`,
+  );
+
+  return [payload.summary, ...figures].filter(Boolean).join(" ");
+}
+
 export function ConsentScreen({
   orderId,
   slug,
@@ -42,6 +62,7 @@ export function ConsentScreen({
   cancelled?: boolean;
 }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
+  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
   const [payment, setPayment] = useState<PaymentState>(
     cancelled
       ? { status: "cancelled", message: "You left PayPal before approving. Nothing has been charged." }
@@ -77,6 +98,17 @@ export function ConsentScreen({
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Read once on mount: the stored preference is the reader's, not ours, and it
+  // must not cause a hydration mismatch by being read during render.
+  useEffect(() => {
+    setPreferences(readPreferences());
+  }, []);
+
+  function updatePreferences(next: Preferences) {
+    setPreferences(next);
+    writePreferences(next);
+  }
 
   const captureApprovedOrder = useCallback(async (id: string) => {
     setPayment({ status: "paying" });
@@ -204,7 +236,7 @@ export function ConsentScreen({
   const { payload } = state;
 
   return (
-    <section className="consent">
+    <section className="consent" data-text-scale={preferences.textScale}>
       {payload.degraded ? (
         // Only the wording failed. The figures are calculated from the order
         // itself, so they are still the ones to show.
@@ -219,7 +251,18 @@ export function ConsentScreen({
         breakdown={payload.translation.breakdown}
         labels={payload.labels}
         summary={payload.summary}
+        progressive={preferences.progressive}
       />
+
+      <div className="consent-adjust">
+        <DisplayControls
+          textScale={preferences.textScale}
+          progressive={preferences.progressive}
+          onTextScale={(textScale) => updatePreferences({ ...preferences, textScale })}
+          onProgressive={(progressive) => updatePreferences({ ...preferences, progressive })}
+        />
+        <ReadAloud text={spokenText(payload)} />
+      </div>
 
       {payload.degraded ? null : (
         <RecognitionCheck

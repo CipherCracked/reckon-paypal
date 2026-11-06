@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { formatMoney } from "@/lib/money";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
@@ -8,9 +11,25 @@ export type CommitmentViewProps = {
   breakdown: CommitmentBreakdown;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
+  /** Reveal the figures one at a time, at the reader's pace. */
+  progressive?: boolean;
 };
 
-export function CommitmentView({ figures, breakdown, labels, summary }: CommitmentViewProps) {
+export function CommitmentView({
+  figures,
+  breakdown,
+  labels,
+  summary,
+  progressive = false,
+}: CommitmentViewProps) {
+  const [revealed, setRevealed] = useState(figures.length);
+
+  useEffect(() => {
+    setRevealed(progressive ? 1 : figures.length);
+  }, [progressive, figures.length]);
+
+  const more = progressive && revealed < figures.length;
+
   return (
     <section className="commitment" aria-labelledby="commitment-heading">
       <h2 id="commitment-heading">What this commitment asks of you</h2>
@@ -18,8 +37,15 @@ export function CommitmentView({ figures, breakdown, labels, summary }: Commitme
       {summary ? <p className="commitment-summary">{summary}</p> : null}
 
       <dl className="commitment-figures">
-        {figures.map((figure) => (
-          <div className="commitment-figure" key={figure.id} data-figure={figure.id}>
+        {figures.map((figure, index) => (
+          <div
+            className="commitment-figure"
+            key={figure.id}
+            data-figure={figure.id}
+            // Visually held back, but never removed: a reader who navigates by
+            // list still gets every figure.
+            data-held={index >= revealed ? "true" : undefined}
+          >
             <dt>{figure.label}</dt>
             <dd>
               {figure.amount === null ? (
@@ -39,6 +65,16 @@ export function CommitmentView({ figures, breakdown, labels, summary }: Commitme
           </div>
         ))}
       </dl>
+
+      {more ? (
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => setRevealed((current) => Math.min(current + 1, figures.length))}
+        >
+          Show the next figure
+        </button>
+      ) : null}
 
       <h3 id="commitment-breakdown-heading" tabIndex={-1}>
         Where these figures come from

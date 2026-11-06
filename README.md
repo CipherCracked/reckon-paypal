@@ -30,6 +30,10 @@ without trusting the page.
 An optional recognition check shows the amount again and asks only whether it matches what the
 shopper expected. It is never a gate; skipping it leaves the payment path untouched.
 
+The page is accessible by default, and the reader can adjust it without saying why: text size, one
+figure at a time, and read-aloud using the browser's own speech synthesis. Preferences stay in that
+browser; there is no "accessibility mode" to select.
+
 After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?slug=…` reads the
 order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
 entry for the next charge. Nothing is stored — the record survives because the shopper keeps it and
