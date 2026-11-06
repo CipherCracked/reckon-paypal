@@ -1,4 +1,4 @@
-# IPD — Trust and Agency
+# IPD 4 — Trust and Agency
 
 **Status:** Proposed
 **Date:** 2026-11-05

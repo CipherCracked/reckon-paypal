@@ -1,4 +1,4 @@
-# IPD — Assistance Model
+# IPD 3 — Assistance Model
 
 **Status:** Proposed (revised)
 **Date:** 2026-11-05

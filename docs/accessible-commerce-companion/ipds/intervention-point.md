@@ -1,4 +1,4 @@
-# IPD — Intervention Point
+# IPD 2 — Intervention Point
 
 **Status:** Proposed (revised)
 **Date:** 2026-11-05

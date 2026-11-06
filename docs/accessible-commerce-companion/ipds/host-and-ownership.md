@@ -1,4 +1,4 @@
-# IPD — Host and Ownership
+# IPD 6 — Host and Ownership
 
 **Status:** Proposed
 **Date:** 2026-11-07
