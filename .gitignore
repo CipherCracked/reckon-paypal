@@ -29,7 +29,6 @@ yarn-error.log*
 Thumbs.db
 
 # project docs and scratch (not part of the public repo)
-docs/
 CLAUDE.md
 .claude/
 .firecrawl/
