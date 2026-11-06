@@ -150,3 +150,57 @@ than the evidence stretching to the claim.
   "any commitment you can pay with PayPal".
 - Not decided here: whether the invoice surface gets its own entry point in the store, or the store
   becomes one of three tabs. That is a navigation question, and it belongs to the surface decision.
+
+---
+
+**Revision — 2026-11-07: the hybrid, and why it is not the option this IPD rejected.**
+
+The user asked for Options 2 and 3 together. On first reading that is a contradiction — Option 3 was
+refused because it lets a model read numbers, which the product has never allowed. The contradiction
+dissolves once the model's job is changed:
+
+> The model does not return figures. It returns **quotations**. Our code does the arithmetic.
+
+A document already contains its amounts, written by whoever sent it. Asking a model to *repeat* a
+sentence that is on the page is a different request from asking it to *compute* a total, and it is
+checkable: the server verifies each returned quotation occurs verbatim in the text the shopper
+supplied, and refuses it otherwise. A quotation that cannot be found is not a slightly-wrong number;
+it never becomes a number at all.
+
+That gives the product two roles over one screen:
+
+- **Pay a commitment** — order, subscription, invoice (Option 2). PayPal supplies the amount; our code
+  computes; PayPal collects.
+- **Read a commitment** — a bill, a contract or a letter the shopper pastes in (Option 3, narrowed).
+  The document supplies the words; the model finds the sentences; our code parses and computes;
+  every figure shows the sentence it came from.
+
+The rule that survives both: **no number reaches the screen unless our code derived it — from
+PayPal's amount, or from a span that is verbatim in the shopper's document.** The guard is not
+weakened; it now covers a second source of truth.
+
+**Scope narrowed deliberately.** The reading path accepts pasted text, not file uploads. Reading a PDF
+is a parsing problem that would eat the days the invoice surface needs, and the demonstration does not
+need it: a bill copied from an email is the same text. If the pasted path is green on 9 November and
+days remain, PDF is an extension, not a rewrite.
+
+**Stages and the gate.**
+
+| Stage | What | Ships by |
+|---|---|---|
+| 1 | Invoice surface working against sandbox (draft → send → translate → pay link) | 9 Nov |
+| 2 | Document reading with verbatim-quote grounding | 10 Nov |
+| 3 | The two joined: a bill you can read *and* pay; anything else read-only | 11 Nov |
+
+If Stage 1 is not working against the sandbox by the end of 9 November, Stage 2 is cut, not halved.
+The video then shows three payment surfaces and the README says the reading path is the next step —
+the claim shrinks to the evidence rather than the evidence stretching to the claim.
+
+**What this costs.** The comparison document (IPD 9) and the consent screen's three figures must keep
+their meaning across three payment shapes *and* an arbitrary document, which is four ways for the same
+claim to become untrue. The mitigation is that all four paths end in the same `CommitmentTerms` and
+the same `presentFigures`; none of them gets its own rendering.
+
+**What it does not become.** Not a document summariser: it answers with figures or refuses. Not a
+storage product: the pasted text is processed and discarded, and IPD 4 stands. If the shopper keeps
+the result, they keep it — as with the receipt.
