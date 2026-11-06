@@ -5,6 +5,12 @@
 **Revision:** Scope broadened from a single checkout to any commitment at the moment of consent — paid now, paid over time, or financed.
 **Context:** PayPal AI Hackathon 2026 · solo · submissions close 2026-11-12
 
+> **Superseded in part, 2026-11-07.** Research into the problem (`../app-completeness/research.md`)
+> produced questions this tree could not hold — whether the three-figure rendering is the right
+> intervention, who would host the screen, and whether consent is the right moment. The current tree
+> is `../app-completeness/intro.md` (rev. 3). This document remains the record of the original
+> decomposition; the decision documents still cite its root questions.
+
 ---
 
 ## Problem Statement

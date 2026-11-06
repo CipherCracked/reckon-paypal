@@ -58,3 +58,28 @@ The breadth is also invisible. A shopper who is not dyscalculic will not learn f
 
 - **Benefits are not claims.** The defensible statement is that the product is designed to reduce cognitive load and that dyscalculia is the primary need. Asserting efficacy for autism, ADHD, or acquired impairment would be a claim this project has no evidence for.
 - No mode selection, no stored diagnosis, no preference that outlives the session.
+
+---
+
+## Revision — 2026-11-07: universality is now a requirement with a direction
+
+The evidence strengthens this decision and adds an obligation the document did not carry.
+
+**Strengthened.** The case against modes was framed as a privacy and cognitive-load argument. It is
+also a reach argument: **34% of US adults** are at or below Level 1 numeracy and dyscalculia is
+hidden and largely undiagnosed, so almost nobody who needs this would ever select themselves into a
+mode even if we offered one. A product that requires declaration reaches the diagnosed, which is a
+small fraction of the people it is for.
+
+**Added obligation.** "One rendering" was stated as a property (no modes) rather than as a standard
+(the rendering must work for the hardest reader). Those are different commitments, and only the
+second is testable. Concretely:
+
+- Every design choice is judged against the **least numerate reader**, not the median one.
+- If a choice helps the median reader and costs the least numerate reader, the least numerate reader
+  wins, and the cost is accepted rather than balanced.
+- A rendering that cannot be used by the target reader is a defect, not a preference.
+
+**Unchanged.** No modes, no declared diagnosis, no stored preference, and no claim of benefit beyond
+designed load reduction. Audio, symbol support and step-by-step modes remain outside this decision —
+and are now explicitly listed as the cost of it.

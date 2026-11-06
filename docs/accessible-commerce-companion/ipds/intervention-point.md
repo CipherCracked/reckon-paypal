@@ -54,3 +54,35 @@ Consent is also late. The shopper has already chosen the item, so the product cl
 
 - The boundary is consent. Monitoring commitments after the fact would require remembering them, which IPD 4 rules out.
 - Whether PayPal exposes a financed/instalment path usable in sandbox is unverified and belongs to the ITD on integration.
+
+---
+
+## Revision — 2026-11-07: consent is necessary, and provably not sufficient
+
+The reasoning above is unchanged and still correct on its own terms: consent is where a number
+becomes an obligation and where PayPal holds the authoritative terms. This revision records what the
+evidence adds, and it does not overturn the choice — it narrows its claim.
+
+**What the evidence shows.** The measurable harm is not a single misunderstood price; it is the
+commitment nobody looks at again. Consumers manage an average of **12 subscriptions** and **42% have
+forgotten about one**; over 40% pay for "ghost" subscriptions at roughly **$200 a year**.
+Every product that addresses this today — Rocket Money, with 5M+ users, is the largest — does so
+**after the fact, from bank feeds**. None intervenes before authorisation.
+
+Our tradeoff section already admitted consent is "late". The stronger statement is that consent is
+the **right moment for comprehension and the wrong moment alone for harm**: a product that ends at
+the payment has helped exactly once, and the damage accrues over the months that follow.
+
+**What changes.** The intervention point is now *consent plus the commitment it creates*, not
+consent alone. Consent remains where the product acts — it is the only point where our figures can
+be attributed to an authoritative order — but it is no longer the boundary of the product's
+responsibility. Anything the shopper needs later (a record of what was agreed, a renewal date, how to
+leave) is in scope for the product even if it is not in scope for this build.
+
+**What does not change.** No monitoring of a person across merchants, no account, no stored history:
+the boundary in the Notes above is a consequence of IPD 4, and this revision does not relax it. The
+question of how a commitment survives after payment *without* storing anything about the person is
+carried forward as an open product question, not silently assumed away.
+
+**Effect on the built app.** None yet. The app still ends at "payment complete", which this revision
+now records as an unfinished edge rather than a design choice.

@@ -63,3 +63,37 @@ Collecting nothing means the product cannot improve across sessions, cannot pers
 - **Caregivers.** Out of scope. A shared view changes who the product is for and doubles the interaction surface; it is a later product, not a feature of this one.
 - **Data.** The order is held for the session and not retained beyond it.
 - **Universal design is the required consequence.** Because the product stores no diagnosis, adaptation cannot depend on one. A single rendering has to serve the primary user and lower load for others without being told who they are. IPD 5 records that scope.
+
+---
+
+## Revision — 2026-11-07: "no advice" means no verdict, not a neutral arrangement
+
+This IPD survives the evidence better than the others — attribution, refusal to collect, and the
+promise not to guess are all supported. One claim in it is wrong, and the correction is small but
+real.
+
+**The correction.** Option 1 says the product "makes no recommendation". The comprehension
+literature says arrangement is itself a form of emphasis: reducing and *ordering* information is what
+improves comprehension for low-numeracy readers (Hibbard et al.), and the order in which figures
+appear shapes what the reader weighs. A product cannot claim neutrality while choosing what comes
+first.
+
+So the commitment is restated precisely:
+
+- **No verdict.** The product never states whether a commitment is worth making, affordable, or wise.
+  Affordability depends on circumstances it cannot see.
+- **Stated emphasis.** The product accepts that ordering and omission are editorial choices, and
+  states what it chose: the figure that changes decisions first, the complete picture before the
+  button.
+
+That is a smaller claim than "neutral", and a truer one.
+
+**Second correction — the fallback is now qualified.** The Notes promise that when the product
+cannot read the terms it "shows the raw amount". In the current build it does more than that: it
+shows all three computed figures with fallback labels and says only the wording is missing. That is
+the correct behaviour under this IPD — the figures are attributable to the order; only the language
+was at risk — and the note above understates it.
+
+**Unchanged.** Collect nothing, attribute every figure, never substitute a guess, never require a
+diagnosis. The tradeoffs — no persistence, no personalisation, no pattern detection — stand, and
+carry into the revision of IPD 2.

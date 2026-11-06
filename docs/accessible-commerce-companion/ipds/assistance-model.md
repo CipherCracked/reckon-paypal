@@ -56,3 +56,48 @@ The exit cost depends on cancellation terms merchants sometimes do not publish. 
 
 - The recognition check presents the amount and asks whether it matches expectation. It never asks the shopper to produce the figure: recognition survives dyscalculia, recall does not.
 - The check records nothing beyond the session, consistent with IPD 4.
+
+---
+
+## Revision — 2026-11-07: this is a hypothesis, and the rendering is a variable
+
+This is the document the evidence presses hardest on. Its reasoning was deductive — *three
+quantities, because each answers a different question* — and it was never tested against what is
+known about how people with low numeracy actually read figures.
+
+**What the evidence shows.**
+
+- **Less is more.** Comprehension improves, particularly for people low in numeracy, when
+  information is *reduced and ordered* rather than complete (Hibbard et al.).
+  — https://journals.sagepub.com/doi/10.1177/10775587070640020301
+- **Unit matters, and not always in the direction we assumed.** Low-numeracy consumers are
+  measurably *more attracted* by percentage formats than by absolute amounts (Graffeo & Bonini,
+  2018), which means the presentation that feels clearest can bias the reader.
+  — https://pmc.ncbi.nlm.nih.gov/articles/PMC9234211
+- **Natural frequencies beat percentages** — "3 out of 100 people" over "3 per cent" — in medical
+  and payday-loan settings alike (UK BEIS literature review).
+- **Disclosure rarely achieves understanding even in the lab.** No government disclosure programme
+  has reached full comprehension among its test group (CFPB "Disclosure 2.0" review).
+  — https://www.rsfjournal.org/content/3/1/74
+- No study was found that tests a three-figure commitment translation at checkout. Our central
+  design is unproven, which is not the same as wrong.
+
+**What changes.**
+
+1. **Status.** Option 1 is no longer recorded as a settled choice; it is the **working hypothesis**
+   this product exists to test. The document's real claim is now: *a computed commitment, presented
+   in an ordered and minimal form, improves comprehension more than the merchant's own page* — and
+   the exact rendering is the variable, not the constant.
+2. **The unit becomes a decision inside the design, not an inherited default.** Dollars vs.
+   frequencies vs. per-period cost is an open question, to be settled by evidence or by a controlled
+   comparison, not by preference.
+3. **Ordering is treated as part of the model.** If arrangement improves comprehension, then the
+   order of the three figures is a design decision with consequences, and the most consequential
+   figure — the cost of leaving — does not automatically belong third.
+4. **The optional check is now load-bearing for evidence, not only for the shopper.** It is the only
+   instrument in the product that can show comprehension landing or failing, which is why it stays
+   even as the rendering around it changes.
+
+**What does not change.** Three quantities remain the starting point, the check stays optional, and
+advice stays out. Nothing here licenses a comprehension gate: a person barred from paying by their own
+disability has been excluded, not helped.

@@ -78,3 +78,33 @@ Each criterion is scored 1–5 and multiplied by its weight. The weights encode 
 Dyscalculia is less familiar to a general audience than ADHD. The demo will need one sentence of explanation — that this is a recognised learning disability, not a maths aversion — before the relief reads as relief.
 
 The profile also narrows the product. A companion built around price comprehension will not speak to a shopper whose barrier is sensory overload or reading load. That is accepted: one profile shown in depth carries further than four handled thinly, and the decomposition already lists coverage of every category as a non-goal.
+
+---
+
+## Revision — 2026-11-07: the design target is not the audience
+
+Evidence gathered after this document was written (`docs/app-completeness/research.md`) confirms the
+choice and falsifies one thing the product was beginning to claim.
+
+**Confirmed.** Everyday money tasks are measurably harder for adults with dyscalculia — working out
+change, judging a discount (Vigna et al., 2022). Criterion 5, "impact observable now", is the reason
+this profile won, and it still holds: the failure happens in the session where the shopper is.
+
+**Corrected.** The population that shares this barrier is far larger than the population that has
+the diagnosis. **34% of US adults** score at or below Level 1 in numeracy (OECD, PIAAC 2023; OECD
+average 25%), while dyscalculia itself is commonly estimated at 3–7% and, in the British Dyslexia
+Association's words, is "a lifelong hidden condition".
+
+So this document decides **who the interface is designed against** — the dyscalculic shopper, whose
+barrier is the hardest to design for — and not **who the product is for**. The product is for anyone
+who cannot hold a commitment's terms together, most of whom will never be diagnosed and will never
+select anything. Any statement of the audience must say that, and any claim of reach must use the
+numeracy figure, not the prevalence of the diagnosis.
+
+**Also corrected.** The option text above describes the companion as restating "what it costs per
+use". Nothing in the product computes a per-use cost; IPD 3 decided the third figure is the **cost of
+leaving**. The earlier wording is left in place as the record of what was considered, and this note
+is the correction of what was chosen.
+
+**Not changed.** The choice of dyscalculia over the other three profiles, and the scoring that
+produced it, stand. This revision narrows what the choice entitles us to claim, not what we build.
