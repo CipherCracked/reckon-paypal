@@ -1,6 +1,6 @@
 # IPD 9 — Outcome and Evidence
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: `comparison.md` is generated, and a drift test fails when it diverges
 **Date:** 2026-11-07
 **Answers:** Problem tree Q4 (rev. 3) — *What outcome is this product accountable for, and what can it show rather than assert?*
 

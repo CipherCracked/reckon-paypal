@@ -96,7 +96,7 @@ sequenceDiagram
     actor S as Shopper
     participant R as /read (browser)
     participant API as POST /api/read
-    participant AI as Model (Claude)
+    participant AI as Model
     participant V as Verification + parse
 
     S->>R: paste the document
@@ -142,7 +142,7 @@ sequenceDiagram
     participant AI as Model
     participant X as Candidate finder
 
-    alt no key / model unreachable / summary contained a figure
+    alt no model configured / endpoint unreachable / the answer was prose, not a tool call
         API->>API: nothing interpreted
     else spans accepted but they do not add up to a commitment
         API->>API: nothing computed
@@ -154,6 +154,9 @@ sequenceDiagram
     R->>S: "Nothing was interpreted." (stated before the amounts)<br/>→ the amounts, exactly as written<br/>→ "none of them is a total"
 ```
 
+A summary the model writes that contains a figure is not one of these cases: the summary alone is
+dropped and the verified figures still render, because the spans were checked independently of it.
+
 The notice is in the reading order **before** the amounts, because a shopper who does not notice
 they are in the degraded state would read a list of numbers as an answer.
 
@@ -163,7 +166,7 @@ they are in the degraded state would read a list of numbers as an answer.
 
 | Endpoint | Door | Purpose | Creates anything at PayPal? |
 |---|---|---|---|
-| `GET /api/commitment/pending?slug=` | Purchase, subscription | Translation + labels, or a degraded answer | No |
+| `GET /api/commitment/{orderId}?slug=` | Purchase, subscription | Translation + labels, or a degraded answer (`orderId` is the literal `pending` before payment) | No |
 | `GET /api/commitment/[orderId]?slug=` | Receipt | The same projection for a settled payment | No |
 | `POST /api/paypal/orders` | Purchase | One-time or financed order + approval link | Yes — order |
 | `POST /api/paypal/subscriptions` | Subscription | Catalog product, billing plan, subscription | Yes — product, plan, subscription |

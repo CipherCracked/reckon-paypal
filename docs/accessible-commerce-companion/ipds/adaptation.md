@@ -1,6 +1,6 @@
 # IPD 10 — Adaptation
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: text size, one figure at a time, read-aloud
 **Date:** 2026-11-07
 **Answers:** Problem tree Q5 (rev. 3) — *How does it reach people who will never declare a need?*
 **Builds on:** IPD 5 (Beneficiary Scope) — one universal rendering, no modes, no diagnosis.

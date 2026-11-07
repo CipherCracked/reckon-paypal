@@ -1,6 +1,6 @@
 # IPD 4 — Trust and Agency
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: figures attributed to PayPal, limits stated, nothing collected
 **Date:** 2026-11-05
 **Answers:** Problem tree root question 5 — *How does the product earn trust and preserve agency?*
 

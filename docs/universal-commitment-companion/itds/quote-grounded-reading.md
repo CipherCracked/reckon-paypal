@@ -1,6 +1,6 @@
 # ITD 10 — Quote-Grounded Reading
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented, and verified end to end against a live model
 **Date:** 2026-11-07
 **Answers:** Problem tree Q4 of `../intro.md` — *what must it know, and who supplies it when there is no seller to ask?*
 **Serves:** IPD 11 revision (the hybrid) — read a document, pay a commitment, one screen.

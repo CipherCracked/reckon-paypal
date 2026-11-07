@@ -1,5 +1,7 @@
 # Accessible Commerce Companion — Implementation Plan
 
+> **Historical record (added 2026-11-07):** this plan was executed on 2026-11-05 and is kept as written. Two things in it were later reversed, and the body below still describes them: the PayPal JS SDK (`@paypal/react-paypal-js`) was dropped in favour of PayPal's hosted approval pages (ITD 1, ITD 5), and the model's configuration became provider-neutral `AI_*` variables rather than a named vendor. For the app as built, read `README.md`; for the decisions, read the IPDs and ITDs.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a demo commerce store whose consent step restates any commitment — one-time, recurring, or financed — as the amount charged today, the cost across the term, and the cost of leaving.

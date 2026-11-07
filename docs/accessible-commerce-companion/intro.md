@@ -1,6 +1,6 @@
 # Accessible Commerce Companion — Problem Decomposition
 
-**Status:** Draft
+**Status:** Answered (2026-11-07) — this tree produced IPDs 1–10 and ITD 1–9, all built. Its scope was then widened by [`../universal-commitment-companion/intro.md`](../universal-commitment-companion/intro.md); this document is kept as the record of how the narrow version was argued.
 **Date:** 2026-11-05
 **Revision:** Scope broadened from a single checkout to any commitment at the moment of consent — paid now, paid over time, or financed.
 **Context:** PayPal AI Hackathon 2026 · solo · submissions close 2026-11-12

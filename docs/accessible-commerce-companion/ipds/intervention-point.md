@@ -1,6 +1,6 @@
 # IPD 2 — Intervention Point
 
-**Status:** Proposed (revised)
+**Status:** Adopted (2026-11-07) — implemented: the consent screen runs before PayPal approval
 **Date:** 2026-11-05
 **Answers:** Problem tree root question 2 — *Where in the purchase journey does the problem occur, and where should the product intervene?*
 

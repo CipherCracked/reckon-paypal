@@ -24,7 +24,7 @@ sequenceDiagram
     participant C as Consent screen<br/>(browser)
     participant API as Next route handlers
     participant M as Money + commitment libs
-    participant AI as Model (Claude)
+    participant AI as Model
     participant PP as PayPal
 
     S->>P: Continue to payment

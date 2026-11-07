@@ -1,6 +1,6 @@
 # IPD 13 — Specialisation Without Modes
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: figure, schedule and medium on one artefact
 **Date:** 2026-11-07
 **Answers:** Problem tree Q2 of `../intro.md` — *how is one thing both universal and specialised?*
 **Amends:** IPD 5 (beneficiary scope) and IPD 10 (adaptation) for a product that now handles more than purchases.

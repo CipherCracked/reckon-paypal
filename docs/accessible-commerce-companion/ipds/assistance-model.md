@@ -1,6 +1,6 @@
 # IPD 3 — Assistance Model
 
-**Status:** Proposed (revised)
+**Status:** Adopted as a hypothesis (2026-11-07) — implemented, with the rendering and the unit left as variables (see IPD 7)
 **Date:** 2026-11-05
 **Answers:** Problem tree root question 3 — *What should assistance look like — explain, decide, act, or support?*
 

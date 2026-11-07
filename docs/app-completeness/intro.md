@@ -174,6 +174,24 @@ A checklist to judge candidate extensions against, not a set of answers:
 
 ---
 
+## Amendment — 2026-11-07, later the same day
+
+The "as-built" table above was written before the build moved on, and two of its rows and the
+closing line below are no longer true. Recorded here rather than rewritten, so the record shows what
+was believed when the tree was drawn.
+
+- **Storefront → four doors.** The home page is now the question *what are you being asked to pay?*
+  with a purchase, a subscription, a bill (a real PayPal invoice) and a pasted document beside each
+  other; the shop is one of them (`../universal-commitment-companion/ipds/front-door.md`).
+- **Adaptivity → reader-owned.** Text size, one figure at a time and read-aloud now exist
+  (`../accessible-commerce-companion/ipds/adaptation.md`), stored in the browser, nothing inferred.
+- **Shopper identity → a record they keep.** A settled payment can be rebuilt from PayPal on request,
+  with a calendar entry for the next charge, and nothing stored (`commitment-continuity.md`).
+- **Test count:** 68 at the time of writing; the suite stands at **191**.
+- **The four new pairs are now built**, and so are the three from the second tree; the sentence
+  ending "*none of the four new pairs is implemented*" below is superseded.
+- Still true: no persistence, no accounts, no external data beyond PayPal and the model.
+
 ## Where each question is answered (2026-11-07)
 
 | Tree question | Product decision | Technical decision |

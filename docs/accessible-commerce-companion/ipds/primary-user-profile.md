@@ -1,6 +1,6 @@
 # IPD 1 — Primary User Profile
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — the design target; every profile reads one screen
 **Date:** 2026-11-05
 **Answers:** Problem tree root question 1 — *Who is the primary user, and what cognitive difference defines their need?*
 

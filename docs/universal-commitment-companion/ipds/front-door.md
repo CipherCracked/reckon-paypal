@@ -1,6 +1,6 @@
 # IPD 12 — The Front Door
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: four doors on `/`
 **Date:** 2026-11-07
 **Answers:** Problem tree Q3 of `../intro.md` — *where does it meet people, if not in our store?*
 **Builds on:** IPD 11 (the unit is any commitment PayPal presents), IPD 6 (hosting).

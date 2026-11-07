@@ -1,6 +1,6 @@
 # Universal Commitment Companion — Problem Decomposition
 
-**Status:** Draft
+**Status:** Decomposition (2026-11-07) — the six decisions it produced (IPD 11–13, ITD 10–12) are adopted and built; this document records the questions, not the scope commitment itself.
 **Date:** 2026-11-07
 **Builds on:** `../app-completeness/intro.md` (rev. 3) and the ten decision records it produced.
 **Question this document exists to answer:** *What is this product, if it is not a demo checkout?*

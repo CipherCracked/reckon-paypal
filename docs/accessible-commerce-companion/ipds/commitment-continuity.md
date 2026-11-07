@@ -1,6 +1,6 @@
 # IPD 8 — Commitment Continuity
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: `/receipt/{id}` plus a next-charge `.ics` download, nothing stored
 **Date:** 2026-11-07
 **Answers:** Problem tree Q3 (rev. 3) — *What must the product do after payment for the promise made at consent to be kept?*
 **Related:** IPD 7 (Rendering Model) decides what the shopper sees before paying; this decides what

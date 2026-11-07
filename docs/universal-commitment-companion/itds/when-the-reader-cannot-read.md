@@ -1,6 +1,6 @@
 # ITD 12 — When the Reader Cannot Read
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented as candidate mode
 **Date:** 2026-11-07
 **Answers:** Problem tree Q4 of `../intro.md` — *what does it do when a source is silent, contradictory or unreadable?*
 **Serves:** IPD 11 revision, Stage 2. Extends the degradation rule the consent screen already follows.

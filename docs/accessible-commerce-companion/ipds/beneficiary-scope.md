@@ -1,6 +1,6 @@
 # IPD 5 — Beneficiary Scope
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented as one rendering; no modes, no diagnosis asked
 **Date:** 2026-11-05
 **Answers:** Problem tree root question 1 — *Who else benefits from the same mechanism, and does serving them require configuration?*
 

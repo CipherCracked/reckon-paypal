@@ -1,6 +1,6 @@
 # IPD 7 — Rendering Model
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented in `lib/commitment/present.ts` (`FIGURE_ORDER`)
 **Date:** 2026-11-07
 **Answers:** Problem tree Q1 (rev. 3) — *Is "translate it into three dollar figures" the right intervention at all?*
 **Supersedes in part:** IPD 3 (Assistance Model), revision of 2026-11-07, which demoted the

@@ -1,6 +1,6 @@
 # ITD 11 — One Commitment, Three PayPal Primitives
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: one `CommitmentTerms` in the middle, adapters at the edge
 **Date:** 2026-11-07
 **Answers:** Problem tree Q3 of `../intro.md` — *where does it meet people, if not in our store?*
 **Serves:** IPD 11 revision (the hybrid), Stage 1.

@@ -1,6 +1,6 @@
 # IPD 6 — Host and Ownership
 
-**Status:** Proposed
+**Status:** Adopted as a design observation (2026-11-07) — not deployable: PayPal exposes no extension point on its approval page
 **Date:** 2026-11-07
 **Answers:** Problem tree question Q2 (rev. 3) — *Whose tool is this, and who has a reason to show it?*
 

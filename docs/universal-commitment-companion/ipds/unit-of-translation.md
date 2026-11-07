@@ -1,6 +1,6 @@
 # IPD 11 — The Unit, and How Far It Reaches
 
-**Status:** Proposed
+**Status:** Adopted (2026-11-07) — implemented: order, subscription and invoice all reach the same screen
 **Date:** 2026-11-07
 **Answers:** Problem tree Q1 of `../intro.md` — *what is the unit at its widest, and where does widening stop being the same problem?*
 **Builds on:** IPD 2 (intervention at consent), IPD 6 (host and ownership), IPD 9 (accountability).

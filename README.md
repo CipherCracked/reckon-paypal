@@ -1,54 +1,77 @@
 # Accessible Commerce Companion
 
-A demo store that states the whole commitment — what is charged today, what it costs across its
-term, and what it costs to leave — at the moment a shopper agrees to pay.
+Shows what a commitment actually costs — what is charged today, what it adds up to across its term,
+and what it costs to leave — before a shopper agrees to it.
 
 Built for the PayPal AI Hackathon 2026. PayPal supplies the money; a language model supplies only
 the words.
 
 ## What it does
 
-A shopper picks one of three products, each with a different commitment shape:
+The home page is the question, not a catalogue: **what are you being asked to pay?** Four real
+commitments sit beside each other, each printing its own figure before anything is clicked.
 
-| Product | Shape |
-|---|---|
-| Noise-Cancelling Headphones | paid once |
-| Coffee Subscription | paid every month for 12 months |
-| Mattress — 12 Months | financed over 12 instalments |
+| Door | Commitment shape | What clicking it does |
+|---|---|---|
+| **A purchase** | paid once | three figures, then PayPal's own approval page, then capture on return |
+| **A subscription** | paid every month for a year | three figures, then the subscription's approval page |
+| **A bill** | owed by a date | **creates a real PayPal invoice**, then opens the bill page, which re-reads it from PayPal |
+| **A document** | whatever someone sent you | paste the text; three figures, each beside the sentence it came from |
 
-Before the payment is taken, the consent screen shows three figures and an itemised breakdown, in
-the order that matters most to the decision:
+The shop (`/shop`) is one of these four, not the product.
+
+Before the payment is taken, every path shows the same three figures, in the order that matters most
+to the decision:
 
 - **Across the term** — every charge the commitment adds up to
-- **Cost to leave** — or "Not stated" when the seller has not published one, never `$0.00`
+- **Cost to leave** — or "Not stated" when the seller published none, never `$0.00`
 - **Charged today** — what leaves the account now, last because the seller has already made it
   unmissable
 
 Each figure carries the arithmetic that produced it (`12 × $12.00`), so a stranger can check it
 without trusting the page.
 
-An optional recognition check shows the amount again and asks only whether it matches what the
-shopper expected. It is never a gate; skipping it leaves the payment path untouched.
+Three more things sit on the same screen:
 
-The page is accessible by default, and the reader can adjust it without saying why: text size, one
-figure at a time, and read-aloud using the browser's own speech synthesis. Preferences stay in that
-browser; there is no "accessibility mode" to select.
+- **A schedule line** — how many payments there are, what each one is, and *"what happens if a
+  payment is missed is not stated on this screen"* when the document or seller never says.
+- **An optional recognition check** — shows the amount again and asks only whether it matches what
+  the shopper expected. Never a gate; skipping it leaves the payment path untouched.
+- **Reader-owned controls** — text size, one figure at a time, and read-aloud using the browser's
+  own speech synthesis. There is no "accessibility mode" to select, and nothing is inferred.
 
 After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?slug=…` reads the
 order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
 entry for the next charge. Nothing is stored — the record survives because the shopper keeps it and
 PayPal holds the agreement.
 
-## How the split works
+## Why the numbers can be trusted
 
-- **PayPal** is the source of truth for amounts. Orders API v2 creates and captures one-time
-  purchases; Subscriptions v1 with Billing Plans carries the recurring product.
-- **Deterministic code** does every calculation, in integer minor units (`lib/money.ts`,
-  `lib/commitment/compute.ts`). No floating point touches money, and no model is asked for a figure.
-- **The language model** reads merchant copy and returns labels and one plain summary. Its response
-  schema has no monetary field, and every string it returns is checked for a figure before it can
-  reach a screen (`lib/ai/guard.ts`). If extraction fails, the page shows the PayPal amount with a
-  plain statement that the terms could not be read.
+1. **PayPal is the source of the amount.** The screen projects what the processor holds; it never
+   invents a total. Where a number comes from PayPal's copy and our terms disagree, the figure is
+   withheld rather than shown.
+2. **Our code does every calculation**, in integer minor units (`lib/money.ts`,
+   `lib/commitment/compute.ts`). No floating point touches money and no model is asked for a figure.
+3. **The model may only quote.** Its tool schemas have no monetary field. For a pasted document,
+   every span it returns must appear literally in the shopper's text; anything else is discarded and
+   counted, and the count is shown. A model that invents `$420.00` produces a span that is not in
+   the text.
+4. **An absence is stated as an absence.** A term the seller never published is "Not stated"; a
+   total the document cannot support is blanked with its reason. Nothing is estimated, and no note
+   contradicts the figure above it.
+
+## How it is built
+
+- **PayPal** is the source of truth for amounts. Orders API v2 creates and captures one-time and
+  financed purchases; Subscriptions v1 with Billing Plans carries the recurring product; Invoicing v2
+  creates and sends the bill. All three are exercised in the sandbox.
+- **Deterministic code** does the arithmetic and the projection to the screen.
+- **The language model** reads merchant copy and documents and returns labels, one plain summary,
+  or quotations. `lib/ai/guard.ts` rejects any figure-shaped string it writes.
+
+The whole system works with no model at all, and says so: the consent screen keeps every computed
+figure and flags only the missing wording, and `/read` lists the amounts found in the document while
+stating that none of them was interpreted.
 
 ## Setup
 
@@ -60,29 +83,34 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists the eight variables:
+`env.example` lists the six variables:
 
 | Variable | Purpose |
 |---|---|
 | `PAYPAL_CLIENT_ID` | PayPal REST app client id (server-side) |
 | `PAYPAL_CLIENT_SECRET` | PayPal REST app secret (server-side) |
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` for sandbox |
-| `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Public client id for the JS SDK |
 | `AI_BASE_URL` | Base URL of an endpoint serving `POST {AI_BASE_URL}/chat/completions` |
 | `AI_MODEL` | Model id to ask for |
 | `AI_API_KEY` | Bearer token; leave blank for a model on this machine |
 
+Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Every value
+above stays server-side — the app loads no PayPal client script into the page, so there is no public
+key to expose.
+
 **No provider is named anywhere in the code.** The one thing the endpoint must support is function
 calling with a forced tool choice — the whole design rests on the model pointing at spans rather
-than writing prose. That format is common enough that the app runs unchanged against a hosted
-model, an aggregator, a proxy, or a daemon on the same laptop; switching is three environment
-variables. `lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
+than writing prose. That format is common enough that the app runs unchanged against a hosted model,
+an aggregator, a proxy, or a daemon on the same laptop; switching is three environment variables.
+`AI_BASE_URL` must include the provider's version path as it publishes it (for example
+`https://your-provider.example/v1`); the app appends only `/chat/completions`.
+`lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
 
 The endpoint is reached with the **reference client for that format**, not with hand-rolled HTTP:
 retries with backoff, `Retry-After`, timeouts and an error taxonomy are the client's job, and
-reimplementing them would be the one piece of this stack with nothing of ours in it. What the
-client does *not* do is decide what the model may say — the schemas, the guards and the span
-verification are ours, and they hold whatever the transport does.
+reimplementing them would be the one piece of this stack with nothing of ours in it. What the client
+does *not* do is decide what the model may say — the schemas, the guards and the span verification
+are ours, and they hold whatever the transport does.
 
 If your provider does not serve that shape, put a gateway in front of it — that is the ordinary
 deployment pattern, and it costs one line of configuration:
@@ -91,19 +119,13 @@ deployment pattern, and it costs one line of configuration:
 AI_BASE_URL=https://your-gateway.example/v1
 ```
 
-Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Only
-`NEXT_PUBLIC_PAYPAL_CLIENT_ID` is exposed to the browser; every other value stays server-side.
-
-**The app works with no model at all**, and says so: the consent screen keeps every computed figure and
-flags only the missing wording, and `/read` lists the amounts found in your document while stating
-that none of them were interpreted.
-
 ## Commands
 
 ```bash
 npm run dev          # start on http://localhost:3000
 npm test             # run the Vitest suite
-npm run check-model  # send one sentence to the configured model and report what came back
+npm run lint         # eslint
+npm run check-model  # send one document to the configured model and report what came back
 npm run comparison   # regenerate docs/accessible-commerce-companion/comparison.md
 npm run build        # production build
 ```
@@ -112,21 +134,23 @@ npm run build        # production build
 endpoint and model id, sends a two-line bill, and says whether a tool call came back. It never
 prints the key.
 
-`npm run comparison` rewrites [`docs/accessible-commerce-companion/comparison.md`](docs/accessible-commerce-companion/comparison.md)
+`npm run comparison` rewrites
+[`docs/accessible-commerce-companion/comparison.md`](docs/accessible-commerce-companion/comparison.md)
 from the same functions the consent screen runs — the seller's copy beside the figures the shopper
 reads, for every product. The suite fails if the committed file and the code disagree, so the
 document cannot drift from the behaviour it describes.
 
 ## Demo script
 
-See [`docs/demo-script.md`](docs/demo-script.md) for the five screens a three-minute video covers.
+See [`docs/demo-script.md`](docs/demo-script.md) for the screens a three-minute video covers.
 
-## Scope
+## Scope and limits
 
 No accounts, no profiles, no database, no stored session. The demo is USD only. The catalog is a
-curated local file (`lib/catalog/products.ts`) behind a replaceable layer.
+curated local file (`lib/catalog/products.ts`, `lib/catalog/bills.ts`) behind a replaceable layer.
+Documents are pasted as text — there is no PDF parsing — and a third-party bill is read, never paid.
 
 The check needs only two things: the amount being charged, and the terms the seller publishes. That
 is why it fits any checkout rather than this one. At scale it belongs on the payment layer, where it
-needs no merchant's cooperation — but it runs today in an ordinary store, on any order total.
-
+needs no merchant's cooperation — but it runs today in an ordinary store, on any order total, and on
+a bill that has already been issued.
