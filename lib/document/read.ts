@@ -173,11 +173,13 @@ const TERM_UNSTATED =
  */
 export function presentReading(reading: Reading): ReadingView {
   const translation = computeCommitment(reading.terms);
-  const figures = presentFigures(reading.terms, translation);
+  const figures = presentFigures(reading.terms, translation, { extra: "charged once" });
 
-  const notes: Partial<Record<FigureId, string>> = {
-    exit: EXIT_UNSTATED,
-  };
+  // An absence is only announced where there is an absence. A note under a
+  // figure the document did state would contradict the figure above it.
+  const notes: Partial<Record<FigureId, string>> = {};
+  if (reading.terms.exit.kind === "unknown") notes.exit = EXIT_UNSTATED;
+  if (reading.countUnstated) notes.acrossTerm = TERM_UNSTATED;
 
   return {
     figures: figures.map((figure) =>
@@ -186,7 +188,7 @@ export function presentReading(reading: Reading): ReadingView {
         : figure,
     ),
     breakdown: translation.breakdown,
-    notes: reading.countUnstated ? { ...notes, acrossTerm: TERM_UNSTATED } : notes,
+    notes,
   };
 }
 

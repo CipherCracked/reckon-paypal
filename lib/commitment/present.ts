@@ -36,7 +36,7 @@ function sumOfParts(terms: CommitmentTerms): string | null {
   return parts.map(formatMoney).join(" + ");
 }
 
-function acrossTermArithmetic(terms: CommitmentTerms): string | null {
+function acrossTermArithmetic(terms: CommitmentTerms, extra: string): string | null {
   switch (terms.shape) {
     case "one_time":
       return "1 payment";
@@ -48,7 +48,7 @@ function acrossTermArithmetic(terms: CommitmentTerms): string | null {
         minor: terms.itemPrice.minor + terms.tax.minor,
       });
       const repeated = `${terms.recurrence.count} × ${perPeriod}`;
-      return isZero(terms.shipping) ? repeated : `${repeated} + ${formatMoney(terms.shipping)} shipping once`;
+      return isZero(terms.shipping) ? repeated : `${repeated} + ${formatMoney(terms.shipping)} ${extra}`;
     }
 
     case "financed": {
@@ -76,13 +76,18 @@ function todayArithmetic(terms: CommitmentTerms): string | null {
  * Projects a finished translation into the list the screen renders. It reads
  * the terms and the totals; it never recomputes a figure, so a mistake here is
  * a display mistake and cannot reach the money.
+ *
+ * `extra` names the one-off part in the arithmetic line: a shop charges
+ * shipping, a document charges a joining fee, and calling the second one
+ * "shipping" is how a page tells a reader it was not paying attention.
  */
 export function presentFigures(
   terms: CommitmentTerms,
   translation: CommitmentTranslation,
+  labels: { extra?: string } = {},
 ): RenderedFigure[] {
   const arithmetic: Record<FigureId, string | null> = {
-    acrossTerm: acrossTermArithmetic(terms),
+    acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once"),
     exit: null,
     today: todayArithmetic(terms),
   };
