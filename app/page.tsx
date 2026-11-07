@@ -76,7 +76,10 @@ export default async function Home() {
             paypal: subscription.sources.paypal,
             published: subscription.sources.published,
             quoted: exitOutcome.quoted,
-            absent: absentFigureNote(figures),
+            // Only a seller's silence is theirs to report; a read that failed is
+            // ours, and the line says which (IPD 19).
+            absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
+            unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
           })} Nothing has been charged and nothing has been created at PayPal.`}
         />
 

@@ -33,6 +33,18 @@ function exitFrom(values: Values): ExitTerms {
 }
 
 /**
+ * The span the exit figure came from. It takes the same branch as `exitFrom`:
+ * a document that says both "cancel free" and "cancellation fee $50" yields a
+ * $0.00 figure, and quoting the $50 sentence beside it would name a source the
+ * figure never used.
+ */
+function exitSource(values: Values): string | null {
+  if (values.freeToLeave) return values.freeToLeave.quote;
+  if (values.exitFee?.amount) return values.exitFee.quote;
+  return null;
+}
+
+/**
  * Reads the values out of verified quotations. The model chose which spans
  * matter; everything numeric below is parsed or computed here, in whole minor
  * units, by the same utilities the payment path uses (ITD 10).
@@ -97,6 +109,7 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
     // however many charges there are — so a yearly plan is kept as written.
     const count = statedCount ?? 1;
     const countUnstated = statedCount === null;
+    const todayAmount = addMoney(perPeriod, extra ?? zeroMoney());
 
     const terms: CommitmentTerms = {
       shape: "recurring",
@@ -110,9 +123,18 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
     return {
       terms,
       sources: {
-        acrossTerm: perPeriodEntry.quote,
-        exit: values.exitFee?.quote ?? values.freeToLeave?.quote ?? null,
-        today: totalEntry?.quote ?? perPeriodEntry.quote,
+        // A figure is only ever sourced to a span it was computed from: the
+        // term total has no source until the document says how many payments
+        // there are, and today's charge quotes the total only when that total
+        // is what we are actually charging.
+        acrossTerm: countUnstated ? null : perPeriodEntry.quote,
+        exit: exitSource(values),
+        today:
+          totalEntry?.amount && totalEntry.amount.minor === todayAmount.minor
+            ? totalEntry.quote
+            : todayAmount.minor === perPeriod.minor
+              ? perPeriodEntry.quote
+              : null,
       },
       dueDate,
       schedule: countUnstated
@@ -140,7 +162,7 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
       terms,
       sources: {
         acrossTerm: totalEntry.quote,
-        exit: values.exitFee?.quote ?? values.freeToLeave?.quote ?? null,
+        exit: exitSource(values),
         today: totalEntry.quote,
       },
       dueDate,

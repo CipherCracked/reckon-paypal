@@ -4,9 +4,9 @@ import OpenAI from "openai";
  * One way to ask a model a question, over one interchange format.
  *
  * The app speaks the chat-completions dialect with function calling — the format
- * nearly every provider serves, and the one the reference client speaks. Nothing
- * here names a vendor: the endpoint, the key and the model id come from the
- * environment, so switching provider is a configuration change.
+ * nearly every provider serves. The SDK below carries one vendor's name on its
+ * import; the endpoint, the key and the model id do not, so pointing this at
+ * another provider is a configuration change and nothing else.
  *
  * The SDK is used for what an SDK is for — retries, timeouts, error classes —
  * and for nothing else. It does not decide what the model may say; that is the

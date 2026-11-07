@@ -118,6 +118,40 @@ export async function paypalRequest<T>(path: string, init: RequestInit = {}): Pr
   return (await paypalRequestDetailed<T>(path, init)).body;
 }
 
+/**
+ * How long a read made during a page render may take. Past this the caller has
+ * waited longer than the fallback would have cost, so the fallback is the better
+ * answer — a slow third party must not outlast the page it is decorating.
+ */
+export const READ_DEADLINE_MS = 2_000;
+
+/**
+ * Gives a read a deadline, and applies it to the token handshake too: a read is
+ * two requests in sequence, so a budget on the second one alone would be a lie.
+ */
+export async function withinDeadline<T>(
+  read: (signal: AbortSignal) => Promise<T>,
+  ms: number = READ_DEADLINE_MS,
+): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  try {
+    return await read(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * The wire spelling of a money amount, built from integers. Dividing by 100
+ * would put the figure through binary floating point on its way out, and this is
+ * the one value PayPal will actually charge.
+ */
 export function toPayPalAmount(amount: Money): { currency_code: Currency; value: string } {
-  return { currency_code: amount.currency, value: (amount.minor / 100).toFixed(2) };
+  const sign = amount.minor < 0 ? "-" : "";
+  const abs = Math.abs(amount.minor);
+  return {
+    currency_code: amount.currency,
+    value: `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, "0")}`,
+  };
 }

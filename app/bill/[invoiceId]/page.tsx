@@ -78,7 +78,8 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           sourceNote={describeSources({
             published: `what ${bill.biller} published`,
             quoted: exitOutcome.quoted,
-            absent: absentFigureNote(figures),
+            absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
+            unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
           })}
         />
       </div>
@@ -119,8 +120,10 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           }
           figureNotes={figureNotes}
           sourceNote={describeSources({
-            paypal: "PayPal's copy of this invoice",
-            published: `what ${bill.biller} published`,
+            // The figures are the biller's arithmetic, not PayPal's: the invoice
+            // was read to agree the total, not to supply one. Saying "read from
+            // PayPal" here would claim a source the numbers never came from.
+            published: `what ${bill.biller} published, with the total agreeing with PayPal's copy of this invoice`,
             quoted: exitOutcome.quoted,
             absent: absentFigureNote(figures),
           })}

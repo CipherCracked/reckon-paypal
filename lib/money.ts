@@ -55,13 +55,15 @@ export function formatMoney(a: Money): string {
 const DECIMAL = /^\d+(\.\d{1,2})?$/;
 
 /**
- * Parses a processor decimal string ("12.34") into minor units. The single
- * float multiplication lives here, guarded by the pattern above so it can
- * never see more precision than the currency allows.
+ * Parses a processor decimal string ("12.34") into minor units, as integers.
+ * Splitting the string rather than multiplying by 100 keeps the amount out of
+ * binary floating point entirely — the pattern above has already refused
+ * anything that is not whole dollars and one or two decimal places.
  */
 export function fromDecimalString(value: string, currency: Currency = "USD"): Money {
   if (!DECIMAL.test(value)) {
     throw new RangeError(`Not a currency amount: ${JSON.stringify(value)}`);
   }
-  return money(Math.round(Number(value) * 100), currency);
+  const [whole, fraction = ""] = value.split(".");
+  return money(Number(whole) * 100 + Number(fraction.padEnd(2, "0")), currency);
 }

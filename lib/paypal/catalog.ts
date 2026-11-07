@@ -1,6 +1,6 @@
 import { money, type Money } from "../money";
 import type { BillingPeriod, CommitmentTerms } from "../commitment/types";
-import { paypalRequest } from "./client";
+import { paypalRequest, withinDeadline } from "./client";
 
 /**
  * Reading a subscription's terms from PayPal instead of from the catalogue file
@@ -18,7 +18,7 @@ type PayPalProduct = {
   description?: string;
 };
 
-type PayPalPlan = {
+export type PayPalPlan = {
   id?: string;
   status?: string;
   billing_cycles?: {
@@ -34,24 +34,6 @@ type PayPalPlan = {
     payment_failure_threshold?: number;
   };
 };
-
-/**
- * A catalogue read is allowed a moment, because it is the one PayPal call made
- * while a page is being rendered. Past the deadline the reader has already
- * waited longer than the fallback would have cost, so the fallback is what to
- * show — a slow sandbox must not outlast the page it is decorating.
- */
-const READ_DEADLINE_MS = 2_000;
-
-async function withinDeadline<T>(read: (signal: AbortSignal) => Promise<T>): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), READ_DEADLINE_MS);
-  try {
-    return await read(controller.signal);
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 /** The PayPal product id for a slug, if one has been created deliberately. */
 export function paypalProductIdFor(slug: string): string | null {

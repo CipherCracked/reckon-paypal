@@ -29,7 +29,7 @@ function isZero(amount: Money): boolean {
   return amount.minor === 0;
 }
 
-/** "$47.99 + $6.95 + $4.01" — the parts of a single charge, largest first as stated. */
+/** "$47.99 + $6.95 + $4.01" — the parts of a single charge, in the order the terms state them. */
 function sumOfParts(terms: CommitmentTerms): string | null {
   const parts = [terms.itemPrice, terms.shipping, terms.tax].filter((part) => !isZero(part));
   if (parts.length === 0) return null;

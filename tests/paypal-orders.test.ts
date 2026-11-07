@@ -51,6 +51,37 @@ describe("createPayPalOrder", () => {
     expect(result.amount).toEqual(money(5895));
   });
 
+  it("sends the amount as a whole-cent decimal string", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse)
+      .mockResolvedValueOnce(orderResponse("58.95"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createPayPalOrder(orderInput);
+
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    const body = JSON.parse(String(init.body));
+    expect(body.purchase_units[0].amount).toEqual({ currency_code: "USD", value: "58.95" });
+  });
+
+  it("refuses an order PayPal created without stating an amount", async () => {
+    // Standing our own figure in for PayPal's would make the agreement check
+    // pass by agreeing with itself, and would let the screen call it PayPal's.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(tokenResponse)
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ id: "ORDER-1", status: "CREATED" }),
+        }),
+    );
+
+    await expect(createPayPalOrder(orderInput)).rejects.toThrow(/without stating an amount/i);
+  });
+
   it("returns PayPal's approval link so the payer can authorise the order", async () => {
     vi.stubGlobal(
       "fetch",

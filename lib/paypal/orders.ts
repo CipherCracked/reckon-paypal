@@ -51,7 +51,14 @@ export async function createPayPalOrder(input: CreateOrderInput): Promise<PayPal
     }),
   });
 
-  const returned = parsePayPalAmount(order.purchase_units?.[0]?.amount) ?? input.amount;
+  const returned = parsePayPalAmount(order.purchase_units?.[0]?.amount);
+
+  // No amount in the reply means there is nothing to compare the request
+  // against. Standing our own figure in for PayPal's would make the check below
+  // pass by agreeing with itself, and would let the screen call it PayPal's.
+  if (!returned) {
+    throw new Error("PayPal created the order without stating an amount.");
+  }
 
   // The screen must show a figure PayPal will actually charge. If the processor
   // comes back with a different one, there is no honest total to display.

@@ -31,13 +31,15 @@ export function parseAmounts(quote: string): Money[] {
   });
 }
 
-/** Exactly one amount, or nothing. Two amounts in one span is an ambiguity, not a choice. */
+/**
+ * Exactly one amount, or nothing. Two amounts in one span is an ambiguity, not a
+ * choice — and two *equal* amounts are still two: "cancel for $25.00 within
+ * three months and $25.00 after" is a conditional fee, and reading it as one
+ * unconditional $25.00 would drop the condition that made it a term.
+ */
 export function parseAmount(quote: string): Money | null {
   const amounts = parseAmounts(quote);
-  const distinct = amounts.filter(
-    (amount, index) => amounts.findIndex((other) => other.minor === amount.minor) === index,
-  );
-  return distinct.length === 1 ? distinct[0] : null;
+  return amounts.length === 1 ? amounts[0] : null;
 }
 
 /**

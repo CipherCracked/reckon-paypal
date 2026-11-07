@@ -99,6 +99,12 @@ export const EXIT_SILENT_NOTE = "The seller's published terms do not say what it
 export const EXIT_UNREADABLE_NOTE = "The seller's terms could not be read, so this figure is not shown.";
 
 export type ExitOutcome = {
+  /**
+   * Which of the three things happened. The provenance line needs it as much as
+   * the figure does: "nobody published this" and "we could not read it" are
+   * different sentences, and only the first one is the seller's silence.
+   */
+  kind: "stated" | "silent" | "unreadable";
   exit: ExitTerms;
   /** Shown under the figure when there is no amount, so the reason is visible. */
   note: string | null;
@@ -116,20 +122,25 @@ export async function resolveExitTerm(
   description: string,
   descriptionLabel: string,
 ): Promise<ExitOutcome> {
-  if (exit.kind !== "unknown") return { exit, note: null, quoted: null };
+  if (exit.kind !== "unknown") {
+    return { kind: "stated", exit, note: null, quoted: null };
+  }
 
   const finding = await readPublishedExit(description);
 
   if (finding.kind === "stated") {
     return {
+      kind: "stated",
       exit: finding.exit,
       note: null,
       quoted: { source: descriptionLabel, span: finding.quote },
     };
   }
 
-  // Both remaining cases are absences. The note is what tells them apart.
+  // Both remaining cases are absences. `kind` and the note both tell them apart,
+  // because the figure and the provenance line say it in different words.
   return {
+    kind: finding.kind,
     exit: { kind: "unknown" },
     note: finding.kind === "silent" ? EXIT_SILENT_NOTE : EXIT_UNREADABLE_NOTE,
     quoted: null,

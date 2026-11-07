@@ -38,7 +38,12 @@ export async function GET(request: Request, context: RouteContext) {
   const exitOutcome: ExitOutcome =
     settled[0].status === "fulfilled"
       ? settled[0].value
-      : { exit: { kind: "unknown" }, note: EXIT_UNREADABLE_NOTE, quoted: null };
+      : {
+          kind: "unreadable",
+          exit: { kind: "unknown" },
+          note: EXIT_UNREADABLE_NOTE,
+          quoted: null,
+        };
 
   const terms: CommitmentTerms = { ...resolved.terms, exit: exitOutcome.exit };
   const translation = computeCommitment(terms);
@@ -59,6 +64,9 @@ export async function GET(request: Request, context: RouteContext) {
     summary: wording?.summary ?? "",
     sources,
     exitNote: exitOutcome.note,
+    // Whether the absence is the seller's or ours. The screen states it, because
+    // a screen may not decide a source's silence for itself (IPD 18, IPD 19).
+    exitUnreadable: exitOutcome.kind === "unreadable",
     quotedExit: exitOutcome.quoted,
     // Only the wording is missing when the model is unavailable; the figures
     // are computed from the terms that were read and are still true.

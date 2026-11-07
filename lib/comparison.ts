@@ -13,7 +13,10 @@ import { measureReadability } from "./readability.ts";
 function moneyAmounts(currency: Currency, text: string): Money[] {
   const found = text.match(/\$\s?\d[\d,]*(?:\.\d{2})?/g) ?? [];
   return found.flatMap((match) => {
-    const minor = Math.round(Number(match.replace(/[^0-9.]/g, "")) * 100);
+    // Split the decimal string rather than multiplying by 100, for the same
+    // reason `fromDecimalString` does: no amount goes through floating point.
+    const [whole, fraction = ""] = match.replace(/[^0-9.]/g, "").split(".");
+    const minor = Number(whole) * 100 + Number(fraction.padEnd(2, "0").slice(0, 2));
     return Number.isFinite(minor) ? [{ currency, minor }] : [];
   });
 }

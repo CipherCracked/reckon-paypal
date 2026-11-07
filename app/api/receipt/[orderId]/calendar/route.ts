@@ -1,5 +1,4 @@
 import { findProduct } from "@/lib/catalog/products";
-import { computeCommitment } from "@/lib/commitment/compute";
 import { formatMoney } from "@/lib/money";
 import { buildCalendar } from "@/lib/receipt/calendar";
 import { isSettled, retrieveSubscription } from "@/lib/paypal/retrieve";
@@ -24,7 +23,14 @@ export async function GET(request: Request, context: RouteContext) {
       return new Response("PayPal has not set a date for the next charge yet.", { status: 404 });
     }
 
-    const amount = subscription.amount ?? computeCommitment(product.terms).today;
+    // A calendar entry is a reminder about a date, not a licence to supply an
+    // amount PayPal never stated. The catalogue's figure is the one being
+    // replaced here, so filling it back in would be the same lie in a file.
+    if (!subscription.amount) {
+      return new Response("PayPal has not stated the amount of the next charge.", { status: 404 });
+    }
+
+    const amount = subscription.amount;
 
     const calendar = buildCalendar({
       title: `${product.name} — payment due`,

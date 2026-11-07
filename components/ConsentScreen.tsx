@@ -27,6 +27,8 @@ export type CommitmentPayload = {
   sources: { paypal: string | null; published: string | null };
   /** Why the exit figure has no amount, when it has none (IPD 19). */
   exitNote: string | null;
+  /** True when that absence is a failed read rather than the seller's silence. */
+  exitUnreadable: boolean;
   /** The seller's sentence the exit figure came from, when one did (IPD 19). */
   quotedExit: { source: string; span: string } | null;
   degraded: boolean;
@@ -43,6 +45,8 @@ type PaymentState =
   | { status: "cancelled"; message: string }
   | { status: "approve"; url: string; message: string; linkLabel: string }
   | { status: "paid"; note: string }
+  /** PayPal accepted the capture but has not completed it. Not a payment yet. */
+  | { status: "pending"; message: string }
   | { status: "failed"; message: string };
 
 /** What read-aloud says: the summary, then each figure with the arithmetic behind it. */
@@ -135,12 +139,29 @@ export function ConsentScreen({
         return;
       }
 
+      if (body.status === "ALREADY_CAPTURED") {
+        setPayment({
+          status: "paid",
+          note: "This payment had already been completed. You have been charged once.",
+        });
+        return;
+      }
+
+      // Only PayPal's own COMPLETED means the money moved. A capture can come
+      // back PENDING — an eCheque, a payment under review — and calling that
+      // complete would be a claim about someone's money that PayPal never made.
+      if (body.status === "COMPLETED") {
+        setPayment({
+          status: "paid",
+          note: "Payment complete. PayPal has charged the amount shown above.",
+        });
+        return;
+      }
+
       setPayment({
-        status: "paid",
-        note:
-          body.status === "ALREADY_CAPTURED"
-            ? "This payment had already been completed. You have been charged once."
-            : "Payment complete. PayPal has charged the amount shown above.",
+        status: "pending",
+        message:
+          "PayPal has accepted this payment but has not completed it yet. It will appear in your PayPal activity when it does.",
       });
     } catch {
       setPayment({
@@ -266,7 +287,8 @@ export function ConsentScreen({
           paypal: payload.sources.paypal,
           published: payload.sources.published,
           quoted: payload.quotedExit,
-          absent: absentFigureNote(payload.figures),
+          absent: payload.exitUnreadable ? null : absentFigureNote(payload.figures),
+          unreadable: payload.exitUnreadable ? "what it costs to leave" : null,
         })}
       />
 
@@ -312,6 +334,7 @@ export function ConsentScreen({
             returning ||
             payment.status === "paying" ||
             payment.status === "paid" ||
+            payment.status === "pending" ||
             payment.status === "approve"
           }
         >
@@ -341,6 +364,12 @@ export function ConsentScreen({
           >
             Keep a record of this payment
           </a>
+        </p>
+      ) : null}
+
+      {payment.status === "pending" ? (
+        <p className="notice" role="status">
+          {payment.message}
         </p>
       ) : null}
 

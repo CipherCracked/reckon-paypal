@@ -51,6 +51,17 @@ describe("the provenance line (IPD 18)", () => {
     expect(line).toContain('"Early exit: $40.00".');
   });
 
+  it("never reports a failed read as the seller's silence", () => {
+    expect(
+      describeSources({
+        published: "the terms shown on this page",
+        unreadable: "what it costs to leave",
+      }),
+    ).toBe(
+      "Computed from the terms shown on this page. Nothing could be read about what it costs to leave.",
+    );
+  });
+
   it("refuses to render a screen that says nothing at all", () => {
     expect(() => describeSources({})).toThrow(/where its figures came from/i);
   });

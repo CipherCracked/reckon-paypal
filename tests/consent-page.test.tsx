@@ -31,6 +31,7 @@ const payload = {
   summary: "You pay monthly for one year.",
   sources: { paypal: null, published: "the terms shown on this page" },
   exitNote: null,
+  exitUnreadable: false,
   quotedExit: null,
   degraded: false,
 };

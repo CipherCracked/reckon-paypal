@@ -20,9 +20,22 @@ export type FigureSources = {
   quoted?: { source: string; span: string } | null;
   /** What no source states, phrased as a subject: "what it costs to leave". */
   absent?: string | null;
+  /**
+   * What a source exists for but could not be read, phrased as a subject. Kept
+   * apart from `absent` on purpose: a seller who published nothing is not the
+   * same as a seller whose words we failed to read, and the line may not
+   * collapse them (IPD 19).
+   */
+  unreadable?: string | null;
 };
 
-export function describeSources({ paypal, published, quoted, absent }: FigureSources): string {
+export function describeSources({
+  paypal,
+  published,
+  quoted,
+  absent,
+  unreadable,
+}: FigureSources): string {
   const sentences: string[] = [];
 
   if (paypal) {
@@ -45,6 +58,12 @@ export function describeSources({ paypal, published, quoted, absent }: FigureSou
   if (absent) {
     // Not "Not stated": the figure itself already says that. This line says why.
     sentences.push(`Nobody published ${absent}.`);
+  }
+
+  if (unreadable) {
+    // The seller did publish something; what failed was the reading of it. Saying
+    // "nobody published" here would blame the seller for our own failure.
+    sentences.push(`Nothing could be read about ${unreadable}.`);
   }
 
   if (sentences.length === 0) {

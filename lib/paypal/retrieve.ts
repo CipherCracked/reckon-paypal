@@ -1,5 +1,7 @@
 import { fromDecimalString, type Currency, type Money } from "@/lib/money";
-import { paypalRequest } from "./client";
+import type { CommitmentTerms } from "@/lib/commitment/types";
+import { paypalRequest, withinDeadline } from "./client";
+import { termsFromPlan, type PayPalPlan } from "./catalog";
 
 type PayPalAmountJson = { currency_code?: string; value?: string };
 
@@ -22,7 +24,14 @@ export type SubscriptionRecord = {
   status: string;
   /** ISO timestamp of the next charge, when PayPal states one. */
   nextBillingTime: string | null;
+  /** The per-period price PayPal holds on the plan, when it holds a usable one. */
   amount: Money | null;
+  /**
+   * The plan's terms as PayPal states them — price, cadence and how many cycles.
+   * The term total cannot be worked out from the price alone, and the receipt
+   * needs it, so the plan is read whole rather than as a price.
+   */
+  terms: CommitmentTerms | null;
 };
 
 /**
@@ -30,14 +39,16 @@ export type SubscriptionRecord = {
  * from anything we kept, because we keep nothing (ITD 6).
  */
 export async function retrieveOrder(id: string): Promise<OrderRecord> {
-  const order = await paypalRequest<{
+  // The receipt is a page render, so the read carries a deadline like every
+  // other read made while a page is being built (IPD 20, rule 2).
+  const order = await withinDeadline((signal) => paypalRequest<{
     id: string;
     status: string;
     purchase_units?: Array<{
       amount?: PayPalAmountJson;
       payments?: { captures?: Array<{ amount?: PayPalAmountJson }> };
     }>;
-  }>(`/v2/checkout/orders/${encodeURIComponent(id)}`, { method: "GET" });
+  }>(`/v2/checkout/orders/${encodeURIComponent(id)}`, { method: "GET", signal }));
 
   const unit = order.purchase_units?.[0];
 
@@ -51,42 +62,54 @@ export async function retrieveOrder(id: string): Promise<OrderRecord> {
 }
 
 export async function retrieveSubscription(id: string): Promise<SubscriptionRecord> {
-  const subscription = await paypalRequest<{
-    id: string;
-    status: string;
-    plan_id?: string;
-    billing_info?: { next_billing_time?: string };
-  }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET" });
+  const subscription = await withinDeadline((signal) =>
+    paypalRequest<{
+      id: string;
+      status: string;
+      plan_id?: string;
+      billing_info?: { next_billing_time?: string };
+    }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET", signal }),
+  );
 
-  // The agreed price lives on the plan, not on the subscription.
-  const amount = subscription.plan_id
-    ? await retrievePlanPrice(subscription.plan_id)
-    : null;
+  // The agreed price and the length of the term live on the plan, not on the
+  // subscription, so a receipt that is to show a term total has to read it.
+  const terms = subscription.plan_id ? await retrievePlanTerms(subscription.plan_id) : null;
 
   return {
     id: subscription.id,
     status: subscription.status,
     nextBillingTime: subscription.billing_info?.next_billing_time ?? null,
-    amount,
+    amount: terms?.itemPrice ?? null,
+    terms,
   };
 }
 
-async function retrievePlanPrice(planId: string): Promise<Money | null> {
+async function retrievePlanTerms(planId: string): Promise<CommitmentTerms | null> {
   try {
-    const plan = await paypalRequest<{
-      billing_cycles?: Array<{ pricing_scheme?: { fixed_price?: PayPalAmountJson } }>;
-    }>(`/v1/billing/plans/${encodeURIComponent(planId)}`, { method: "GET" });
+    const plan = await withinDeadline((signal) =>
+      paypalRequest<PayPalPlan>(`/v1/billing/plans/${encodeURIComponent(planId)}`, {
+        method: "GET",
+        signal,
+      }),
+    );
 
-    return parsePayPalAmount(plan.billing_cycles?.[0]?.pricing_scheme?.fixed_price);
+    // The same reader the catalogue uses: a plan with no fixed price, no
+    // readable cadence or no cycle count yields nothing rather than an
+    // approximation, and a missing figure stays missing.
+    return termsFromPlan(plan);
   } catch {
-    // A receipt without an amount is worse than one with it, but a wrong
-    // amount is worse than both — so a missing price stays missing.
     return null;
   }
 }
 
+/**
+ * A payment has happened only when PayPal says it has. An order is settled once
+ * it is captured (`COMPLETED`); `APPROVED` means the payer agreed at PayPal and
+ * no money moved yet — a record built on it would report a payment that did not
+ * happen. A subscription is settled when it is `ACTIVE`.
+ */
 export function isSettled(status: string): boolean {
-  return status === "COMPLETED" || status === "ACTIVE" || status === "APPROVED";
+  return status === "COMPLETED" || status === "ACTIVE";
 }
 
 export type InvoiceRecord = {
@@ -105,13 +128,15 @@ export type InvoiceRecord = {
  * to change, and an unauthorised copy of it would be a lie after the first edit.
  */
 export async function retrieveInvoice(id: string): Promise<InvoiceRecord> {
-  const invoice = await paypalRequest<{
-    id: string;
-    status: string;
-    amount?: PayPalAmountJson;
-    detail?: { payment_term?: { due_date?: string } };
-    links?: Array<{ href?: string; rel?: string }>;
-  }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET" });
+  const invoice = await withinDeadline((signal) =>
+    paypalRequest<{
+      id: string;
+      status: string;
+      amount?: PayPalAmountJson;
+      detail?: { payment_term?: { due_date?: string } };
+      links?: Array<{ href?: string; rel?: string }>;
+    }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET", signal }),
+  );
 
   return {
     id: invoice.id,

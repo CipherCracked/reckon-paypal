@@ -49,7 +49,9 @@ Neither column is a failure. They cannot both be true, and choosing what the scr
 
 ## Background and Context
 
-### What the build does today (as-built, 2026-11-08)
+### What the build did when this tree was written (audit, 2026-11-07)
+
+*This is the state the tree exists to correct, kept as the record. Every row below has since changed — see the Decisions table and the build notes in each record.*
 
 | Surface | Where its figures come from now | What it says |
 |---|---|---|
@@ -187,8 +189,8 @@ Of the nine sponsors, one is relevant and only to the shop: **Channel3** supplie
 
 Two consequences worth stating plainly:
 
-- **The false line is the only part of this that can be fixed without PayPal answering.** IPD 18 does not depend on credentials, a sandbox object, or a live call. It is a copy change and a required prop.
-- **Nothing here is implemented.** The decision records are written; the build is unchanged, `sourceNote` still has its false default, and the consent and bill screens still claim the order.
+- **The false line was the only part of this that could be fixed without PayPal answering.** IPD 18 does not depend on credentials, a sandbox object, or a live call. It is a copy change and a required prop.
+- **All four decisions are implemented** (2026-11-08). One limitation is real and is not going away before judging: **no PayPal call has ever succeeded in this environment**, so every PayPal path is exercised against fixture payloads and the file fallback is what actually runs here. The code is written to take the other branch the moment credentials work, and every screen states which branch it took.
 
 ---
 

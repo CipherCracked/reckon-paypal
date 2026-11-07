@@ -37,6 +37,7 @@ beforeEach(() => {
   // By default the rule changes nothing: whatever the terms said is what the
   // screen gets, and the tests that care about the read override it.
   vi.mocked(resolveExitTerm).mockImplementation(async (exit) => ({
+    kind: "stated",
     exit,
     note: null,
     quoted: null,
@@ -113,6 +114,7 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
 
   it("uses the stated exit and keeps the sentence it came from", async () => {
     vi.mocked(resolveExitTerm).mockResolvedValue({
+      kind: "stated",
       exit: { kind: "none" },
       note: null,
       quoted: { source: "the description shown on this page", span: "cancel any time, no fee" },
@@ -130,6 +132,7 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
 
   it("passes the reason a figure is absent through to the screen", async () => {
     vi.mocked(resolveExitTerm).mockResolvedValue({
+      kind: "silent",
       exit: { kind: "unknown" },
       note: "The seller's published terms do not say what it costs to leave.",
       quoted: null,
@@ -139,6 +142,22 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
 
     expect(body.translation.exit).toBeNull();
     expect(body.exitNote).toBe("The seller's published terms do not say what it costs to leave.");
+    // The seller's silence, not a failed read — the two are worded differently
+    // on the provenance line (IPD 19).
+    expect(body.exitUnreadable).toBe(false);
+  });
+
+  it("tells the screen when the absence is a failed read rather than a silence", async () => {
+    vi.mocked(resolveExitTerm).mockResolvedValue({
+      kind: "unreadable",
+      exit: { kind: "unknown" },
+      note: EXIT_UNREADABLE_NOTE,
+      quoted: null,
+    });
+
+    const { body } = await get("mattress-financed");
+
+    expect(body.exitUnreadable).toBe(true);
   });
 
   it("gives a failed exit read a reason, and does not call the wording degraded", async () => {
@@ -149,6 +168,7 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
     expect(status).toBe(200);
     expect(body.translation.exit).toBeNull();
     expect(body.exitNote).toBe(EXIT_UNREADABLE_NOTE);
+    expect(body.exitUnreadable).toBe(true);
     // The figures are still computed from terms that were read; only the third
     // line is missing, and the summary is unaffected.
     expect(body.degraded).toBe(false);

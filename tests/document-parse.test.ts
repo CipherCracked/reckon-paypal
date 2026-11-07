@@ -14,10 +14,14 @@ describe("reading an amount out of a span", () => {
     expect(parseAmount("no amount here at all")).toBeNull();
   });
 
-  it("refuses a span holding two different amounts, because it cannot say which one was meant", () => {
+  it("refuses a span holding two amounts, because it cannot say which one was meant", () => {
     expect(parseAmount("$35.00 per month plus $10.00 setup")).toBeNull();
     expect(parseAmounts("$35.00 per month plus $10.00 setup")).toHaveLength(2);
-    expect(parseAmount("$5.00 plus $5.00")).not.toBeNull();
+    // Two equal amounts are still two obligations: "cancel for $25.00 within
+    // three months and $25.00 after" is a conditional fee, and collapsing it
+    // would drop the condition that made it a term.
+    expect(parseAmount("$5.00 plus $5.00")).toBeNull();
+    expect(parseAmount("cancel for $25.00 within 3 months and $25.00 after")).toBeNull();
   });
 });
 

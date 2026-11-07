@@ -13,7 +13,10 @@ export async function POST(_request: Request, context: RouteContext) {
   try {
     const capture = await capturePayPalOrder(id);
 
-    return Response.json({ status: "COMPLETED", amount: capture.amount }, { status: 200 });
+    // PayPal's status, not ours. A capture can answer PENDING — an eCheque, or a
+    // payment held for review — and reporting that as COMPLETED would tell the
+    // shopper their money has moved when PayPal has not said so.
+    return Response.json({ status: capture.status, amount: capture.amount }, { status: 200 });
   } catch (error) {
     // A retried capture is a success, not an error: PayPal's already-captured
     // reply carries no amount, and inventing one is the failure this product

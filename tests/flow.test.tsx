@@ -63,6 +63,7 @@ describe("demo flow", () => {
           summary: "You pay once, today.",
           sources: { paypal: null, published: "the terms shown on this page" },
           exitNote: null,
+          exitUnreadable: false,
           quotedExit: null,
           degraded: false,
         }),

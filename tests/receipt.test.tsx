@@ -4,7 +4,7 @@ import { CommitmentRecord } from "@/components/CommitmentRecord";
 import { buildCalendar } from "@/lib/receipt/calendar";
 import { money } from "@/lib/money";
 import { GET as calendarGET } from "@/app/api/receipt/[orderId]/calendar/route";
-import { retrieveSubscription } from "@/lib/paypal/retrieve";
+import { isSettled, retrieveSubscription } from "@/lib/paypal/retrieve";
 
 vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/paypal/retrieve")>();
@@ -17,8 +17,10 @@ const base = {
   paidToday: money(1200),
   acrossTerm: money(14400),
   exit: money(0),
+  exitNote: null,
   manageUrl: "https://www.sandbox.paypal.com/myaccount/autopay/",
   calendarHref: "/api/receipt/I-SUB-1/calendar?slug=coffee-subscription",
+  sourceNote: "Read from the PayPal plan for this subscription.",
 };
 
 describe("CommitmentRecord", () => {
@@ -60,6 +62,13 @@ describe("CommitmentRecord", () => {
       base.manageUrl,
     );
     expect(screen.getByText(/payment reference i-sub-1/i)).toBeInTheDocument();
+  });
+
+  it("states an amount PayPal never returned as unstated, not as the shop's figure", () => {
+    render(<CommitmentRecord {...base} paidToday={null} nextCharge={null} calendarHref={null} />);
+
+    expect(screen.getByText(/PayPal did not return the amount it charged/i)).toBeInTheDocument();
+    expect(screen.queryByText("$12.00")).toBeNull();
   });
 
   it("offers a calendar entry when there is a dated next charge", () => {
@@ -118,6 +127,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
       amount: money(1200),
+      terms: null,
     });
 
     const response = await calendarGET(request(), {
@@ -135,6 +145,23 @@ describe("GET /api/receipt/:id/calendar", () => {
       status: "APPROVAL_PENDING",
       nextBillingTime: null,
       amount: null,
+      terms: null,
+    });
+
+    const response = await calendarGET(request(), {
+      params: Promise.resolve({ orderId: "I-SUB-1" }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("refuses to state an amount PayPal never gave", async () => {
+    vi.mocked(retrieveSubscription).mockResolvedValueOnce({
+      id: "I-SUB-1",
+      status: "ACTIVE",
+      nextBillingTime: "2026-12-07T00:00:00Z",
+      amount: null,
+      terms: null,
     });
 
     const response = await calendarGET(request(), {
@@ -152,5 +179,20 @@ describe("GET /api/receipt/:id/calendar", () => {
     });
 
     expect(response.status).toBe(502);
+  });
+});
+
+describe("what counts as a payment PayPal has confirmed", () => {
+  it("does not count an approved but uncaptured order as settled", () => {
+    // The payer agreed at PayPal; no money has moved. A record built on this
+    // would report a payment that never happened.
+    expect(isSettled("APPROVED")).toBe(false);
+    expect(isSettled("CREATED")).toBe(false);
+    expect(isSettled("PAYER_ACTION_REQUIRED")).toBe(false);
+  });
+
+  it("counts a captured order and an active subscription", () => {
+    expect(isSettled("COMPLETED")).toBe(true);
+    expect(isSettled("ACTIVE")).toBe(true);
   });
 });

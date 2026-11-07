@@ -70,10 +70,13 @@ export function CommitmentView({
               {figure.amount === null ? (
                 <>
                   Not stated
-                  <span className="commitment-hint">
-                    {figureNotes?.[figure.id] ??
-                      "This seller has not published what it costs to cancel."}
-                  </span>
+                  {/* No default: a generic sentence here once said "the seller
+                      published nothing" for a read that had failed, and for any
+                      figure, not just the exit one. The caller knows which
+                      absence this is; a component cannot guess it. */}
+                  {figureNotes?.[figure.id] ? (
+                    <span className="commitment-hint">{figureNotes[figure.id]}</span>
+                  ) : null}
                 </>
               ) : (
                 formatMoney(figure.amount)

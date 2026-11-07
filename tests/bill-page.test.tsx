@@ -36,6 +36,7 @@ beforeEach(() => {
   vi.mocked(retrieveInvoice).mockResolvedValue(record);
   vi.mocked(resolveExitTerm).mockReset();
   vi.mocked(resolveExitTerm).mockImplementation(async (exit) => ({
+    kind: "stated",
     exit,
     note: null,
     quoted: null,
@@ -65,6 +66,7 @@ describe("the bill screen", () => {
 
   it("says why the exit figure is empty, when the biller left it out (IPD 19)", async () => {
     vi.mocked(resolveExitTerm).mockResolvedValue({
+      kind: "silent",
       exit: { kind: "unknown" },
       note: "The seller's published terms do not say what it costs to leave.",
       quoted: null,

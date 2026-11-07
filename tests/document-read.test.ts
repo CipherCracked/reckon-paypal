@@ -43,6 +43,53 @@ describe("a subscription read from its own words", () => {
   });
 });
 
+describe("which sentence a figure is sourced to (IPD 18)", () => {
+  it("does not quote a stated total beside a charge that is not that total", () => {
+    const { amounts, reading } = figureAmounts([
+      { field: "amountPerPeriod", quote: "$35.00 per month" },
+      { field: "paymentCount", quote: "for 12 months" },
+      { field: "totalDue", quote: "First payment $45.00" },
+    ]);
+
+    expect(amounts.today).toBe(3500);
+    // The figure is $35.00, so the $45.00 sentence is not where it came from.
+    expect(reading.sources.today).toBe("$35.00 per month");
+  });
+
+  it("quotes the total when the total is what is charged", () => {
+    const { amounts, reading } = figureAmounts([
+      { field: "amountPerPeriod", quote: "$35.00 per month" },
+      { field: "oneTimeExtra", quote: "plus $10.00 joining fee" },
+      { field: "totalDue", quote: "First payment $45.00" },
+    ]);
+
+    expect(amounts.today).toBe(4500);
+    expect(reading.sources.today).toBe("First payment $45.00");
+  });
+
+  it("sources a free-to-leave figure to the sentence that made it free", () => {
+    const { amounts, reading } = figureAmounts([
+      { field: "totalDue", quote: "Amount due: $240.00" },
+      { field: "exitFee", quote: "Cancellation fee: $50.00" },
+      { field: "freeToLeave", quote: "You may cancel free within 30 days" },
+    ]);
+
+    // The figure is $0.00, so it is the free-cancellation sentence that made it
+    // — quoting the $50.00 fee beside it would name a source it never used.
+    expect(amounts.exit).toBe(0);
+    expect(reading.sources.exit).toBe("You may cancel free within 30 days");
+  });
+
+  it("gives the term total no source until the document says how many payments", () => {
+    const { reading } = figureAmounts([
+      { field: "amountPerPeriod", quote: "$35.00 per month" },
+      { field: "period", quote: "per month" },
+    ]);
+
+    expect(reading.sources.acrossTerm).toBeNull();
+  });
+});
+
 describe("a one-time charge", () => {
   it("takes the stated total as the whole charge and adds nothing to it", () => {
     const { amounts, reading } = figureAmounts([

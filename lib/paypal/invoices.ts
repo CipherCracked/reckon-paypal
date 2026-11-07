@@ -98,7 +98,19 @@ export async function createInvoice(
     throw new Error("PayPal did not return an invoice id.");
   }
 
-  const returned = parseAmount(created.body.amount);
+  // The create answers with an id and can answer with no body at all, so an
+  // absent amount is read back rather than assumed: comparing our own figure to
+  // itself would let the check below pass without PayPal having said anything.
+  let returned = parseAmount(created.body.amount);
+  if (!returned) {
+    try {
+      returned = (await retrieveInvoice(createdId)).amount;
+    } catch {
+      // Still unknown. `amount` below falls back to the requested figure, which
+      // is the one this invoice was created from.
+    }
+  }
+
   if (returned && returned.minor !== draft.amount.minor) {
     throw new Error(
       `PayPal returned ${formatMoney(returned)}, but ${formatMoney(draft.amount)} was requested.`,
