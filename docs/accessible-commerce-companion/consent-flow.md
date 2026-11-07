@@ -1,5 +1,9 @@
 # Consent screen — sequence of a purchase
 
+> **Scope:** this covers the purchase and subscription doors only. The bill and document doors, and
+> the front door that leads to all four, are diagrammed in
+> `../universal-commitment-companion/flows.md`.
+
 **What this document is:** a reading aid, not a decision record. It shows the order of events
 between the storefront, our server, the model, and PayPal for a single purchase. The decisions
 behind each step live in the IPDs and ITDs under this folder.
