@@ -4,6 +4,7 @@ import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
+import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { formatMoney } from "@/lib/money";
 import { retrieveInvoice } from "@/lib/paypal/retrieve";
 
@@ -60,6 +61,10 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           summary={bill.description}
           // PayPal did not answer, so there is no due date to state either.
           schedule="No due date stated — PayPal could not be reached to read this bill."
+          sourceNote={describeSources({
+            published: `what ${bill.biller} published`,
+            absent: absentFigureNote(figures),
+          })}
         />
       </div>
     );
@@ -97,6 +102,11 @@ export default async function BillPage({ params, searchParams }: PageProps) {
               ? `Due ${dueDate} — the date ${bill.biller} set on the bill.`
               : "No due date stated — the biller did not put one on this invoice."
           }
+          sourceNote={describeSources({
+            paypal: "PayPal's copy of this invoice",
+            published: `what ${bill.biller} published`,
+            absent: absentFigureNote(figures),
+          })}
         />
       )}
 

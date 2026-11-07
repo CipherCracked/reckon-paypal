@@ -23,6 +23,7 @@ const payload = {
   figures: presentFigures(terms, translation),
   labels: { item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" },
   summary: "You pay monthly for one year.",
+  sources: { paypal: null, published: "the terms shown on this page" },
   degraded: false,
 };
 

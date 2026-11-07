@@ -6,6 +6,7 @@ import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
+import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { formatMoney } from "@/lib/money";
 
 /**
@@ -54,7 +55,10 @@ export default function Home() {
           labels={{ item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" }}
           summary={subscription.description}
           schedule={describeSchedule(subscription.terms)}
-          sourceNote="Computed from the terms shown here. Nothing has been charged and nothing has been created at PayPal."
+          sourceNote={`${describeSources({
+            published: "the terms shown here",
+            absent: absentFigureNote(figures),
+          })} Nothing has been charged and nothing has been created at PayPal.`}
         />
 
         <Link

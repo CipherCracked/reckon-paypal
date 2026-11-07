@@ -15,8 +15,12 @@ export type CommitmentViewProps = {
   schedule?: string | null;
   /** What to say instead of the default sentence when a figure is absent. */
   figureNotes?: Partial<Record<RenderedFigure["id"], string>>;
-  /** Where the figures came from. Defaults to the PayPal order wording. */
-  sourceNote?: string;
+  /**
+   * Where the figures came from, built with `describeSources` (IPD 18). Required:
+   * a default here was once right for two callers and false for three, and the
+   * callers that were wrong were never told.
+   */
+  sourceNote: string;
   /** Reveal the figures one at a time, at the reader's pace. */
   progressive?: boolean;
 };
@@ -28,7 +32,7 @@ export function CommitmentView({
   summary,
   schedule = null,
   figureNotes,
-  sourceNote = "Figures calculated from the PayPal order for this purchase. This page gives you no advice about whether to buy.",
+  sourceNote,
   progressive = false,
 }: CommitmentViewProps) {
   const [revealed, setRevealed] = useState(figures.length);

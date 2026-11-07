@@ -61,6 +61,7 @@ describe("demo flow", () => {
           figures: presentFigures(headphones!.terms, computeCommitment(headphones!.terms)),
           labels: { item: "Headphones", shipping: "Shipping", tax: "Sales tax" },
           summary: "You pay once, today.",
+          sources: { paypal: null, published: "the terms shown on this page" },
           degraded: false,
         }),
       })),

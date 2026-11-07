@@ -16,6 +16,7 @@ import type { RenderedFigure } from "@/lib/commitment/present";
 import type { FigureId } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
 import { formatReadingDate } from "@/lib/document/read";
+import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 
 type ReadResponse = {
   mode: "read";
@@ -208,7 +209,10 @@ function ReadResultPanel({
         schedule={schedule}
         figureNotes={result.notes}
         progressive={preferences.progressive}
-        sourceNote="Each figure is computed from the sentence beside it, using the same arithmetic as every other screen here. Nothing in this document was taken on trust."
+        sourceNote={describeSources({
+          published: "the sentence beside each figure, which is quoted from your document",
+          absent: absentFigureNote(result.figures),
+        })}
       />
 
       <div className="consent-adjust">

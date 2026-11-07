@@ -24,6 +24,7 @@ function renderView(terms: CommitmentTerms, summary = "") {
       breakdown={computeCommitment(terms).breakdown}
       labels={labels}
       summary={summary}
+      sourceNote="Computed from the terms in this test."
     />,
   );
 }

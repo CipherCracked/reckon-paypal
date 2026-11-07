@@ -7,6 +7,7 @@ import { ReadAloud } from "@/components/ReadAloud";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
+import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { formatMoney } from "@/lib/money";
 import {
   DEFAULT_PREFERENCES,
@@ -22,6 +23,8 @@ export type CommitmentPayload = {
   schedule: string;
   labels: { item: string; shipping: string; tax: string };
   summary: string;
+  /** Where the route read the terms from, decided server-side (ITD 17). */
+  sources: { paypal: string | null; published: string | null };
   degraded: boolean;
 };
 
@@ -254,6 +257,11 @@ export function ConsentScreen({
         summary={payload.summary}
         schedule={payload.schedule}
         progressive={preferences.progressive}
+        sourceNote={describeSources({
+          paypal: payload.sources.paypal,
+          published: payload.sources.published,
+          absent: absentFigureNote(payload.figures),
+        })}
       />
 
       <div className="consent-adjust">
