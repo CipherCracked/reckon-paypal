@@ -140,3 +140,41 @@ compatibility record says why that is not enough: Anthropic's layer ignores `str
 `tool_choice`, and a non-conforming answer can arrive with HTTP 200. The transport can be borrowed.
 The verification cannot.
 
+---
+
+**Revision — 2026-11-07 (5): frameworks and gateways, examined and declined.**
+
+Both were surveyed on their own terms — AI SDK, LangChain/LangGraph, LlamaIndex and the Agents SDK
+as frameworks; LiteLLM, OpenRouter, Portkey and the hosted AI gateways as gateways. Neither is a bad
+tool. Both are the wrong tool here, for reasons specific to this product rather than to taste.
+
+**Frameworks are built for shapes we do not have.** Their value concentrates in streaming token
+output, chat UI hooks, agent loops, tool orchestration and retrieval. This app has none of them: it
+makes one non-streaming call per page, asks for one tool, and renders the result. What a framework
+would add on top of the reference client is a provider registry — which for us is `AI_BASE_URL`,
+`AI_MODEL` and `AI_API_KEY`.
+
+**And their abstraction leaks where this product cannot afford it.** Documented cases exist of a
+provider package silently discarding provider options, and of cross-provider fallback shipping as a
+separate dependency rather than a feature. In a chat app that is an inconvenience. Here it is the
+worst available failure: if a silently dropped `tool_choice` turns into prose, the reader degrades
+to candidate mode and looks *exactly* like a document that could not be read. The one distinction
+the product exists to make would be lost inside a dependency. Our tests assert the request itself —
+that is a safety property, not a convenience, and a framework would turn the assertion into "trust
+the framework".
+
+**Gateways solve a problem of scale, and we have one service.** The gateway literature is unusually
+consistent about the threshold: central enforcement, routing, fallbacks, spend tracking and
+per-request observability become the better default once *more than one service* calls a model. One
+Next app calling one endpoint is below it. Self-hosting LiteLLM adds a second deployable and a new
+way for the demo to fail on the day; putting OpenRouter in the middle adds a vendor account between
+the shopper and the model. Both remain available as **escape hatches rather than architecture**: if
+a chosen provider does not speak the format, `AI_BASE_URL` points at a gateway and nothing else
+changes. That is the cheapest possible way to keep the option.
+
+**What would change the answer.** A chat surface with streaming, a model chosen at runtime for cost
+or capability, more than one service calling out, or a need to attribute spend per user. Any of
+those and the AI SDK or a gateway starts paying for itself. The trigger is written down so the
+decision can be revisited on evidence rather than re-argued.
+
+
