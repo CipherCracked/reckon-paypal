@@ -1,6 +1,6 @@
 # Figure Provenance — Problem Decomposition
 
-**Status:** Built (2026-11-08) — 3 IPDs and 2 ITDs written; IPD 18, IPD 19 and ITD 18 implemented, ITD 17 and IPD 20 in progress
+**Status:** Built (2026-11-08) — 3 IPDs and 2 ITDs written and implemented, with the live-sandbox gate in IPD 20 still open
 **Date:** 2026-11-07
 **Revision:** 2 (2026-11-08 — decisions written; as-built table corrected against the code)
 **Question this document exists to answer:** *Where should each figure on the screen come from, and what may the product say when a source is silent?*
@@ -180,10 +180,10 @@ Of the nine sponsors, one is relevant and only to the shop: **Channel3** supplie
 
 | Root | Decision record | Answer | Status |
 |---|---|---|---|
-| Q1 — which figures must come from PayPal | [ITD 17 — figure sources](itds/figure-sources.md) | Each figure declares the object it was read from; where none exists, it declares the seller's published terms. A figure is *derived from PayPal* only when our arithmetic used numbers read from a named object in the same request | Implementing |
+| Q1 — which figures must come from PayPal | [ITD 17 — figure sources](itds/figure-sources.md) | Each figure declares the object it was read from; where none exists, it declares the seller's published terms. A figure is *derived from PayPal* only when our arithmetic used numbers read from a named object in the same request | Implemented |
 | Q2 — what the screen may say | [IPD 18 — the provenance line](ipds/provenance-disclosure.md) | One line beneath the figures, three parts, written by every screen; no default in the component | Implemented |
 | Q3 — where the exit figure comes from | [IPD 19 — the exit figure](ipds/exit-figure.md) · [ITD 18 — reading a seller's published terms](itds/reading-published-terms.md) | The seller's words, quotation-verified; silence is reported as silence, never estimated and never omitted | Implemented |
-| Q4 — whether to source from PayPal | [IPD 20 — how much sources from PayPal](ipds/sourcing-scope.md) | PayPal first, the seller's file second, and the screen says which — with a gate on the sandbox answering by 2026-11-09 | Implementing |
+| Q4 — whether to source from PayPal | [IPD 20 — how much sources from PayPal](ipds/sourcing-scope.md) | PayPal first, the seller's file second, and the screen says which — with a gate on the sandbox answering by 2026-11-09 | Implemented |
 
 Two consequences worth stating plainly:
 

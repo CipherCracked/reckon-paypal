@@ -1,8 +1,28 @@
 import Link from "next/link";
 import { BackLink } from "@/components/BackLink";
-import { products } from "@/lib/catalog/products";
+import { resolveCatalogue, type ResolvedCard } from "@/lib/catalog/resolve";
 
-export default function Shop() {
+/** The listing is read per request, so it reflects PayPal rather than a build. */
+export const dynamic = "force-dynamic";
+
+/**
+ * A catalog product carries a name and a description and no price, which is
+ * exactly what a listing shows — so the shop reads PayPal's catalogue one call
+ * per product and falls back per card (IPD 20). It deliberately shows no
+ * figures: this screen is for choosing, not for agreeing.
+ */
+function sourceNote(catalogue: ResolvedCard[]): string | null {
+  const fromPayPal = catalogue.filter((card) => card.sources.paypal).length;
+  if (fromPayPal === 0) return null;
+  return fromPayPal === catalogue.length
+    ? "Every product above is read from PayPal's catalogue."
+    : "Some products above are read from PayPal's catalogue; the rest are the example products in this repository.";
+}
+
+export default async function Shop() {
+  const catalogue = await resolveCatalogue();
+  const note = sourceNote(catalogue);
+
   return (
     <div className="page">
       <BackLink href="/">Back to the ways in</BackLink>
@@ -17,7 +37,7 @@ export default function Shop() {
       </header>
 
       <ul className="product-list">
-        {products.map((product) => (
+        {catalogue.map((product) => (
           <li key={product.slug} className="product-card">
             <h2>
               <Link href={`/product/${product.slug}`}>{product.name}</Link>
@@ -29,6 +49,8 @@ export default function Shop() {
           </li>
         ))}
       </ul>
+
+      {note ? <p className="scope-note">{note}</p> : null}
     </div>
   );
 }

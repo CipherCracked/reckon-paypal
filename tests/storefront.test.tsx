@@ -3,8 +3,8 @@ import { render, screen } from "@testing-library/react";
 import Shop from "@/app/shop/page";
 
 describe("storefront", () => {
-  it("lists every catalog product", () => {
-    render(<Shop />);
+  it("lists every catalog product", async () => {
+    render(await Shop());
     expect(screen.getByText("Noise-Cancelling Headphones")).toBeInTheDocument();
     expect(screen.getByText("Coffee Subscription")).toBeInTheDocument();
     expect(screen.getByText("Mattress — 12 Months")).toBeInTheDocument();

@@ -1,8 +1,7 @@
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
-import { findProduct } from "@/lib/catalog/products";
-import { readProductFromPayPal } from "@/lib/paypal/catalog";
+import { resolveProduct } from "@/lib/catalog/resolve";
 import {
   EXIT_UNREADABLE_NOTE,
   resolveExitTerm,
@@ -13,58 +12,14 @@ import type { CommitmentTerms } from "@/lib/commitment/types";
 
 type RouteContext = { params: Promise<{ orderId: string }> };
 
-type Sources = { paypal: string | null; published: string | null };
-
-type Resolved = {
-  name: string;
-  description: string;
-  /** How the screen names the description, when the exit figure is read from it. */
-  descriptionLabel: string;
-  terms: CommitmentTerms;
-  sources: Sources;
-};
-
-/**
- * PayPal first, the catalogue file second, and the response says which was
- * used (ITD 17, IPD 20). The figure's provenance is part of the payload, not
- * something the screen infers, so the screen cannot claim a source the route
- * did not read.
- */
-async function resolveTerms(slug: string): Promise<Resolved | null> {
-  try {
-    const fromPayPal = await readProductFromPayPal(slug);
-    if (fromPayPal) {
-      return {
-        name: fromPayPal.name,
-        description: fromPayPal.description,
-        descriptionLabel: "the description published with the PayPal product",
-        terms: fromPayPal.terms,
-        sources: { paypal: fromPayPal.planLabel, published: null },
-      };
-    }
-  } catch {
-    // PayPal unreachable or unconfigured is not a failure of the screen: the
-    // published terms still produce every figure, and the line says so.
-  }
-
-  const product = findProduct(slug);
-  if (!product) return null;
-
-  return {
-    name: product.name,
-    description: product.description,
-    descriptionLabel: "the description shown on this page",
-    terms: product.terms,
-    sources: { paypal: null, published: "the terms shown on this page" },
-  };
-}
-
-
 export async function GET(request: Request, context: RouteContext) {
   const { orderId } = await context.params;
   const slug = new URL(request.url).searchParams.get("slug");
 
-  const resolved = slug ? await resolveTerms(slug) : null;
+  // One resolver for every screen (IPD 20). The figure's provenance is part of
+  // the payload, not something the screen infers, so the screen cannot claim a
+  // source the route did not read.
+  const resolved = slug ? await resolveProduct(slug) : null;
 
   if (!resolved) {
     return Response.json({ error: "Unknown product for this order." }, { status: 404 });

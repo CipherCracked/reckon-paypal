@@ -1,6 +1,6 @@
 # IPD 20 — How Much Sources From PayPal
 
-**Status:** Implementing (2026-11-08) — rules 1 and 2 live on the consent path; rule 3 holds; the gate has not been reached
+**Status:** Implemented (2026-11-08) — rules 1 and 2 hold on every screen that shows a product or a commitment; rule 3 holds; the gate has not been reached
 **Date:** 2026-11-08
 **Answers:** Problem tree Q4 of `../intro.md` — *is sourcing from PayPal worth the fragility it introduces?*
 **Depends on:** ITD 17 (a figure declares its source) and IPD 18 (the screen says which).
@@ -70,6 +70,10 @@ A gate, in the project's existing style: **if the sandbox answers a live call by
 
 ## Notes
 
-- The shop is the weakest surface for this change: a catalog product has no price, so a listing built from PayPal needs a plan read per product, and the shop is the one door the product is deliberately trying not to be. Open question 1 in `../intro.md` asks whether it should exist at all; this decision does not answer it.
+- **Implemented 2026-11-08** as `lib/catalog/resolve.ts` — one resolver, `resolveProductCard`, `resolveProduct` and `resolveCatalogue`, called by the entry, the shop, the product screen, the bill and `GET /api/commitment/{id}`. Two findings from the build:
+  - **A cart product and a commitment are different reads.** A catalog product carries a name and a description and no price, so a listing needs one call per product and a payment screen needs the plan as well. The shop therefore reads cards; everything that shows a figure reads terms. The consent route used to hold its own copy of the PayPal-first logic; it now calls the same function, so "PayPal first" is a property of the product rather than of the one screen that was remembered.
+  - **A read made while a page renders needs a deadline.** The entry and the shop read PayPal during the request, unlike the consent route, which is answering a fetch the shopper already waited on. A catalogue read is now given two seconds and then aborted, because a sandbox slower than that has already cost more than the fallback would have. The deadline is applied to the token request too — a slow handshake would otherwise outlast the budget it was granted.
+  - **The shop says nothing when nothing came from PayPal.** A provenance line there would be a second statement of the catalogue's status, which IPD 14 puts once on the consent screen. When PayPal does answer, the shop says so once, at the end of the list, and per-card mixing is stated as mixing rather than averaged into one claim.
+- The shop is still the weakest surface for this change and the one door the product is deliberately trying not to be; open question 1 in `../intro.md` asks whether it should exist at all, and this decision does not answer it. Sourcing it does not change that — it only means the listing is no longer the one place where the catalogue is unambiguously ours.
 - The financing product's origination fee has no clean PayPal home — a plan's `setup_fee` is close but is not an instalment-schedule fee. If the catalogue is sourced, that product either maps onto `setup_fee` or stays computed from its terms, and says which.
 - Channel3 was considered for the shop and set aside: it supplies no term data, and it puts a second price authority in a product that claims one. See [research.md](../research.md).

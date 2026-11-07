@@ -27,7 +27,7 @@ afterEach(() => {
 describe("demo flow", () => {
   it("takes a shopper from the storefront to a stated commitment", async () => {
     // 1. The storefront offers the product.
-    render(<Shop />);
+    render(await Shop());
     const productLinks = screen.getAllByRole("link", { name: /Noise-Cancelling Headphones/ });
     expect(productLinks.length).toBeGreaterThan(0);
     for (const link of productLinks) {

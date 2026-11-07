@@ -10,8 +10,8 @@ vi.mock("next/navigation", () => ({
 }));
 
 describe("the front door", () => {
-  it("states the promise before asking anyone to choose", () => {
-    render(<Home />);
+  it("states the promise before asking anyone to choose", async () => {
+    render(await Home());
 
     expect(
       screen.getByRole("heading", { name: /every payment asks you to work something out/i }),
@@ -19,8 +19,8 @@ describe("the front door", () => {
     expect(screen.getByText(/what it costs to leave/i)).toBeInTheDocument();
   });
 
-  it("works one commitment in full before anything is clicked", () => {
-    render(<Home />);
+  it("works one commitment in full before anything is clicked", async () => {
+    render(await Home());
 
     expect(screen.getByText("Across the term")).toBeInTheDocument();
     expect(screen.getByText("$144.00")).toBeInTheDocument();
@@ -29,37 +29,37 @@ describe("the front door", () => {
     expect(screen.getAllByText("$12.00").length).toBeGreaterThan(0);
   });
 
-  it("says where the worked example's figures came from, and that nothing was created", () => {
-    render(<Home />);
+  it("says where the worked example's figures came from, and that nothing was created", async () => {
+    render(await Home());
 
     expect(
-      screen.getByText(/computed from the terms shown here\./i),
+      screen.getByText(/computed from the terms shown on this page\./i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/nothing has been charged and nothing has been created at paypal/i),
     ).toBeInTheDocument();
   });
 
-  it("performs no request and creates nothing when it renders", () => {
+  it("performs no request and creates nothing when it renders", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<Home />);
+    render(await Home());
 
     expect(fetchMock).not.toHaveBeenCalled();
     expect(push).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
-  it("offers one primary action into the journey", () => {
-    render(<Home />);
+  it("offers one primary action into the journey", async () => {
+    render(await Home());
 
     const primary = screen.getByRole("link", { name: /continue with this commitment/i });
     expect(primary).toHaveAttribute("href", "/product/coffee-subscription");
   });
 
-  it("keeps the other ways in at a second rank, not as four equal cards", () => {
-    render(<Home />);
+  it("keeps the other ways in at a second rank, not as four equal cards", async () => {
+    render(await Home());
 
     const doors = screen.getAllByRole("listitem");
     expect(doors).toHaveLength(3);
@@ -68,8 +68,8 @@ describe("the front door", () => {
     expect(screen.getByText("A document someone sent you")).toBeInTheDocument();
   });
 
-  it("keeps the shop reachable without making it the product", () => {
-    render(<Home />);
+  it("keeps the shop reachable without making it the product", async () => {
+    render(await Home());
 
     expect(screen.getByRole("link", { name: /browse the shop/i })).toBeInTheDocument();
   });
@@ -83,7 +83,7 @@ describe("the bill door", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    render(<Home />);
+    render(await Home());
     await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -103,7 +103,7 @@ describe("the bill door", () => {
       }),
     );
 
-    render(<Home />);
+    render(await Home());
     await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
     expect(screen.getByRole("alert")).toHaveTextContent(/INVALID_REQUEST/);

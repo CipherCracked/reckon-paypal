@@ -26,7 +26,7 @@ export function resetTokenCache(): void {
   tokenCache = null;
 }
 
-export async function getAccessToken(): Promise<string> {
+export async function getAccessToken(signal?: AbortSignal | null): Promise<string> {
   if (tokenCache && tokenCache.expiresAt > Date.now()) {
     return tokenCache.value;
   }
@@ -45,6 +45,9 @@ export async function getAccessToken(): Promise<string> {
     },
     body: "grant_type=client_credentials",
     cache: "no-store",
+    // A caller with a deadline applies it to the token too, or a slow handshake
+    // would outlast the budget it was given.
+    signal,
   });
 
   if (!response.ok) {
@@ -80,7 +83,7 @@ export async function paypalRequestDetailed<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<PayPalResponse<T>> {
-  const token = await getAccessToken();
+  const token = await getAccessToken(init.signal);
 
   const response = await fetch(`${paypalBaseUrl()}${path}`, {
     ...init,

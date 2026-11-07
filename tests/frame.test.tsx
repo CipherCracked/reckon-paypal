@@ -36,7 +36,7 @@ beforeEach(() => {
 });
 
 describe("the frame", () => {
-  it("gives the keyboard one way past itself, before anything else", () => {
+  it("gives the keyboard one way past itself, before anything else", async () => {
     render(
       <Shell>
         <p>page content</p>
@@ -52,7 +52,7 @@ describe("the frame", () => {
     expect(main).toHaveTextContent("page content");
   });
 
-  it("names the service and gives it somewhere to go home to", () => {
+  it("names the service and gives it somewhere to go home to", async () => {
     render(
       <Shell>
         <p>page content</p>
@@ -64,7 +64,7 @@ describe("the frame", () => {
     ).toHaveAttribute("href", "/");
   });
 
-  it("does not repeat a status line on every screen", () => {
+  it("does not repeat a status line on every screen", async () => {
     render(
       <Shell>
         <p>page content</p>
@@ -77,8 +77,8 @@ describe("the frame", () => {
 });
 
 describe("the journey", () => {
-  it("names where the shop's back link goes", () => {
-    render(<Shop />);
+  it("names where the shop's back link goes", async () => {
+    render(await Shop());
 
     expect(screen.getByRole("link", { name: /back to the ways in/i })).toHaveAttribute(
       "href",
@@ -86,7 +86,7 @@ describe("the journey", () => {
     );
   });
 
-  it("names where the reader's back link goes", () => {
+  it("names where the reader's back link goes", async () => {
     render(<ReadPage />);
 
     expect(screen.getByRole("link", { name: /back to the ways in/i })).toHaveAttribute(

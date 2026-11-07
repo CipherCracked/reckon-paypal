@@ -35,6 +35,24 @@ type PayPalPlan = {
   };
 };
 
+/**
+ * A catalogue read is allowed a moment, because it is the one PayPal call made
+ * while a page is being rendered. Past the deadline the reader has already
+ * waited longer than the fallback would have cost, so the fallback is what to
+ * show — a slow sandbox must not outlast the page it is decorating.
+ */
+const READ_DEADLINE_MS = 2_000;
+
+async function withinDeadline<T>(read: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), READ_DEADLINE_MS);
+  try {
+    return await read(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** The PayPal product id for a slug, if one has been created deliberately. */
 export function paypalProductIdFor(slug: string): string | null {
   const ids: Record<string, string | undefined> = {
@@ -95,11 +113,36 @@ export function termsFromPlan(plan: PayPalPlan): CommitmentTerms | null {
   };
 }
 
-export type PayPalCatalogueEntry = {
+/**
+ * What a catalog product holds: a name, a description, a type, a category — and
+ * no price. That makes it enough to list a shop and not enough to show a
+ * commitment, which is why the shop can read one call per product and the
+ * payment screens read the plan as well.
+ */
+export type PayPalProductCard = {
   slug: string;
   paypalProductId: string;
   name: string;
   description: string;
+};
+
+export async function readProductCardFromPayPal(slug: string): Promise<PayPalProductCard | null> {
+  const productId = paypalProductIdFor(slug);
+  if (!productId) return null;
+
+  const product = await withinDeadline((signal) =>
+    paypalRequest<PayPalProduct>(`/v1/catalogs/products/${productId}`, { signal }),
+  );
+
+  return {
+    slug,
+    paypalProductId: product.id,
+    name: product.name,
+    description: product.description ?? "",
+  };
+}
+
+export type PayPalCatalogueEntry = PayPalProductCard & {
   terms: CommitmentTerms;
   /** The plan the terms were read from, named as the screen should name it. */
   planLabel: string;
@@ -111,12 +154,15 @@ export type PayPalCatalogueEntry = {
  * catalogue file and says so (IPD 20, rule 2).
  */
 export async function readProductFromPayPal(slug: string): Promise<PayPalCatalogueEntry | null> {
-  const productId = paypalProductIdFor(slug);
-  if (!productId) return null;
+  const product = await readProductCardFromPayPal(slug);
+  if (!product) return null;
 
-  const product = await paypalRequest<PayPalProduct>(`/v1/catalogs/products/${productId}`);
-  const plans = await paypalRequest<{ plans?: PayPalPlan[] }>(
-    `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20`,
+  const productId = product.paypalProductId;
+  const plans = await withinDeadline((signal) =>
+    paypalRequest<{ plans?: PayPalPlan[] }>(
+      `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20`,
+      { signal },
+    ),
   );
 
   const usable = (plans.plans ?? [])
@@ -125,12 +171,5 @@ export async function readProductFromPayPal(slug: string): Promise<PayPalCatalog
 
   if (!usable || !usable.terms) return null;
 
-  return {
-    slug,
-    paypalProductId: product.id,
-    name: product.name,
-    description: product.description ?? "",
-    terms: usable.terms,
-    planLabel: `the PayPal plan for ${product.name}`,
-  };
+  return { ...product, terms: usable.terms, planLabel: `the PayPal plan for ${product.name}` };
 }

@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/commitment/[orderId]/route";
-import { readProductFromPayPal } from "@/lib/paypal/catalog";
+import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
 import { EXIT_UNREADABLE_NOTE, resolveExitTerm } from "@/lib/commitment/published-exit";
 import { extractTerms } from "@/lib/ai/extract-terms";
 import { money } from "@/lib/money";
 
 vi.mock("@/lib/paypal/catalog", () => ({
   readProductFromPayPal: vi.fn(),
+  readProductCardFromPayPal: vi.fn(),
 }));
 
 vi.mock("@/lib/commitment/published-exit", async (importOriginal) => ({
@@ -31,6 +32,7 @@ async function get(slug: string) {
 beforeEach(() => {
   vi.mocked(extractTerms).mockResolvedValue({ labels, summary: "You pay monthly." } as never);
   vi.mocked(readProductFromPayPal).mockResolvedValue(null);
+  vi.mocked(readProductCardFromPayPal).mockResolvedValue(null);
   vi.mocked(resolveExitTerm).mockReset();
   // By default the rule changes nothing: whatever the terms said is what the
   // screen gets, and the tests that care about the read override it.

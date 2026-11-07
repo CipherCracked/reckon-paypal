@@ -2,35 +2,51 @@ import Link from "next/link";
 import { BillDoor } from "@/components/BillDoor";
 import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
-import { findProduct } from "@/lib/catalog/products";
+import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
+import { resolveExitTerm } from "@/lib/commitment/published-exit";
 import { describeSchedule } from "@/lib/commitment/schedule";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { formatMoney } from "@/lib/money";
+
+/** The catalogue is read per request, so the front door reflects PayPal rather than a build. */
+export const dynamic = "force-dynamic";
 
 /**
  * The entry states the product, then proves it on one real commitment before
  * asking anything (IPD 14).
  *
- * Everything below is computed on the server from the catalogue: no model key
- * is needed for the figures to appear, and no PayPal object is created by a
- * visit (ITD 16). The figures come from terms, not from a payment, and the
- * screen says so rather than borrowing the consent screen's stronger claim.
+ * The worked commitment is read the same way every other screen reads one —
+ * PayPal first, the catalogue file second (IPD 20) — so the front door cannot
+ * be the one surface that quietly disagrees with the consent screen. No PayPal
+ * object is created by a visit (ITD 16); a read creates nothing, and the
+ * screen says so.
  */
-export default function Home() {
-  const subscription = findProduct("coffee-subscription");
-  const purchase = findProduct("noise-cancelling-headphones");
+export default async function Home() {
+  const [subscription, purchase] = await Promise.all([
+    resolveProduct("coffee-subscription"),
+    resolveProduct("noise-cancelling-headphones"),
+  ]);
   const bill = findBill("clinic-visit");
 
   if (!subscription || !purchase) {
-    // The catalogue is a constant in this repository, so this cannot happen in
-    // a working build; failing loudly beats a blank front door.
+    // The file is a constant in this repository, so this cannot happen in a
+    // working build; failing loudly beats a blank front door.
     throw new Error("The entry needs the subscription and the purchase in the catalogue.");
   }
 
-  const translation = computeCommitment(subscription.terms);
-  const figures = presentFigures(subscription.terms, translation);
+  // The third figure is the seller's, so it is read from the seller's words
+  // whenever the terms left it unanswered (IPD 19) — the same rule as consent.
+  const exitOutcome = await resolveExitTerm(
+    subscription.terms.exit,
+    subscription.description,
+    subscription.descriptionLabel,
+  );
+  const terms = { ...subscription.terms, exit: exitOutcome.exit };
+
+  const translation = computeCommitment(terms);
+  const figures = presentFigures(terms, translation);
 
   return (
     <div className="page">
@@ -54,9 +70,12 @@ export default function Home() {
           breakdown={translation.breakdown}
           labels={{ item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" }}
           summary={subscription.description}
-          schedule={describeSchedule(subscription.terms)}
+          schedule={describeSchedule(terms)}
+          figureNotes={exitOutcome.note ? { exit: exitOutcome.note } : undefined}
           sourceNote={`${describeSources({
-            published: "the terms shown here",
+            paypal: subscription.sources.paypal,
+            published: subscription.sources.published,
+            quoted: exitOutcome.quoted,
             absent: absentFigureNote(figures),
           })} Nothing has been charged and nothing has been created at PayPal.`}
         />
