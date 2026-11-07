@@ -78,6 +78,13 @@ than writing prose. That format is common enough that the app runs unchanged aga
 model, an aggregator, a proxy, or a daemon on the same laptop; switching is three environment
 variables. `lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
 
+If your provider does not serve that shape, put a gateway in front of it — that is the ordinary
+deployment pattern, and it costs one line of configuration:
+
+```
+AI_BASE_URL=https://your-gateway.example/v1
+```
+
 Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Only
 `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is exposed to the browser; every other value stays server-side.
 

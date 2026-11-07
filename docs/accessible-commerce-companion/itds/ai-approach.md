@@ -68,3 +68,45 @@ refinement of it.
 **Honest status.** None of this is built. The extraction stays hand-performed in the catalogue, and
 the app therefore does the right thing with terms it was given and nothing with terms it was not.
 
+---
+
+**Revision — 2026-11-07 (3): the transport is a contract, not a vendor.**
+
+The question this revision answers is not *which model* but *what we speak*. A hackathon entry that
+hard-codes one provider's endpoint and one provider's headers is a demo that only runs on the
+author's machine; the product's claim — that any seller's commitment can be translated — implies
+the model underneath is replaceable.
+
+**What the ecosystem actually settled on.** The OpenAI chat-completions shape with function calling
+is the de facto interchange format for models. The evidence is one-directional and unambiguous:
+
+- **LiteLLM**, the reference open-source gateway, exists to accept one format for 100+ providers
+  and translates every backend into it — and offers a proxy that serves that same shape.
+- **Amazon Bedrock** exposes `POST /v1/chat/completions` alongside its native API.
+- **Google's Gemini API** ships an OpenAI-compatibility endpoint.
+- **Anthropic** ships an OpenAI SDK compatibility layer, so even the vendor whose native shape is
+  `/v1/messages` speaks the other one.
+
+The reverse does not hold: there is no Anthropic-Messages-compatibility layer at OpenAI, Google or
+Bedrock. Chat completions is therefore the strictly wider contract, and the SDK question is
+secondary — a vendor SDK is a fine *contract*, but it is one more thing to swap when the provider
+changes. What was wrong in the first draft was neither: it was **provider-shaped code** — a
+gateway's session header and its base-URL quirks written into the request path.
+
+**Decision.** One file (`lib/ai/client.ts`) speaks `POST {AI_BASE_URL}/chat/completions` with a
+forced function call, using `fetch`. The endpoint, the model id and the key come from `AI_BASE_URL`,
+`AI_MODEL` and `AI_API_KEY`. No vendor package, no vendor header, no provider branch anywhere.
+A provider that does not serve that shape is reached through a proxy in front of it, which is the
+ordinary deployment pattern rather than an integration we write.
+
+**What we deliberately do not rely on.** The compat layer Anthropic documents ignores the `strict`
+parameter, so a schema-conformant answer is not guaranteed by the wire. That is not a problem this
+design has to solve: conformance is re-established on our side — quotations are checked to be
+literal substrings of the document, fields are checked against a closed list, and a figure in the
+prose summary is discarded. The transport may be lax; the reader is not.
+
+**Rejected.** The Anthropic Messages shape (a good contract, a narrower surface — see above). A
+framework with a provider registry, and an in-process gateway: both are real options that buy
+provider coverage we already have for free, at the cost of a dependency and an abstraction to debug
+inside a five-day build. Documented here so the choice is a decision rather than an omission.
+

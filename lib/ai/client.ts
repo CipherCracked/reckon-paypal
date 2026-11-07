@@ -94,7 +94,6 @@ export async function callTool(request: ToolRequest): Promise<unknown> {
         // The model has no other permitted answer. A provider that ignores this
         // returns prose, which fails the check below rather than becoming data.
         tool_choice: { type: "function", function: { name: request.tool.name } },
-        parallel_tool_calls: false,
       }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
