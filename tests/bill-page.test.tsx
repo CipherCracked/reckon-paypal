@@ -2,9 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import BillPage from "@/app/bill/[invoiceId]/page";
 import { retrieveInvoice } from "@/lib/paypal/retrieve";
+import { resolveExitTerm } from "@/lib/commitment/published-exit";
 import { money } from "@/lib/money";
 
 vi.mock("@/lib/paypal/retrieve", () => ({ retrieveInvoice: vi.fn() }));
+
+vi.mock("@/lib/commitment/published-exit", () => ({ resolveExitTerm: vi.fn() }));
 
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -31,6 +34,12 @@ async function renderBill(slug = "clinic-visit") {
 beforeEach(() => {
   vi.mocked(retrieveInvoice).mockReset();
   vi.mocked(retrieveInvoice).mockResolvedValue(record);
+  vi.mocked(resolveExitTerm).mockReset();
+  vi.mocked(resolveExitTerm).mockImplementation(async (exit) => ({
+    exit,
+    note: null,
+    quoted: null,
+  }));
 });
 
 describe("the bill screen", () => {
@@ -52,6 +61,20 @@ describe("the bill screen", () => {
     await renderBill();
 
     expect(screen.getByText(/Not stated/i)).toBeInTheDocument();
+  });
+
+  it("says why the exit figure is empty, when the biller left it out (IPD 19)", async () => {
+    vi.mocked(resolveExitTerm).mockResolvedValue({
+      exit: { kind: "unknown" },
+      note: "The seller's published terms do not say what it costs to leave.",
+      quoted: null,
+    });
+
+    await renderBill();
+
+    expect(
+      screen.getByText(/The seller's published terms do not say what it costs to leave/i),
+    ).toBeInTheDocument();
   });
 
   it("hands payment to PayPal rather than collecting card details", async () => {

@@ -1,6 +1,6 @@
 # IPD 19 — The Exit Figure
 
-**Status:** Proposed
+**Status:** Implemented (2026-11-08)
 **Date:** 2026-11-08
 **Answers:** Problem tree Q3 of `../intro.md` — *where does the exit figure come from, given PayPal has no field for it?*
 **Serves:** ITD 18, which decides how a seller's prose becomes an amount.
@@ -74,3 +74,8 @@ The screen never says the absence is our failure to look. It says the seller did
 - `fee(0)` and `unknown` must stay distinct in the type, the copy, the read-aloud text and the comparison document. Any place that maps both to "no charge" is a defect.
 - The comparison document (IPD 9) generates the seller's copy beside the figures. The exit figure's absence is one of the things it counts, so this decision changes what that document reports rather than only what the screen shows.
 - The document door already produces an exit figure from a verified span. On a bill, that is the same mechanism applied to a different source, which is why the implementation is a reuse rather than a new capability.
+- **Implemented 2026-11-08** as `lib/commitment/published-exit.ts` (`readPublishedExit`, `exitFromSpans`, `resolveExitTerm`) plus `lib/document/verify.ts`, which moved the span check out of the paste route so both readers use one. The rule lives in one function and is called from the consent payload and from the bill page, so the two screens cannot drift:
+  - A **structured term wins**. Reading a seller who already answered would spend a model call to hear it said twice, so only `unknown` triggers a read. The coffee subscription (`fee(0)`) therefore costs nothing to render; the mattress, and every plan sourced from PayPal, is read.
+  - The screen now says **which absence** it is. "The seller's published terms do not say what it costs to leave" and "The seller's terms could not be read, so this figure is not shown" are different sentences for different facts, both rendered under the figure rather than in the provenance line.
+  - The **quote went into the provenance line** as a fourth part: *"What it costs to leave is quoted from the description shown on this page: \"cancel any time, no fee\"."* IPD 18 fixed three parts; a read figure is a source the other three cannot describe, and printing the seller's own sentence is the checkable form of "the figure keeps the sentence that produced it".
+  - The **bill page reads the biller's description** when the structured terms are silent, which is where it matters most: the clinic bill's exit was absent because a human had decided the description said nothing, and is now absent because the description was read and still said nothing.

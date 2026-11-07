@@ -25,6 +25,10 @@ export type CommitmentPayload = {
   summary: string;
   /** Where the route read the terms from, decided server-side (ITD 17). */
   sources: { paypal: string | null; published: string | null };
+  /** Why the exit figure has no amount, when it has none (IPD 19). */
+  exitNote: string | null;
+  /** The seller's sentence the exit figure came from, when one did (IPD 19). */
+  quotedExit: { source: string; span: string } | null;
   degraded: boolean;
 };
 
@@ -257,9 +261,11 @@ export function ConsentScreen({
         summary={payload.summary}
         schedule={payload.schedule}
         progressive={preferences.progressive}
+        figureNotes={payload.exitNote ? { exit: payload.exitNote } : undefined}
         sourceNote={describeSources({
           paypal: payload.sources.paypal,
           published: payload.sources.published,
+          quoted: payload.quotedExit,
           absent: absentFigureNote(payload.figures),
         })}
       />

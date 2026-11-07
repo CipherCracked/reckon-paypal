@@ -24,6 +24,8 @@ const payload = {
   labels: { item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" },
   summary: "You pay monthly for one year.",
   sources: { paypal: null, published: "the terms shown on this page" },
+  exitNote: null,
+  quotedExit: null,
   degraded: false,
 };
 

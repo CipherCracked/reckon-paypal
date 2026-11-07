@@ -95,22 +95,24 @@ function toQuotations(input: unknown): ModelQuotation[] {
 }
 
 /**
+ * The spans the model offers, and nothing about what they mean.
+ *
+ * Separate from `readDocumentWithModel` because of one rule: on a document the
+ * shopper pasted, zero spans means the reading failed. On the seller's own
+ * published text (ITD 18) zero spans is often the correct answer — most sellers
+ * say nothing about leaving — so the caller decides, not this function.
+ *
  * Throws when there is nothing verifiable to work with — no tool result, no
- * provider, a network error. An unusable summary does not throw: the spans are
- * the part that carries weight, and the server checks them itself.
+ * provider, a network error.
  */
-export async function readDocumentWithModel(input: { text: string }): Promise<DocumentReading> {
+export async function requestQuotations(text: string): Promise<DocumentReading> {
   const answer = await callTool({
     system: SYSTEM_PROMPT,
-    user: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${input.text}\nDOCUMENT>>>`,
+    user: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${text}\nDOCUMENT>>>`,
     tool: QUOTATIONS_TOOL,
   });
 
   const quotations = toQuotations(answer);
-  if (quotations.length === 0) {
-    throw new UnreadableDocumentError("The model's spans named no field we read.");
-  }
-
   const raw = (answer ?? {}) as Record<string, unknown>;
   const candidateSummary = typeof raw.summary === "string" ? raw.summary.trim() : "";
 
@@ -121,4 +123,16 @@ export async function readDocumentWithModel(input: { text: string }): Promise<Do
   const summary = findMoneyLike(candidateSummary) ? "" : candidateSummary;
 
   return { quotations, summary };
+}
+
+/**
+ * Reads a document the shopper pasted. An unusable summary does not throw: the
+ * spans are the part that carries weight, and the server checks them itself.
+ */
+export async function readDocumentWithModel(input: { text: string }): Promise<DocumentReading> {
+  const reading = await requestQuotations(input.text);
+  if (reading.quotations.length === 0) {
+    throw new UnreadableDocumentError("The model's spans named no field we read.");
+  }
+  return reading;
 }

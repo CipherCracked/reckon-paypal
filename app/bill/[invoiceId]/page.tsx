@@ -4,6 +4,7 @@ import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
+import { resolveExitTerm } from "@/lib/commitment/published-exit";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { formatMoney } from "@/lib/money";
 import { retrieveInvoice } from "@/lib/paypal/retrieve";
@@ -34,8 +35,20 @@ export default async function BillPage({ params, searchParams }: PageProps) {
     notFound();
   }
 
-  const translation = computeCommitment(bill.terms);
-  const figures = presentFigures(bill.terms, translation);
+  // The third figure is the biller's, and a bill is where they are most likely
+  // to have said nothing: PayPal has no field for it, so when the terms are
+  // silent the biller's own words are read and the absence is reported as
+  // theirs (IPD 19). Same rule as the consent screen, same code.
+  const exitOutcome = await resolveExitTerm(
+    bill.terms.exit,
+    bill.description,
+    `what ${bill.biller} published`,
+  );
+  const terms = { ...bill.terms, exit: exitOutcome.exit };
+
+  const translation = computeCommitment(terms);
+  const figures = presentFigures(terms, translation);
+  const figureNotes = exitOutcome.note ? { exit: exitOutcome.note } : undefined;
 
   let record;
   try {
@@ -59,10 +72,12 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           breakdown={translation.breakdown}
           labels={{ item: "Before tax", shipping: "Additional charge", tax: "Tax" }}
           summary={bill.description}
+          figureNotes={figureNotes}
           // PayPal did not answer, so there is no due date to state either.
           schedule="No due date stated — PayPal could not be reached to read this bill."
           sourceNote={describeSources({
             published: `what ${bill.biller} published`,
+            quoted: exitOutcome.quoted,
             absent: absentFigureNote(figures),
           })}
         />
@@ -102,9 +117,11 @@ export default async function BillPage({ params, searchParams }: PageProps) {
               ? `Due ${dueDate} — the date ${bill.biller} set on the bill.`
               : "No due date stated — the biller did not put one on this invoice."
           }
+          figureNotes={figureNotes}
           sourceNote={describeSources({
             paypal: "PayPal's copy of this invoice",
             published: `what ${bill.biller} published`,
+            quoted: exitOutcome.quoted,
             absent: absentFigureNote(figures),
           })}
         />

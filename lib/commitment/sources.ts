@@ -12,11 +12,17 @@ export type FigureSources = {
   paypal?: string | null;
   /** The seller's words the remaining figures were computed from. */
   published?: string | null;
+  /**
+   * A sentence of the seller's that the exit figure was read out of, with the
+   * source it came from (IPD 19). The figure keeps the span that produced it,
+   * so the line shows it rather than describing it.
+   */
+  quoted?: { source: string; span: string } | null;
   /** What no source states, phrased as a subject: "what it costs to leave". */
   absent?: string | null;
 };
 
-export function describeSources({ paypal, published, absent }: FigureSources): string {
+export function describeSources({ paypal, published, quoted, absent }: FigureSources): string {
   const sentences: string[] = [];
 
   if (paypal) {
@@ -27,6 +33,13 @@ export function describeSources({ paypal, published, absent }: FigureSources): s
     sentences.push(
       paypal ? `The rest is computed from ${published}.` : `Computed from ${published}.`,
     );
+  }
+
+  if (quoted) {
+    // The span is the seller's own sentence, printed rather than summarised.
+    // One trailing full stop, ours, because the span usually carries its own.
+    const span = quoted.span.trim().replace(/\.$/, "");
+    sentences.push(`What it costs to leave is quoted from ${quoted.source}: "${span}".`);
   }
 
   if (absent) {

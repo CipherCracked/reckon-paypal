@@ -1,9 +1,9 @@
 import { readDocumentWithModel } from "@/lib/ai/read-document";
 import { ModelError } from "@/lib/ai/client";
 import { findCandidates } from "@/lib/document/candidates";
-import { containsQuote, normaliseText } from "@/lib/document/normalise";
+import { normaliseText } from "@/lib/document/normalise";
 import { presentReading, readQuotations } from "@/lib/document/read";
-import type { ModelQuotation } from "@/lib/ai/read-document";
+import { verifyQuotations } from "@/lib/document/verify";
 
 /** Long enough for a real bill, short enough that the page stays usable. */
 const MIN_LENGTH = 40;
@@ -18,30 +18,6 @@ async function readBody(request: Request): Promise<ReadRequestBody | null> {
   } catch {
     return null;
   }
-}
-
-/**
- * Every quotation the model offers is checked against the text the shopper
- * supplied before it can be read out of. A span that is not really there is
- * discarded and counted — the count is reported because it is the one number
- * that shows the reading was verified rather than trusted.
- */
-function verify(
-  quotations: ModelQuotation[],
-  normalisedDocument: string,
-): { accepted: ModelQuotation[]; rejected: number } {
-  const accepted: ModelQuotation[] = [];
-  let rejected = 0;
-
-  for (const quotation of quotations) {
-    if (containsQuote(normalisedDocument, quotation.quote)) {
-      accepted.push(quotation);
-    } else {
-      rejected += 1;
-    }
-  }
-
-  return { accepted, rejected };
 }
 
 function candidatesResponse(text: string, notice: string) {
@@ -89,7 +65,7 @@ export async function POST(request: Request) {
     return candidatesResponse(text, notice);
   }
 
-  const { accepted, rejected } = verify(reading.quotations, normaliseText(text));
+  const { accepted, rejected } = verifyQuotations(reading.quotations, normaliseText(text));
   const parsed = readQuotations(accepted);
 
   if (!parsed) {

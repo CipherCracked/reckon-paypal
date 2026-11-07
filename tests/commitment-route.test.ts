@@ -1,11 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/commitment/[orderId]/route";
 import { readProductFromPayPal } from "@/lib/paypal/catalog";
+import { EXIT_UNREADABLE_NOTE, resolveExitTerm } from "@/lib/commitment/published-exit";
 import { extractTerms } from "@/lib/ai/extract-terms";
 import { money } from "@/lib/money";
 
 vi.mock("@/lib/paypal/catalog", () => ({
   readProductFromPayPal: vi.fn(),
+}));
+
+vi.mock("@/lib/commitment/published-exit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/commitment/published-exit")>()),
+  resolveExitTerm: vi.fn(),
 }));
 
 vi.mock("@/lib/ai/extract-terms", () => ({
@@ -25,6 +31,14 @@ async function get(slug: string) {
 beforeEach(() => {
   vi.mocked(extractTerms).mockResolvedValue({ labels, summary: "You pay monthly." } as never);
   vi.mocked(readProductFromPayPal).mockResolvedValue(null);
+  vi.mocked(resolveExitTerm).mockReset();
+  // By default the rule changes nothing: whatever the terms said is what the
+  // screen gets, and the tests that care about the read override it.
+  vi.mocked(resolveExitTerm).mockImplementation(async (exit) => ({
+    exit,
+    note: null,
+    quoted: null,
+  }));
 });
 
 describe("where the commitment route reads its terms (ITD 17)", () => {
@@ -79,5 +93,62 @@ describe("where the commitment route reads its terms (ITD 17)", () => {
   it("still refuses a slug it does not know, in either source", async () => {
     const { status } = await get("not-a-product");
     expect(status).toBe(404);
+  });
+});
+
+describe("the exit figure the seller publishes (IPD 19)", () => {
+  it("hands the seller's own description to the exit rule, not PayPal's silence", async () => {
+    // The mattress's terms leave the exit unknown, so the description is what
+    // can answer — and it is labelled as this page's description, not PayPal's.
+    await get("mattress-financed");
+
+    expect(resolveExitTerm).toHaveBeenCalledWith(
+      { kind: "unknown" },
+      expect.stringContaining("Cancellation terms"),
+      "the description shown on this page",
+    );
+  });
+
+  it("uses the stated exit and keeps the sentence it came from", async () => {
+    vi.mocked(resolveExitTerm).mockResolvedValue({
+      exit: { kind: "none" },
+      note: null,
+      quoted: { source: "the description shown on this page", span: "cancel any time, no fee" },
+    });
+
+    const { body } = await get("mattress-financed");
+
+    expect(body.translation.exit).toEqual(money(0));
+    expect(body.quotedExit).toEqual({
+      source: "the description shown on this page",
+      span: "cancel any time, no fee",
+    });
+    expect(body.exitNote).toBeNull();
+  });
+
+  it("passes the reason a figure is absent through to the screen", async () => {
+    vi.mocked(resolveExitTerm).mockResolvedValue({
+      exit: { kind: "unknown" },
+      note: "The seller's published terms do not say what it costs to leave.",
+      quoted: null,
+    });
+
+    const { body } = await get("mattress-financed");
+
+    expect(body.translation.exit).toBeNull();
+    expect(body.exitNote).toBe("The seller's published terms do not say what it costs to leave.");
+  });
+
+  it("gives a failed exit read a reason, and does not call the wording degraded", async () => {
+    vi.mocked(resolveExitTerm).mockRejectedValue(new Error("unexpected"));
+
+    const { status, body } = await get("mattress-financed");
+
+    expect(status).toBe(200);
+    expect(body.translation.exit).toBeNull();
+    expect(body.exitNote).toBe(EXIT_UNREADABLE_NOTE);
+    // The figures are still computed from terms that were read; only the third
+    // line is missing, and the summary is unaffected.
+    expect(body.degraded).toBe(false);
   });
 });
