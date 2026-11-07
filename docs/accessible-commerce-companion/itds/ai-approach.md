@@ -110,3 +110,33 @@ framework with a provider registry, and an in-process gateway: both are real opt
 provider coverage we already have for free, at the cost of a dependency and an abstraction to debug
 inside a five-day build. Documented here so the choice is a decision rather than an omission.
 
+---
+
+**Revision — 2026-11-07 (4): the transport belongs to the reference client, not to us.**
+
+Revision (3) said the SDK question was secondary and shipped raw `fetch`. That was the wrong call
+on a smaller point. The reasoning rested on a false premise: that a request is the only thing an
+SDK adds. It adds the things that are *not* in the request — retrying 408, 409, 429 and 5xx with
+exponential backoff that honours `Retry-After`, a timeout that actually fires, and an error
+taxonomy that separates "slow down" from "the model does not exist".
+
+Hand-written code has none of that, and cannot get it without becoming the thing it was avoiding.
+Worse, the compatibility literature we read for this revision is uniform on one practice: the way a
+server's OpenAI compatibility is *tested* is by running the official client against it, because
+"compatible" means "works with the reference client". Writing our own transport means we are the
+only party to our own definition.
+
+**What changed.** `openai` is now the one runtime dependency besides Next and React.
+`lib/ai/client.ts` still owns the configuration, the forced tool choice, the "no provider
+configured" case and the refusal of prose; it no longer owns sockets, backoff or status parsing.
+The callers and the guards are untouched — which is the point of the seam, and how this revision
+could be a twenty-line change rather than a rewrite.
+
+**What has not been delegated, and will not be.** No SDK or framework supplies this product's actual
+invariant: that a quotation is a literal substring of the document, that fields come from a closed
+list, that a figure in prose is discarded, that nothing is computed from an unverified span. The
+closest framework feature — schema-constrained object generation — *trusts* the schema, and the
+compatibility record says why that is not enough: Anthropic's layer ignores `strict`, Ollama ignores
+`tool_choice`, and a non-conforming answer can arrive with HTTP 200. The transport can be borrowed.
+The verification cannot.
+

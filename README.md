@@ -78,6 +78,12 @@ than writing prose. That format is common enough that the app runs unchanged aga
 model, an aggregator, a proxy, or a daemon on the same laptop; switching is three environment
 variables. `lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
 
+The endpoint is reached with the **reference client for that format**, not with hand-rolled HTTP:
+retries with backoff, `Retry-After`, timeouts and an error taxonomy are the client's job, and
+reimplementing them would be the one piece of this stack with nothing of ours in it. What the
+client does *not* do is decide what the model may say — the schemas, the guards and the span
+verification are ours, and they hold whatever the transport does.
+
 If your provider does not serve that shape, put a gateway in front of it — that is the ordinary
 deployment pattern, and it costs one line of configuration:
 

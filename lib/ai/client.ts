@@ -1,19 +1,22 @@
+import OpenAI from "openai";
+
 /**
  * One way to ask a model a question, over one interchange format.
  *
- * The app speaks the chat-completions dialect with function calling, because it
- * is the format nearly every provider serves — a hosted model, an aggregator, a
- * proxy, or a daemon running on this laptop. No vendor is named here: the
- * endpoint, the key and the model id all come from the environment, so switching
- * provider is a configuration change and never a code change.
+ * The app speaks the chat-completions dialect with function calling — the format
+ * nearly every provider serves, and the one the reference client speaks. Nothing
+ * here names a vendor: the endpoint, the key and the model id come from the
+ * environment, so switching provider is a configuration change.
  *
- * Two rules this file keeps, so nothing above it has to think about them:
- * - A tool call is the only accepted answer. Prose is a failure, not a reading.
- * - Nothing about a document or a shopper is logged or embedded in an error.
+ * The SDK is used for what an SDK is for — retries, timeouts, error classes —
+ * and for nothing else. It does not decide what the model may say; that is the
+ * callers' schemas and `guard.ts`, and the server checks the answers itself.
  */
 
 const TIMEOUT_MS = 45_000;
-const USER_AGENT = "accessible-commerce-companion/0.1.0";
+
+/** Retried by the client on 408, 409, 429 and 5xx, with backoff that honours `Retry-After`. */
+const MAX_RETRIES = 2;
 
 export type ToolDefinition = {
   name: string;
@@ -49,83 +52,78 @@ export function isModelConfigured(): boolean {
   return aiModel().length > 0 && aiBaseUrl().length > 0;
 }
 
-function describe(error: unknown): string {
-  if (error instanceof Error) return `${error.name}: ${error.message}`;
-  return "unknown error";
+function createClient(): OpenAI {
+  const apiKey = process.env.AI_API_KEY?.trim();
+
+  return new OpenAI({
+    // A server on this machine asks for a key and never checks it.
+    apiKey: apiKey || "not-needed",
+    baseURL: aiBaseUrl(),
+    timeout: TIMEOUT_MS,
+    maxRetries: MAX_RETRIES,
+  });
+}
+
+/**
+ * The status is all we report. An error body can echo the request, and the
+ * request contains someone's document.
+ */
+function describeFailure(error: unknown): string {
+  const status = (error as { status?: unknown }).status;
+  if (typeof status === "number") return `The model endpoint answered ${status}.`;
+
+  const name = error instanceof Error ? error.name : "";
+  if (name === "APIConnectionTimeoutError") return "The model did not answer in time.";
+
+  return "The model endpoint could not be reached.";
 }
 
 /**
  * Asks the model to fill in one tool call, and hands back whatever arguments it
  * produced. The caller owns the schema, the checks and the consequences; this
- * function owns the wire, the timeout and the "did it actually answer" question.
+ * function owns the wire, the retries and the "did it actually answer" question.
  */
 export async function callTool(request: ToolRequest): Promise<unknown> {
   if (!isModelConfigured()) {
     throw new ModelError("No model is configured for this deployment.");
   }
 
-  const apiKey = process.env.AI_API_KEY?.trim();
-
-  let response: Response;
+  let completion;
   try {
-    response = await fetch(`${aiBaseUrl()}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "user-agent": USER_AGENT,
-        ...(apiKey ? { authorization: `Bearer ${apiKey}` } : {}),
-      },
-      body: JSON.stringify({
-        model: aiModel(),
-        messages: [
-          { role: "system", content: request.system },
-          { role: "user", content: request.user },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: request.tool.name,
-              description: request.tool.description,
-              parameters: request.tool.parameters,
-            },
+    completion = await createClient().chat.completions.create({
+      model: aiModel(),
+      messages: [
+        { role: "system", content: request.system },
+        { role: "user", content: request.user },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: request.tool.name,
+            description: request.tool.description,
+            parameters: request.tool.parameters,
           },
-        ],
-        // The model has no other permitted answer. A provider that ignores this
-        // returns prose, which fails the check below rather than becoming data.
-        tool_choice: { type: "function", function: { name: request.tool.name } },
-      }),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+        },
+      ],
+      // The model has no other permitted answer. A provider that ignores this
+      // returns prose, which fails the check below rather than becoming data.
+      tool_choice: { type: "function", function: { name: request.tool.name } },
     });
   } catch (error) {
-    throw new ModelError(`The model endpoint could not be reached (${describe(error)}).`);
+    throw new ModelError(describeFailure(error));
   }
 
-  if (!response.ok) {
-    throw new ModelError(`The model endpoint answered ${response.status}.`);
-  }
+  const toolCall = completion.choices?.[0]?.message?.tool_calls?.[0];
+  const args = toolCall?.type === "function" ? toolCall.function.arguments : undefined;
 
-  const payload = (await response.json().catch(() => null)) as {
-    choices?: Array<{ message?: { tool_calls?: Array<{ function?: { name?: string; arguments?: unknown } }> } }>;
-  } | null;
-
-  const call = payload?.choices?.[0]?.message?.tool_calls?.[0];
-  if (!call) {
+  if (!args) {
     throw new ModelError("The model returned words instead of a tool call.");
   }
 
-  const args = call.function?.arguments;
-
-  // The format says a JSON string; some providers hand back the object already.
-  if (typeof args === "string") {
-    try {
-      return JSON.parse(args) as unknown;
-    } catch {
-      throw new ModelError("The model's tool call was not valid JSON.");
-    }
+  try {
+    return JSON.parse(args) as unknown;
+  } catch {
+    throw new ModelError("The model's tool call was not valid JSON.");
   }
-
-  if (args && typeof args === "object") return args;
-
-  throw new ModelError("The model's tool call carried no arguments.");
 }
