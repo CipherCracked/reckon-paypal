@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { CommitmentRecord } from "@/components/CommitmentRecord";
 import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
@@ -16,6 +17,11 @@ function manageUrl(): string {
   return `https://www.${sandbox ? "sandbox." : ""}paypal.com/myaccount/autopay/`;
 }
 
+/**
+ * The end of the journey (IPD 15). A payment that PayPal has not confirmed has
+ * no record to show, and a confirmed one is the last screen rather than a stop:
+ * it offers the two ways on, and no way back into the payment.
+ */
 export default async function ReceiptPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
   const { slug } = await searchParams;
@@ -23,9 +29,10 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
 
   if (!product) {
     return (
-      <main className="page">
+      <div className="page">
         <p className="notice">This record is for a purchase this store does not recognise.</p>
-      </main>
+        <RecordExits />
+      </div>
     );
   }
 
@@ -44,23 +51,25 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
     }
   } catch {
     return (
-      <main className="page">
+      <div className="page">
         <p className="notice">
           We cannot confirm this payment with PayPal right now, so there is no record to show.
           Nothing has been charged twice — check PayPal directly if you are unsure.
         </p>
-      </main>
+        <RecordExits />
+      </div>
     );
   }
 
   if (!isSettled(status)) {
     return (
-      <main className="page">
+      <div className="page">
         <p className="notice">
           PayPal has not confirmed this payment, so there is nothing to record yet. Nothing has
           been taken.
         </p>
-      </main>
+        <RecordExits />
+      </div>
     );
   }
 
@@ -68,7 +77,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   const nextDate = nextBillingTime ? new Date(nextBillingTime) : null;
 
   return (
-    <main className="page">
+    <div className="page">
       <CommitmentRecord
         productName={product.name}
         reference={orderId}
@@ -85,6 +94,22 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
             : null
         }
       />
-    </main>
+
+      <RecordExits />
+    </div>
+  );
+}
+
+/** Two ways on, and never a third one back into a payment (IPD 15). */
+function RecordExits() {
+  return (
+    <nav className="record-exits" aria-label="Where to go next">
+      <Link className="button-secondary" href="/read">
+        Read another document
+      </Link>
+      <Link className="button-secondary" href="/shop">
+        Browse the shop
+      </Link>
+    </nav>
   );
 }

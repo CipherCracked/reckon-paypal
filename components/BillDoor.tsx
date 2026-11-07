@@ -14,6 +14,9 @@ type BillDoorProps = {
  * A bill only exists once the biller has issued it, so this door asks PayPal
  * for one and takes the shopper to the screen it produces (IPD 12). Nothing is
  * kept here; the bill page re-reads it from PayPal.
+ *
+ * It reads as a link rather than a button because it is a way in, not an action
+ * on this page (IPD 14).
  */
 export function BillDoor({ slug, name, biller, amount }: BillDoorProps) {
   const router = useRouter();
@@ -46,14 +49,17 @@ export function BillDoor({ slug, name, biller, amount }: BillDoorProps) {
   }
 
   return (
-    <li className="product-card" data-door="bill">
-      <p className="door-label">A bill</p>
-      <h2>{name}</h2>
-      <p>
-        From {biller}. Owed by a date, not bought today — {amount}.
-      </p>
-      <button type="button" className="button-secondary" onClick={open} disabled={status === "working"}>
-        {status === "working" ? "Asking PayPal for the bill…" : "Open this bill"}
+    <li className="door" data-door="bill">
+      <span className="door-label">A bill you were sent</span>
+      <button
+        type="button"
+        className="door-link"
+        onClick={open}
+        disabled={status === "working"}
+      >
+        {status === "working"
+          ? "Asking PayPal for the bill…"
+          : `${name} from ${biller} — ${amount}`}
       </button>
       {status === "failed" ? (
         <p className="notice" role="alert">

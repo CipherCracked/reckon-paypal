@@ -56,11 +56,11 @@ describe("consent screen", () => {
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
   });
 
-  it("says where the screen belongs in production, so the demo store is not mistaken for the product", async () => {
+  it("states its own status once, at the point of payment, and says where the check belongs", async () => {
     render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
 
     expect(
-      await screen.findByText(/this is a demonstration store\. the check needs only the amount/i),
+      await screen.findByText(/payments run in paypal's sandbox and the products in this shop are an example/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/it fits any checkout, not just this one/i),

@@ -1,13 +1,63 @@
+/* One visual language across eight routes (ITD 15).
+   Every colour, size and space below is a token, so two screens cannot drift
+   apart by accident — and the dark theme is a second block, not a second
+   stylesheet. Contrast is checked against WCAG 2.2 AA in both themes. */
+
 :root {
-  --background: #fbfaf8;
-  --surface: #ffffff;
-  --foreground: #1c1b19;
-  --muted: #56534e;
-  --border: #d8d4cd;
+  /* Surfaces and ink */
+  --page: #fbfaf8;
+  --raised: #ffffff;
+  --sunken: #f2efea;
+  --ink: #1c1b19;
+  --ink-muted: #56534e;
+  --line: #d8d4cd;
+  --line-strong: #b0a99e;
   --accent: #1c1b19;
-  --accent-foreground: #ffffff;
+  --accent-ink: #ffffff;
   --focus: #1a4fd6;
+  --success: #1f7a4d;
+
+  /* Space — a 4px base */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2.5rem;
+  --space-7: 4rem;
+
+  /* Type — a 1.25 modular scale from the body size */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-body: 1.0625rem;
+  --text-md: 1.3125rem;
+  --text-lg: 1.625rem;
+  --text-xl: 2rem;
+  --text-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+
   --radius: 12px;
+  --radius-sm: 8px;
+  --measure: 46rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --page: #14130f;
+    --raised: #1d1b17;
+    --sunken: #26231e;
+    --ink: #f4f1eb;
+    --ink-muted: #beb7ab;
+    --line: #3a352d;
+    --line-strong: #554e43;
+    --accent: #f4f1eb;
+    --accent-ink: #14130f;
+    --focus: #9db8ff;
+    --success: #8ad9ae;
+  }
+
+  html {
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -23,13 +73,16 @@ body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--page);
+  color: var(--ink);
   font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
     sans-serif;
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
 }
 
 h1,
@@ -40,11 +93,15 @@ h3 {
 }
 
 h1 {
-  font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  font-size: var(--text-2xl);
 }
 
 h2 {
-  font-size: 1.25rem;
+  font-size: var(--text-md);
+}
+
+h3 {
+  font-size: var(--text-body);
 }
 
 a {
@@ -57,48 +114,179 @@ a {
   border-radius: 4px;
 }
 
-.page {
-  max-width: 46rem;
+/* The frame (ITD 13). It names the service on every screen, gives the keyboard
+   one way past it, and leaves the page itself unchanged. */
+
+.skip-link {
+  position: absolute;
+  left: var(--space-4);
+  top: -4rem;
+  z-index: 10;
+  padding: var(--space-3) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: var(--space-4);
+}
+
+.site-header,
+.site-footer {
+  width: 100%;
+  max-width: var(--measure);
   margin: 0 auto;
-  padding: 2.5rem 1.25rem 4rem;
+  padding-inline: 1.25rem;
+}
+
+.site-header {
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-1);
+}
+
+.service-name {
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+
+.service-name:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+main {
+  flex: 1;
+}
+
+.site-footer {
+  padding-top: var(--space-5);
+  padding-bottom: var(--space-6);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  border-top: 1px solid var(--line);
+}
+
+.page {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: var(--space-6) 1.25rem var(--space-7);
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
+  gap: var(--space-6);
 }
 
 .page-header {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
+}
+
+/* A back link names where it goes, because "Back" from a consent screen could
+   mean three different places (IPD 15). */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.back-link::before {
+  content: "\2190";
+  font-weight: 400;
 }
 
 .eyebrow {
-  font-size: 0.8125rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .lede {
-  color: var(--muted);
+  color: var(--ink-muted);
   max-width: 34rem;
 }
+
+/* The entry works one commitment in full, then offers the other ways in at a
+   second rank (IPD 14). Nothing here is a card: the figures are the object. */
+
+.entry-worked {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.entry-worked > .commitment {
+  border-color: var(--line-strong);
+}
+
+.entry-action {
+  align-self: flex-start;
+}
+
+.second-rank {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4) var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
+.second-rank .door {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-width: 16rem;
+}
+
+.door-label {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+}
+
+a.door-link,
+button.door-link {
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* The shop is a list, and it is allowed to be plain. */
 
 .product-list {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .product-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .product-card h2 a {
@@ -107,7 +295,7 @@ a {
 }
 
 .product-card p {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .button-primary,
@@ -117,7 +305,7 @@ a {
   justify-content: center;
   min-height: 44px;
   min-width: 44px;
-  padding: 0.75rem 1.25rem;
+  padding: var(--space-3) var(--space-5);
   border-radius: 999px;
   border: 1px solid var(--accent);
   font: inherit;
@@ -129,13 +317,13 @@ a {
 
 .button-primary {
   background: var(--accent);
-  color: var(--accent-foreground);
+  color: var(--accent-ink);
 }
 
 .button-secondary {
   background: transparent;
-  color: var(--foreground);
-  border-color: var(--border);
+  color: var(--ink);
+  border-color: var(--line);
 }
 
 .button-primary:disabled,
@@ -157,48 +345,48 @@ a {
 }
 
 .commitment {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-5);
 }
 
 .commitment h2,
 .commitment h3 {
-  font-size: 1.0625rem;
+  font-size: var(--text-body);
 }
 
 .commitment-summary {
-  font-size: 1.125rem;
+  font-size: var(--text-body);
 }
 
 .commitment-figures {
   list-style: none;
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .commitment-figure {
-  background: var(--background);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .commitment-figure dt {
-  color: var(--muted);
-  font-size: 0.9375rem;
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
 }
 
 .commitment-figure dd {
-  font-size: 1.625rem;
+  font-size: var(--text-lg);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
@@ -206,39 +394,39 @@ a {
 
 .commitment-hint {
   display: block;
-  margin-top: 0.25rem;
-  font-size: 0.875rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   font-weight: 400;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 /* The arithmetic sits under the figure it explains, quieter than the figure —
    it is there to be checked, not to compete. */
 .commitment-arithmetic {
   display: block;
-  margin-top: 0.25rem;
-  font-size: 0.9375rem;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
   font-weight: 400;
-  color: var(--muted);
+  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 
 .commitment-breakdown {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .commitment-breakdown div {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px dashed var(--border);
+  gap: var(--space-4);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px dashed var(--line);
 }
 
 .commitment-breakdown dt {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .commitment-breakdown dd {
@@ -246,29 +434,29 @@ a {
 }
 
 .commitment-source {
-  font-size: 0.875rem;
-  color: var(--muted);
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
 }
 
 .recognition {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--raised);
+  border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 1.5rem;
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .recognition h2 {
-  font-size: 0.8125rem;
+  font-size: var(--text-xs);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .recognition-amount {
-  font-size: 2rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -276,20 +464,20 @@ a {
 .recognition-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .recognition-skipped {
-  color: var(--muted);
+  color: var(--ink-muted);
 }
 
 .button-quiet {
   min-height: 44px;
-  padding: 0.75rem 1rem;
+  padding: var(--space-3) var(--space-4);
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--muted);
+  color: var(--ink-muted);
   font: inherit;
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -299,33 +487,33 @@ a {
 .consent {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-5);
 }
 
 .consent-amount {
-  font-size: 2.25rem;
+  font-size: var(--text-xl);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
 
 .consent-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   flex-wrap: wrap;
 }
 
 .notice {
   border-left: 4px solid var(--accent);
-  background: var(--surface);
+  background: var(--raised);
   border-radius: 4px;
-  padding: 0.875rem 1rem;
+  padding: var(--space-3) var(--space-4);
 }
 
 .notice-success {
-  border-left: 4px solid #1f7a4d;
-  background: var(--surface);
+  border-left: 4px solid var(--success);
+  background: var(--raised);
   border-radius: 4px;
-  padding: 0.875rem 1rem;
+  padding: var(--space-3) var(--space-4);
 }
 
 /* The record the shopper keeps: printable, and readable as a document rather
@@ -333,32 +521,48 @@ a {
 .receipt {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-5);
 }
 
 .receipt-actions {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   margin: 0;
   padding-left: 1.25rem;
   line-height: 1.6;
 }
 
+/* The record is the end of the journey: two ways on, and no way back into a
+   payment (IPD 15). */
+.record-exits {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
+}
+
 @media print {
-  .receipt-actions {
+  .receipt-actions,
+  .record-exits,
+  .site-header,
+  .site-footer,
+  .back-link,
+  .skip-link {
     display: none;
   }
 }
 
 /* Reader-owned adjustments (IPD 10). The default is already the accessible
-   rendering; these only change its scale and pace. */
+   rendering; these only change its scale and pace. They multiply the token
+   scale rather than replace it, so hierarchy survives enlargement. */
 .consent[data-text-scale="large"] {
-  font-size: 1.125rem;
+  font-size: calc(var(--text-body) * 1.06);
 }
 
 .consent[data-text-scale="larger"] {
-  font-size: 1.25rem;
+  font-size: calc(var(--text-body) * 1.18);
 }
 
 /* Held back from sight, not from the page: a reader who navigates by list
@@ -377,29 +581,29 @@ a {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .display-controls {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 1rem;
+  gap: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
   margin: 0;
 }
 
 .display-controls legend {
-  padding: 0 0.5rem;
-  color: var(--muted);
-  font-size: 0.9375rem;
+  padding: 0 var(--space-2);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
 }
 
 .display-control {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .display-control-label {
@@ -409,28 +613,115 @@ a {
 .display-control-options {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .display-control-check {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
   min-height: 44px;
 }
 
 .chip {
   min-height: 44px;
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--line);
   border-radius: 999px;
-  background: var(--background);
+  background: var(--page);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
 }
 
 .chip-active {
-  border-color: var(--foreground);
+  border-color: var(--ink);
   border-width: 2px;
+}
+
+/* Screens that are not part of the paid path keep their reading measure. */
+.read-sources dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.read-sources dt {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.read-sources q {
+  quotes: none;
+}
+
+.candidate-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.candidate-list li {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.read-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.read-form label {
+  font-weight: 600;
+}
+
+.read-form textarea {
+  width: 100%;
+  font: inherit;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--ink);
+}
+
+.field-hint {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.scope-note {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.pay-link {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.pay-link a {
+  font-weight: 600;
+}
+
+.pay-link-note {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.product-screen {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.product-copy {
+  color: var(--ink-muted);
+  max-width: 34rem;
 }

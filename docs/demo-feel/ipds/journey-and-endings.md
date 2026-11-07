@@ -68,3 +68,4 @@ The ending matters as much as the entry. The record already exists, already refu
 - `router.back()` is not used anywhere: it can leave the app, and after the PayPal redirect it returns to a document that no longer exists. Back targets are explicit per page (ITD 13, ITD 14).
 - The receipt route stays read-only and continues to refuse an unsettled payment; this IPD changes where it sits in the journey, not what it will render.
 - Where the document door's "start again" sits today is the model for every ending in the product: an action, not a dead stop.
+- Decision 2 has one declared exception, found in implementation: **the record carries no back link.** It is the end of the journey, its two ways on are explicit (decision 5), and any back link from it would point into the payment state the shopper must not re-enter. Every other screen declares a target.

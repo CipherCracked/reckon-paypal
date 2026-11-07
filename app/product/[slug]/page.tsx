@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/BackLink";
 import { ProductScreen } from "@/components/ProductScreen";
 import { findProduct } from "@/lib/catalog/products";
 
@@ -13,12 +14,14 @@ export default async function ProductPage({ params }: PageProps) {
   }
 
   return (
-    <main className="page">
+    <div className="page">
+      <BackLink href="/">Back to the ways in</BackLink>
+
       <ProductScreen
         slug={product.slug}
         name={product.name}
         description={product.description}
       />
-    </main>
+    </div>
   );
 }

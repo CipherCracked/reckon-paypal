@@ -1,9 +1,12 @@
 import Link from "next/link";
+import { BackLink } from "@/components/BackLink";
 import { products } from "@/lib/catalog/products";
 
 export default function Shop() {
   return (
-    <main className="page">
+    <div className="page">
+      <BackLink href="/">Back to the ways in</BackLink>
+
       <header className="page-header">
         <p className="eyebrow">The shop</p>
         <h1>Choose something to buy</h1>
@@ -26,6 +29,6 @@ export default function Shop() {
           </li>
         ))}
       </ul>
-    </main>
+    </div>
   );
 }

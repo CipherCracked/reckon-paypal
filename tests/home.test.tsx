@@ -19,29 +19,53 @@ describe("the front door", () => {
     expect(screen.getByText(/what it costs to leave/i)).toBeInTheDocument();
   });
 
-  it("offers the ways money is asked of a person, not a catalogue of products", () => {
+  it("works one commitment in full before anything is clicked", () => {
+    render(<Home />);
+
+    expect(screen.getByText("Across the term")).toBeInTheDocument();
+    expect(screen.getByText("$144.00")).toBeInTheDocument();
+    expect(screen.getByText("Cost to leave")).toBeInTheDocument();
+    expect(screen.getByText("Charged today")).toBeInTheDocument();
+    expect(screen.getAllByText("$12.00").length).toBeGreaterThan(0);
+  });
+
+  it("says where the worked example's figures came from, and that nothing was created", () => {
+    render(<Home />);
+
+    expect(
+      screen.getByText(/computed from the terms shown here\./i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/nothing has been charged and nothing has been created at paypal/i),
+    ).toBeInTheDocument();
+  });
+
+  it("performs no request and creates nothing when it renders", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<Home />);
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(push).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("offers one primary action into the journey", () => {
+    render(<Home />);
+
+    const primary = screen.getByRole("link", { name: /continue with this commitment/i });
+    expect(primary).toHaveAttribute("href", "/product/coffee-subscription");
+  });
+
+  it("keeps the other ways in at a second rank, not as four equal cards", () => {
     render(<Home />);
 
     const doors = screen.getAllByRole("listitem");
-    expect(doors).toHaveLength(4);
-    expect(screen.getByText("A purchase")).toBeInTheDocument();
-    expect(screen.getByText("A subscription")).toBeInTheDocument();
-    expect(screen.getByText("A bill")).toBeInTheDocument();
-    expect(screen.getByText("A document")).toBeInTheDocument();
-  });
-
-  it("reaches the reader from the document door", () => {
-    render(<Home />);
-
-    expect(screen.getByRole("link", { name: /read a document/i })).toHaveAttribute("href", "/read");
-  });
-
-  it("puts a real figure on each door", () => {
-    render(<Home />);
-
-    expect(screen.getByText(/\$58\.95 today/)).toBeInTheDocument();
-    expect(screen.getByText(/\$144\.00 across the term/)).toBeInTheDocument();
-    expect(screen.getByText(/\$260\.00/)).toBeInTheDocument();
+    expect(doors).toHaveLength(3);
+    expect(screen.getByText("A purchase you pay once")).toBeInTheDocument();
+    expect(screen.getByText("A bill you were sent")).toBeInTheDocument();
+    expect(screen.getByText("A document someone sent you")).toBeInTheDocument();
   });
 
   it("keeps the shop reachable without making it the product", () => {
@@ -60,7 +84,7 @@ describe("the bill door", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     render(<Home />);
-    await userEvent.click(screen.getByRole("button", { name: /open this bill/i }));
+    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/paypal/invoices",
@@ -80,7 +104,7 @@ describe("the bill door", () => {
     );
 
     render(<Home />);
-    await userEvent.click(screen.getByRole("button", { name: /open this bill/i }));
+    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
     expect(screen.getByRole("alert")).toHaveTextContent(/INVALID_REQUEST/);
     expect(push).not.toHaveBeenCalled();

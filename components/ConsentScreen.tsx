@@ -280,9 +280,13 @@ export function ConsentScreen({
         />
       )}
 
+      {/* The product states its own status exactly once, here, where money is
+          involved (IPD 14). Everything else about what is and is not real
+          belongs to the judge brief outside the product (IPD 16). */}
       <p className="commitment-source">
-        This is a demonstration store. The check needs only the amount being charged and the terms
-        the seller publishes, so it fits any checkout, not just this one.
+        Payments run in PayPal&apos;s sandbox and the products in this shop are an example. The
+        check needs only the amount being charged and the terms the seller publishes, so it fits
+        any checkout, not just this one.
       </p>
 
       <div className="consent-actions">

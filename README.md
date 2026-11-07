@@ -6,10 +6,15 @@ and what it costs to leave — before a shopper agrees to it.
 Built for the PayPal AI Hackathon 2026. PayPal supplies the money; a language model supplies only
 the words.
 
+**The one-page brief** — what it does, where the numbers come from, what it refuses, and what is
+not real — is [`docs/judge-brief.html`](docs/judge-brief.html). Open it directly; it has no build
+step and no dependencies.
+
 ## What it does
 
-The home page is the question, not a catalogue: **what are you being asked to pay?** Four real
-commitments sit beside each other, each printing its own figure before anything is clicked.
+The home page is the question, not a catalogue: **what are you being asked to pay?** It works one
+real commitment through in full — the three figures and the arithmetic behind them, before anything
+is clicked — and offers the other three ways in at a second rank.
 
 | Door | Commitment shape | What clicking it does |
 |---|---|---|

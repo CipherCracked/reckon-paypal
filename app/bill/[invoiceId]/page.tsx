@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { BackLink } from "@/components/BackLink";
 import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
@@ -40,7 +41,9 @@ export default async function BillPage({ params, searchParams }: PageProps) {
     record = await retrieveInvoice(invoiceId);
   } catch {
     return (
-      <main className="page">
+      <div className="page">
+        <BackLink href="/">Back to the ways in</BackLink>
+
         <header className="page-header">
           <p className="eyebrow">Bill from {bill.biller}</p>
           <h1>{bill.name}</h1>
@@ -58,7 +61,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           // PayPal did not answer, so there is no due date to state either.
           schedule="No due date stated — PayPal could not be reached to read this bill."
         />
-      </main>
+      </div>
     );
   }
 
@@ -69,7 +72,9 @@ export default async function BillPage({ params, searchParams }: PageProps) {
   const dueDate = formatDueDate(record.dueDate);
 
   return (
-    <main className="page">
+    <div className="page">
+      <BackLink href="/">Back to the ways in</BackLink>
+
       <header className="page-header">
         <p className="eyebrow">Bill from {bill.biller}</p>
         <h1>{bill.name}</h1>
@@ -111,6 +116,6 @@ export default async function BillPage({ params, searchParams }: PageProps) {
         This page is built from the bill PayPal holds each time it opens. Nothing about you is
         stored here.
       </p>
-    </main>
+    </div>
   );
 }

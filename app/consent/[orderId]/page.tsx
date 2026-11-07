@@ -1,4 +1,6 @@
+import { BackLink } from "@/components/BackLink";
 import { ConsentScreen } from "@/components/ConsentScreen";
+import { findProduct } from "@/lib/catalog/products";
 
 type PageProps = {
   params: Promise<{ orderId: string }>;
@@ -8,13 +10,19 @@ type PageProps = {
 export default async function ConsentPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
   const { slug, approved, cancelled, token } = await searchParams;
+  const product = slug ? findProduct(slug) : undefined;
 
   return (
-    <main className="page">
+    <div className="page">
+      <BackLink href={product ? `/product/${product.slug}` : "/"}>
+        {product ? `Back to ${product.name}` : "Back to the ways in"}
+      </BackLink>
+
       <header className="page-header">
         <p className="eyebrow">Before you agree</p>
         <h1>Check what you are taking on</h1>
       </header>
+
       <ConsentScreen
         orderId={token ?? orderId}
         slug={slug ?? ""}
@@ -23,6 +31,6 @@ export default async function ConsentPage({ params, searchParams }: PageProps) {
         returning={approved === "1"}
         cancelled={cancelled === "1"}
       />
-    </main>
+    </div>
   );
 }

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accessible Commerce Companion — the brief</title>
+<style>
+  :root {
+    --page: #fbfaf8;
+    --raised: #ffffff;
+    --ink: #1c1b19;
+    --muted: #56534e;
+    --line: #d8d4cd;
+    --accent: #1c1b19;
+    --good: #1f7a4d;
+    --measure: 44rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #14130f;
+      --raised: #1d1b17;
+      --ink: #f4f1eb;
+      --muted: #beb7ab;
+      --line: #3a352d;
+      --accent: #f4f1eb;
+      --good: #8ad9ae;
+    }
+    html { color-scheme: dark; }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--page);
+    color: var(--ink);
+    font: 1.0625rem/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 3rem 1.25rem 5rem;
+  }
+  main { max-width: var(--measure); margin: 0 auto; display: flex; flex-direction: column; gap: 2.75rem; }
+  .eyebrow { font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  h1 { font-size: clamp(1.75rem, 1.2rem + 2vw, 2.5rem); line-height: 1.15; letter-spacing: -.01em; margin-top: .5rem; }
+  h2 { font-size: 1.3125rem; line-height: 1.3; }
+  p { max-width: 38rem; }
+  .lede { color: var(--muted); margin-top: .75rem; }
+  section { display: flex; flex-direction: column; gap: .75rem; border-top: 1px solid var(--line); padding-top: 1.75rem; }
+  .num { font-size: .8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  ul { padding-left: 1.25rem; display: flex; flex-direction: column; gap: .5rem; }
+  code { font-size: .9375rem; background: var(--raised); border: 1px solid var(--line); border-radius: 4px; padding: .05rem .35rem; }
+  .figures { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+  .figures th, .figures td { text-align: left; padding: .6rem .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .figures th { font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+  .figures td.amount { text-align: right; font-variant-numeric: tabular-nums; font-weight: 700; white-space: nowrap; }
+  .not { color: var(--muted); }
+  .closing { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 1.5rem; }
+  footer { max-width: var(--measure); margin: 3rem auto 0; color: var(--muted); font-size: .9375rem; }
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <p class="eyebrow">Judge brief — PayPal AI Hackathon 2026</p>
+    <h1>Every payment asks you to work something out. This product works it out first.</h1>
+    <p class="lede">
+      A shopper is asked to agree to an amount they cannot check: what it totals, what leaving
+      costs, what leaves their account today. The companion states all three before the agreement,
+      from the seller's own terms and PayPal's own objects — never from an estimate.
+    </p>
+  </header>
+
+  <section>
+    <p class="num">01</p>
+    <h2>What this does</h2>
+    <p>
+      It reads a commitment — a purchase, a subscription, a bill, or a document someone was sent —
+      and shows three figures in the order the decision needs them, with the arithmetic that
+      produced each one:
+    </p>
+    <table class="figures">
+      <thead>
+        <tr><th>Figure</th><th>Why it is first</th><th style="text-align:right">Example</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Across the term</td><td>The number nobody can compute from a page that advertises $12 a bag.</td><td class="amount">$144.00</td></tr>
+        <tr><td>Cost to leave</td><td>What the agreement costs to undo, or that the seller never said.</td><td class="amount">$0.00</td></tr>
+        <tr><td>Charged today</td><td>The one figure a merchant already makes unmissable.</td><td class="amount">$12.00</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <p class="num">02</p>
+    <h2>Where the numbers come from</h2>
+    <ul>
+      <li><strong>PayPal</strong> supplies the money: Orders v2 for a purchase, Subscriptions and Billing Plans for a repeating one, Invoicing v2 for a bill. The amount and its breakdown are read back from PayPal, not restated by the page.</li>
+      <li><strong>The seller's published terms</strong> supply the rest: term length, instalments, fees. The arithmetic is ordinary code with tests, not a guess by a model.</li>
+      <li><strong>For a pasted document</strong>, a language model is asked for the sentences that state the terms and nothing else. Every sentence it returns is checked as a literal substring of the text. A figure whose sentence cannot be found is discarded, and the screen says how many were discarded.</li>
+      <li><strong>A guard</strong> drops any figure the code did not derive. The model never produces a number; it produces a quotation.</li>
+    </ul>
+  </section>
+
+  <section>
+    <p class="num">03</p>
+    <h2>What it will not do</h2>
+    <ul>
+      <li><strong>No advice.</strong> No verdict, no score, no “you should”. It states the commitment and stops.</li>
+      <li><strong>No estimate.</strong> A term the seller never published is shown as <em>Not stated</em>, with what that means. It is never filled in.</li>
+      <li><strong>No profile.</strong> Nothing is inferred about the reader. The only adjustment is the reader's own: text size, one figure at a time, read-aloud.</li>
+      <li><strong>No storage.</strong> Nothing about a person is written down. The record after payment is the only copy, and it lives in the shopper's hands.</li>
+      <li><strong>No client-side money.</strong> PayPal objects are created on the server, when the shopper acts — never when a page renders.</li>
+    </ul>
+  </section>
+
+  <section>
+    <p class="num">04</p>
+    <h2>What is not real</h2>
+    <ul>
+      <li><strong>Payments run in PayPal's sandbox.</strong> No real money moves.</li>
+      <li><strong>The catalogue is an example.</strong> Three products and two bills, written to contain the ambiguity the product exists to remove — a discount price, a monthly term, an instalment plan, a biller who leaves out what happens after a missed payment.</li>
+      <li><strong>No user testing.</strong> The design rests on published research into cognitive accessibility and checkout behaviour, not on participants. The claim is that the commitment is legible, not that outcomes improved.</li>
+      <li><strong>The model's wording is not guaranteed.</strong> If it is unavailable, the figures remain — computed from PayPal — and the screen says the plain-language summary is missing.</li>
+    </ul>
+  </section>
+
+  <section class="closing">
+    <h2>How to check it</h2>
+    <p>
+      The repository's README carries the setup and the sandbox credentials. The fastest honest
+      check is the document path: paste any payment terms and compare each figure to the sentence
+      printed underneath it.
+    </p>
+    <p class="not">
+      Screenshots and the demo video live in the submission itself. Nothing on this page is a
+      mockup; every description above names behaviour the code performs.
+    </p>
+  </section>
+
+</main>
+<footer>
+  Accessible Commerce Companion — built for the PayPal AI Hackathon, 2026.
+</footer>
+</body>
+</html>

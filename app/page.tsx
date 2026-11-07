@@ -1,89 +1,105 @@
 import Link from "next/link";
 import { BillDoor } from "@/components/BillDoor";
+import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
 import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
+import { presentFigures } from "@/lib/commitment/present";
+import { describeSchedule } from "@/lib/commitment/schedule";
 import { formatMoney } from "@/lib/money";
 
-function amountFor(slug: string, which: "today" | "acrossTerm"): string {
-  const product = findProduct(slug);
-  if (!product) return "";
-  return formatMoney(computeCommitment(product.terms)[which]);
-}
-
+/**
+ * The entry states the product, then proves it on one real commitment before
+ * asking anything (IPD 14).
+ *
+ * Everything below is computed on the server from the catalogue: no model key
+ * is needed for the figures to appear, and no PayPal object is created by a
+ * visit (ITD 16). The figures come from terms, not from a payment, and the
+ * screen says so rather than borrowing the consent screen's stronger claim.
+ */
 export default function Home() {
-  const headphones = findProduct("noise-cancelling-headphones");
-  const coffee = findProduct("coffee-subscription");
+  const subscription = findProduct("coffee-subscription");
+  const purchase = findProduct("noise-cancelling-headphones");
   const bill = findBill("clinic-visit");
 
+  if (!subscription || !purchase) {
+    // The catalogue is a constant in this repository, so this cannot happen in
+    // a working build; failing loudly beats a blank front door.
+    throw new Error("The entry needs the subscription and the purchase in the catalogue.");
+  }
+
+  const translation = computeCommitment(subscription.terms);
+  const figures = presentFigures(subscription.terms, translation);
+
   return (
-    <main className="page">
+    <div className="page">
       <header className="page-header">
-        <p className="eyebrow">Before you agree</p>
         <h1>Every payment asks you to work something out</h1>
         <p className="lede">
-          This shows the answer before you agree to it: what it costs across the whole commitment,
-          what it costs to leave, and what is charged today. Same three figures, whichever way the
-          money is asked of you.
+          This works it out before you agree: what it costs across the whole commitment, what it
+          costs to leave, and what is charged today. Same three figures, whichever way the money is
+          asked of you.
         </p>
       </header>
 
-      <ul className="product-list" aria-label="Ways money can be asked of you">
-        <li className="product-card" data-door="purchase">
-          <p className="door-label">A purchase</p>
-          <h2>{headphones?.name ?? "A purchase"}</h2>
-          <p>Paid once — {amountFor("noise-cancelling-headphones", "today")} today.</p>
-          <Link
-            className="button-secondary"
-            href="/product/noise-cancelling-headphones"
-          >
-            See the full commitment
-          </Link>
-        </li>
+      <section className="entry-worked" aria-labelledby="worked-heading">
+        <h2 id="worked-heading">
+          {subscription.name}
+          <span className="visually-hidden"> — worked through</span>
+        </h2>
 
-        <li className="product-card" data-door="subscription">
-          <p className="door-label">A subscription</p>
-          <h2>{coffee?.name ?? "A subscription"}</h2>
-          <p>
-            Every month for a year — {amountFor("coffee-subscription", "acrossTerm")} across the
-            term.
-          </p>
-          <Link className="button-secondary" href="/product/coffee-subscription">
-            See the full commitment
-          </Link>
-        </li>
+        <CommitmentView
+          figures={figures}
+          breakdown={translation.breakdown}
+          labels={{ item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" }}
+          summary={subscription.description}
+          schedule={describeSchedule(subscription.terms)}
+          sourceNote="Computed from the terms shown here. Nothing has been charged and nothing has been created at PayPal."
+        />
 
-        {bill ? (
-          <BillDoor
-            slug={bill.slug}
-            name={bill.name}
-            biller={bill.biller}
-            amount={formatMoney(computeCommitment(bill.terms).today)}
-          />
-        ) : null}
+        <Link
+          className="button-primary entry-action"
+          href={`/product/${subscription.slug}`}
+        >
+          Continue with this commitment
+        </Link>
+      </section>
 
-        <li className="product-card" data-door="document">
-          <p className="door-label">A document</p>
-          <h2>Something someone sent you</h2>
-          <p>
-            A bill, a contract, a payment plan. Paste the text and read the same three figures — each
-            one beside the sentence it came from.
-          </p>
-          <Link className="button-secondary" href="/read">
-            Read a document
-          </Link>
-        </li>
-      </ul>
+      <section aria-labelledby="other-heading">
+        <h2 id="other-heading" className="eyebrow">
+          The other ways money is asked of you
+        </h2>
 
-      <p className="door-more">
+        <ul className="second-rank">
+          <li className="door" data-door="purchase">
+            <span className="door-label">A purchase you pay once</span>
+            <Link className="door-link" href={`/product/${purchase.slug}`}>
+              {purchase.name} — {formatMoney(computeCommitment(purchase.terms).today)} today
+            </Link>
+          </li>
+
+          {bill ? (
+            <BillDoor
+              slug={bill.slug}
+              name={bill.name}
+              biller={bill.biller}
+              amount={formatMoney(computeCommitment(bill.terms).today)}
+            />
+          ) : null}
+
+          <li className="door" data-door="document">
+            <span className="door-label">A document someone sent you</span>
+            <Link className="door-link" href="/read">
+              Paste it and read the same three figures
+            </Link>
+          </li>
+        </ul>
+      </section>
+
+      <p className="scope-note">
         <Link href="/shop">Or browse the shop</Link> — three products, each a different shape of
         commitment.
       </p>
-
-      <p className="scope-note">
-        The shop is one of these, not the product. Every screen you reach is built from what PayPal
-        holds at that moment — nothing about you is stored.
-      </p>
-    </main>
+    </div>
   );
 }

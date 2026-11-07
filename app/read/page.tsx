@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { BackLink } from "@/components/BackLink";
 import { CommitmentView } from "@/components/CommitmentView";
 import { DisplayControls } from "@/components/DisplayControls";
 import { ReadAloud } from "@/components/ReadAloud";
@@ -108,7 +109,9 @@ export default function ReadPage() {
   }
 
   return (
-    <main className="page">
+    <div className="page">
+      <BackLink href="/">Back to the ways in</BackLink>
+
       <header className="page-header">
         <p className="eyebrow">A document</p>
         <h1>Paste what someone sent you</h1>
@@ -167,7 +170,7 @@ export default function ReadPage() {
           )}
         </div>
       ) : null}
-    </main>
+    </div>
   );
 }
 
