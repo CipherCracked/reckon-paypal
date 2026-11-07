@@ -46,10 +46,17 @@ export async function POST(request: Request) {
       figures: presentFigures(bill.terms, translation),
     });
   } catch (error) {
+    // Logged because a 502 with no reason makes every failure look the same: a
+    // bad credential, a rejected date and a drifted amount all reach here.
+    console.warn(
+      "POST /api/paypal/invoices — invoice failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
+
     const message =
       error instanceof PayPalError
         ? `PayPal could not create this bill (${error.issue ?? error.status}).`
-        : "PayPal could not create this bill.";
+        : `PayPal could not create this bill.`;
 
     return Response.json({ error: message }, { status: 502 });
   }

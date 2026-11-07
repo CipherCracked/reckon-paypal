@@ -78,12 +78,39 @@ describe("createInvoice", () => {
 
     const createBody = JSON.parse(fetchMock.mock.calls[1][1].body as string);
     expect(createBody.detail.currency_code).toBe("USD");
-    expect(createBody.detail.invoice_number).toBe("clinic-visit");
+    // Unique per issuance — PayPal refuses a repeated invoice number.
+    expect(createBody.detail.invoice_number).toBe(
+      `clinic-visit-${new Date("2026-11-07T12:00:00Z").getTime().toString(36)}`,
+    );
     expect(createBody.detail.payment_term).toEqual({
       term_type: "DUE_ON_DATE_SPECIFIED",
       due_date: "2026-11-21",
     });
     expect(createBody.items[0].unit_amount).toEqual({ currency_code: "USD", value: "260.00" });
+  });
+
+  it("gives two issuances of the same bill different numbers", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse)
+      .mockResolvedValueOnce(created("260.00"))
+      .mockResolvedValueOnce(sent([{ href: "https://x", rel: "payer-view" }]))
+      .mockResolvedValueOnce(created("260.00"))
+      .mockResolvedValueOnce(sent([{ href: "https://x", rel: "payer-view" }]));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createInvoice(draft, new Date("2026-11-07T12:00:00Z"));
+    await createInvoice(draft, new Date("2026-11-07T12:00:01Z"));
+
+    const numbers = fetchMock.mock.calls
+      .filter((call) => {
+        const url = String(call[0]);
+        return url.endsWith("/v2/invoicing/invoices") && String(call[1]?.method) === "POST";
+      })
+      .map((call) => JSON.parse(call[1].body as string).detail.invoice_number);
+
+    expect(numbers).toHaveLength(2);
+    expect(new Set(numbers).size).toBe(2);
   });
 
   it("refuses a bill whose amount PayPal did not agree to", async () => {
@@ -104,13 +131,36 @@ describe("createInvoice", () => {
         .fn()
         .mockResolvedValueOnce(tokenResponse)
         .mockResolvedValueOnce(created("260.00"))
-        .mockResolvedValueOnce(sent([])),
+        .mockResolvedValueOnce(sent([]))
+        // The bill is read back before it is called unpayable, and this one has no link either.
+        .mockResolvedValueOnce(created("260.00", "2026-11-21", [])),
     );
 
     const invoice = await createInvoice(draft);
 
     expect(invoice.payerUrl).toBeNull();
     expect(invoice.missingLink).toBe(true);
+  });
+
+  it("finds the payer's page by reading the bill back when sending did not return it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(tokenResponse)
+        .mockResolvedValueOnce(created("260.00"))
+        .mockResolvedValueOnce(sent([]))
+        .mockResolvedValueOnce(
+          created("260.00", "2026-11-21", [
+            { href: "https://www.sandbox.paypal.com/invoice/p/#INV2TEST", rel: "payer-view" },
+          ]),
+        ),
+    );
+
+    const invoice = await createInvoice(draft);
+
+    expect(invoice.payerUrl).toBe("https://www.sandbox.paypal.com/invoice/p/#INV2TEST");
+    expect(invoice.missingLink).toBe(false);
   });
 
   it("falls back to the draft's own link when sending returns none", async () => {

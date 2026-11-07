@@ -1,5 +1,6 @@
 import { formatMoney, fromDecimalString, type Currency, type Money } from "@/lib/money";
-import { paypalRequest, toPayPalAmount } from "./client";
+import { paypalRequest, paypalRequestDetailed, toPayPalAmount } from "./client";
+import { retrieveInvoice } from "./retrieve";
 
 export type InvoiceDraft = {
   /** Our own reference (a slug), echoed by PayPal so a bill can be traced back. */
@@ -65,13 +66,18 @@ export async function createInvoice(
   now: Date = new Date(),
 ): Promise<PayPalInvoice> {
   const dueDate = addDays(now, draft.dueInDays);
+  // PayPal refuses a second invoice with a number it has already seen, so the
+  // reference is unique per issuance — otherwise the same bill could only ever
+  // be opened once, and every later attempt would fail with no way to tell why.
+  // The slug stays at the front so a bill can still be traced back to its terms.
+  const invoiceNumber = `${draft.reference}-${now.getTime().toString(36)}`;
 
-  const created = await paypalRequest<InvoiceJson>("/v2/invoicing/invoices", {
+  const created = await paypalRequestDetailed<InvoiceJson>("/v2/invoicing/invoices", {
     method: "POST",
     body: JSON.stringify({
       detail: {
         currency_code: draft.amount.currency,
-        invoice_number: draft.reference,
+        invoice_number: invoiceNumber,
         payment_term: { term_type: "DUE_ON_DATE_SPECIFIED", due_date: dueDate },
         note: draft.description,
       },
@@ -85,31 +91,52 @@ export async function createInvoice(
     }),
   });
 
-  if (!created.id) {
+  // PayPal answers this create with 201 and the new invoice's URL in `Location`,
+  // sometimes with a body too. Reading only the body lost every bill we created.
+  const createdId = created.body.id ?? idFromLocation(created.location);
+  if (!createdId) {
     throw new Error("PayPal did not return an invoice id.");
   }
 
-  const returned = parseAmount(created.amount);
+  const returned = parseAmount(created.body.amount);
   if (returned && returned.minor !== draft.amount.minor) {
     throw new Error(
       `PayPal returned ${formatMoney(returned)}, but ${formatMoney(draft.amount)} was requested.`,
     );
   }
 
-  const sent = await paypalRequest<InvoiceJson>(`/v2/invoicing/invoices/${created.id}/send`, {
+  const sent = await paypalRequest<InvoiceJson>(`/v2/invoicing/invoices/${createdId}/send`, {
     method: "POST",
     body: JSON.stringify({ send_to_recipient: false }),
   });
 
-  const payerUrl =
-    findLink(sent.links, "payer-view", "self") ?? findLink(created.links, "payer-view", "self");
+  let payerUrl =
+    findLink(sent.links, "payer-view", "self") ??
+    findLink(created.body.links, "payer-view", "self");
+
+  // Sending an invoice does not return the payer's page in every case, but the
+  // bill does have one — so the bill is read back before it is called unpayable.
+  if (!payerUrl) {
+    try {
+      payerUrl = (await retrieveInvoice(createdId)).payerUrl;
+    } catch {
+      // A bill that cannot be read back still exists; `missingLink` says so.
+    }
+  }
 
   return {
-    id: created.id,
-    status: sent.status ?? created.status ?? "SENT",
+    id: createdId,
+    status: sent.status ?? created.body.status ?? "SENT",
     amount: returned ?? draft.amount,
-    dueDate: created.detail?.payment_term?.due_date ?? dueDate,
+    dueDate: created.body.detail?.payment_term?.due_date ?? dueDate,
     payerUrl,
     missingLink: payerUrl === null,
   };
+}
+
+/** `…/v2/invoicing/invoices/INV2-XXXX` → `INV2-XXXX`. */
+function idFromLocation(location: string | null): string | null {
+  if (!location) return null;
+  const last = location.split("/").filter(Boolean).pop();
+  return last && last !== "invoices" ? decodeURIComponent(last) : null;
 }

@@ -73,6 +73,19 @@ npm run dev
 Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Only
 `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is exposed to the browser; every other value stays server-side.
 
+**Two environment variables are inherited, not read.** If `ANTHROPIC_BASE_URL` or
+`ANTHROPIC_API_KEY` are already set in your shell — some CLI coding tools set them — they take
+precedence over `.env.local`, and the app will call a different endpoint with a different key. Start
+the server with them cleared if the model calls fail with `401 Invalid bearer token`:
+
+```bash
+env -u ANTHROPIC_BASE_URL -u ANTHROPIC_API_KEY npm run dev
+```
+
+**The app works with no key at all**, and says so: the consent screen keeps every computed figure and
+flags only the missing wording, and `/read` lists the amounts found in your document while stating
+that none of them were interpreted.
+
 ## Commands
 
 ```bash

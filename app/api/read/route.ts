@@ -73,6 +73,13 @@ export async function POST(request: Request) {
   try {
     reading = await readDocumentWithModel({ text });
   } catch (error) {
+    // The reason is logged without the document: a failure that cannot be
+    // diagnosed turns every bad key into "this document could not be read".
+    console.warn(
+      "POST /api/read — reading failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
+
     const notice =
       error instanceof UnreadableDocumentError && error.message.startsWith("No model")
         ? "No model is configured here, so nothing was interpreted. These are the amounts written in your document, exactly as they appear."

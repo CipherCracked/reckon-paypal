@@ -70,7 +70,16 @@ function firstIssue(body: unknown): string | undefined {
   return Array.isArray(details) ? details[0]?.issue : undefined;
 }
 
-export async function paypalRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+export type PayPalResponse<T> = {
+  body: T;
+  /** Where PayPal created the resource. Invoicing answers 201 with a body-less create. */
+  location: string | null;
+};
+
+export async function paypalRequestDetailed<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<PayPalResponse<T>> {
   const token = await getAccessToken();
 
   const response = await fetch(`${paypalBaseUrl()}${path}`, {
@@ -95,7 +104,15 @@ export async function paypalRequest<T>(path: string, init: RequestInit = {}): Pr
     );
   }
 
-  return body as T;
+  return {
+    body: body as T,
+    // A stubbed response in a test has no headers; a real one always does.
+    location: response.headers?.get?.("location") ?? null,
+  };
+}
+
+export async function paypalRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+  return (await paypalRequestDetailed<T>(path, init)).body;
 }
 
 export function toPayPalAmount(amount: Money): { currency_code: Currency; value: string } {
