@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/read/route";
-import { UnreadableDocumentError, readDocumentWithModel } from "@/lib/ai/read-document";
+import { readDocumentWithModel } from "@/lib/ai/read-document";
+import { ModelError } from "@/lib/ai/client";
 
 vi.mock("@/lib/ai/read-document", () => {
   class MockUnreadableDocumentError extends Error {}
@@ -96,9 +97,9 @@ describe("POST /api/read", () => {
     expect(JSON.stringify(body)).not.toContain("999");
   });
 
-  it("falls back to candidate mode when the model is unavailable, and says nothing was interpreted", async () => {
+  it("falls back to candidate mode when no model is configured, and says so plainly", async () => {
     vi.mocked(readDocumentWithModel).mockRejectedValue(
-      new UnreadableDocumentError("No model is configured for this deployment."),
+      new ModelError("No model is configured for this deployment."),
     );
 
     const response = await POST(request({ text: document }));
@@ -107,7 +108,19 @@ describe("POST /api/read", () => {
     expect(response.status).toBe(200);
     expect(body.mode).toBe("candidates");
     expect(body.notice).toMatch(/Nothing was interpreted|nothing was interpreted/i);
+    expect(body.notice).toMatch(/No model is configured/);
     expect(body.candidates.amounts).toEqual(["$35.00", "$10.00", "$25.00"]);
+  });
+
+  it("falls back to candidate mode when the model is unavailable, without blaming the setup", async () => {
+    vi.mocked(readDocumentWithModel).mockRejectedValue(new Error("The model endpoint answered 503."));
+
+    const response = await POST(request({ text: document }));
+    const body = await response.json();
+
+    expect(body.mode).toBe("candidates");
+    expect(body.notice).not.toMatch(/No model is configured/);
+    expect(body.notice).toMatch(/nothing was guessed/i);
   });
 
   it("refuses a fragment too short to be a document", async () => {

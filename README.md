@@ -60,7 +60,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists the five variables:
+`env.example` lists the eight variables:
 
 | Variable | Purpose |
 |---|---|
@@ -68,32 +68,36 @@ npm run dev
 | `PAYPAL_CLIENT_SECRET` | PayPal REST app secret (server-side) |
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` for sandbox |
 | `NEXT_PUBLIC_PAYPAL_CLIENT_ID` | Public client id for the JS SDK |
-| `ANTHROPIC_API_KEY` | Key for term extraction |
+| `AI_BASE_URL` | Base URL of an endpoint serving `POST {AI_BASE_URL}/chat/completions` |
+| `AI_MODEL` | Model id to ask for |
+| `AI_API_KEY` | Bearer token; leave blank for a model on this machine |
+
+**No provider is named anywhere in the code.** The one thing the endpoint must support is function
+calling with a forced tool choice — the whole design rests on the model pointing at spans rather
+than writing prose. That format is common enough that the app runs unchanged against a hosted
+model, an aggregator, a proxy, or a daemon on the same laptop; switching is three environment
+variables. `lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
 
 Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Only
 `NEXT_PUBLIC_PAYPAL_CLIENT_ID` is exposed to the browser; every other value stays server-side.
 
-**Two environment variables are inherited, not read.** If `ANTHROPIC_BASE_URL` or
-`ANTHROPIC_API_KEY` are already set in your shell — some CLI coding tools set them — they take
-precedence over `.env.local`, and the app will call a different endpoint with a different key. Start
-the server with them cleared if the model calls fail with `401 Invalid bearer token`:
-
-```bash
-env -u ANTHROPIC_BASE_URL -u ANTHROPIC_API_KEY npm run dev
-```
-
-**The app works with no key at all**, and says so: the consent screen keeps every computed figure and
+**The app works with no model at all**, and says so: the consent screen keeps every computed figure and
 flags only the missing wording, and `/read` lists the amounts found in your document while stating
 that none of them were interpreted.
 
 ## Commands
 
 ```bash
-npm run dev         # start on http://localhost:3000
-npm test            # run the Vitest suite
-npm run comparison  # regenerate docs/accessible-commerce-companion/comparison.md
-npm run build       # production build
+npm run dev          # start on http://localhost:3000
+npm test             # run the Vitest suite
+npm run check-model  # send one sentence to the configured model and report what came back
+npm run comparison   # regenerate docs/accessible-commerce-companion/comparison.md
+npm run build        # production build
 ```
+
+`npm run check-model` is the fastest way to tell a bad key from a bad document: it prints the
+endpoint and model id, sends a two-line bill, and says whether a tool call came back. It never
+prints the key.
 
 `npm run comparison` rewrites [`docs/accessible-commerce-companion/comparison.md`](docs/accessible-commerce-companion/comparison.md)
 from the same functions the consent screen runs — the seller's copy beside the figures the shopper

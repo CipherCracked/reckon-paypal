@@ -1,39 +1,41 @@
-import Anthropic from "@anthropic-ai/sdk";
 import type { CommitmentShape } from "@/lib/commitment/types";
+import { callTool } from "./client";
 import { assertNoMoney } from "./guard";
 import type { ExtractedTerms } from "./types";
 
-const MODEL = "claude-sonnet-5-5";
 const TOOL_NAME = "record_purchase_terms";
 
 /**
  * The schema has no field that could hold a figure. The model records the
  * shape of the commitment and the words to label it with; every number the
  * shopper sees comes from the deterministic computation instead.
+ *
+ * No property is required: a model that cannot tell is meant to leave the
+ * field out, and the coercion below turns "left out" into "not stated".
  */
 const TERMS_TOOL = {
   name: TOOL_NAME,
   description:
     "Record the structure of a purchase commitment from merchant copy. Record no monetary figures.",
-  input_schema: {
-    type: "object" as const,
+  parameters: {
+    type: "object",
     properties: {
       shape: {
-        type: ["string", "null"],
-        enum: ["one_time", "recurring", "financed", null],
+        type: "string",
+        enum: ["one_time", "recurring", "financed"],
         description: "How the commitment is paid: once, repeatedly, or in instalments.",
       },
       recurrenceCount: {
-        type: ["integer", "null"],
+        type: "integer",
         description: "How many charges the term contains, when the commitment repeats.",
       },
       recurrencePeriod: {
-        type: ["string", "null"],
-        enum: ["month", "year", null],
+        type: "string",
+        enum: ["month", "year"],
         description: "The period each repeating charge covers.",
       },
       cancellationWindowDays: {
-        type: ["integer", "null"],
+        type: "integer",
         description: "Days allowed to cancel, when the copy states one.",
       },
       exitFeeKnown: {
@@ -56,17 +58,9 @@ const TERMS_TOOL = {
           "One plain sentence describing what the shopper is taking on. Never a monetary figure.",
       },
     },
-    required: [
-      "shape",
-      "recurrenceCount",
-      "recurrencePeriod",
-      "cancellationWindowDays",
-      "exitFeeKnown",
-      "labels",
-      "summary",
-    ],
+    required: [],
   },
-};
+} as const;
 
 const SYSTEM_PROMPT = [
   "You read merchant product copy and record the structure of the commitment.",
@@ -115,32 +109,13 @@ function toExtractedTerms(input: unknown): ExtractedTerms {
  * terms could not be read.
  */
 export async function extractTerms(input: { productText: string }): Promise<ExtractedTerms> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 1024,
+  const answer = await callTool({
     system: SYSTEM_PROMPT,
-    tools: [TERMS_TOOL],
-    tool_choice: { type: "tool", name: TOOL_NAME },
-    messages: [
-      {
-        role: "user",
-        content: `Merchant product copy follows. Record its commitment structure.\n\n${input.productText}`,
-      },
-    ],
+    user: `Merchant product copy follows. Record its commitment structure.\n\n${input.productText}`,
+    tool: TERMS_TOOL,
   });
 
-  const toolUse = response.content.find(
-    (block): block is Extract<(typeof response.content)[number], { type: "tool_use" }> =>
-      block.type === "tool_use",
-  );
-
-  if (!toolUse) {
-    throw new Error("The model did not return commitment terms.");
-  }
-
-  const terms = toExtractedTerms(toolUse.input);
+  const terms = toExtractedTerms(answer);
   assertNoMoney(terms);
   return terms;
 }

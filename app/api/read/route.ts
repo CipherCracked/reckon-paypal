@@ -1,4 +1,5 @@
-import { UnreadableDocumentError, readDocumentWithModel } from "@/lib/ai/read-document";
+import { readDocumentWithModel } from "@/lib/ai/read-document";
+import { ModelError } from "@/lib/ai/client";
 import { findCandidates } from "@/lib/document/candidates";
 import { containsQuote, normaliseText } from "@/lib/document/normalise";
 import { presentReading, readQuotations } from "@/lib/document/read";
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
     );
 
     const notice =
-      error instanceof UnreadableDocumentError && error.message.startsWith("No model")
+      error instanceof ModelError && error.message.startsWith("No model")
         ? "No model is configured here, so nothing was interpreted. These are the amounts written in your document, exactly as they appear."
         : "The document could not be interpreted, so nothing was guessed. These are the amounts written in it, exactly as they appear.";
 

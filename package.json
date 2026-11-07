@@ -8,10 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "comparison": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/comparison.ts"
+    "comparison": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/comparison.ts",
+    "check-model": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local scripts/check-model.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^1.5.0",
     "next": "15.5.29",
     "react": "19.1.0",
     "react-dom": "19.1.0"

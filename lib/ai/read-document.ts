@@ -1,8 +1,7 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { callTool } from "./client";
 import { findMoneyLike } from "./guard";
 import { FIELD_DESCRIPTIONS, FIELDS, isFieldName, type FieldName } from "@/lib/document/fields";
 
-const MODEL = "claude-sonnet-5-5";
 const TOOL_NAME = "record_quotations";
 
 /**
@@ -14,8 +13,8 @@ const QUOTATIONS_TOOL = {
   name: TOOL_NAME,
   description:
     "Point at the sentences in a document that state a commitment. Copy spans verbatim; never compute, summarise or restate a figure.",
-  input_schema: {
-    type: "object" as const,
+  parameters: {
+    type: "object",
     properties: {
       quotations: {
         type: "array",
@@ -43,9 +42,9 @@ const QUOTATIONS_TOOL = {
           "One plain sentence describing what the document asks of the reader. Never a monetary figure.",
       },
     },
-    required: ["quotations", "summary"],
+    required: ["quotations"],
   },
-};
+} as const;
 
 const FIELD_GUIDE = (Object.keys(FIELD_DESCRIPTIONS) as FieldName[])
   .map((field) => `- ${field}: ${FIELD_DESCRIPTIONS[field]}`)
@@ -96,49 +95,30 @@ function toQuotations(input: unknown): ModelQuotation[] {
 }
 
 /**
- * Throws on every failure — no tool result, no key, a network error, or a
- * summary carrying a figure. The caller falls back to candidate mode, which
- * states in its own words that nothing was interpreted.
+ * Throws when there is nothing verifiable to work with — no tool result, no
+ * provider, a network error. An unusable summary does not throw: the spans are
+ * the part that carries weight, and the server checks them itself.
  */
 export async function readDocumentWithModel(input: { text: string }): Promise<DocumentReading> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    throw new UnreadableDocumentError("No model is configured for this deployment.");
-  }
-
-  const client = new Anthropic({ apiKey });
-  const response = await client.messages.create({
-    model: MODEL,
-    max_tokens: 1024,
+  const answer = await callTool({
     system: SYSTEM_PROMPT,
-    tools: [QUOTATIONS_TOOL],
-    tool_choice: { type: "tool", name: TOOL_NAME },
-    messages: [
-      {
-        role: "user",
-        content: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${input.text}\nDOCUMENT>>>`,
-      },
-    ],
+    user: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${input.text}\nDOCUMENT>>>`,
+    tool: QUOTATIONS_TOOL,
   });
 
-  const toolUse = response.content.find(
-    (block): block is Extract<(typeof response.content)[number], { type: "tool_use" }> =>
-      block.type === "tool_use",
-  );
-
-  if (!toolUse) {
-    throw new UnreadableDocumentError("The model did not return any spans.");
+  const quotations = toQuotations(answer);
+  if (quotations.length === 0) {
+    throw new UnreadableDocumentError("The model's spans named no field we read.");
   }
 
-  const raw = (toolUse.input ?? {}) as Record<string, unknown>;
-  const summary = typeof raw.summary === "string" ? raw.summary : "";
+  const raw = (answer ?? {}) as Record<string, unknown>;
+  const candidateSummary = typeof raw.summary === "string" ? raw.summary.trim() : "";
 
-  // The guard is unchanged: a figure in the wrapping words was invented, because
-  // the model was never asked for one.
-  const money = findMoneyLike(summary);
-  if (money) {
-    throw new UnreadableDocumentError("The model's summary contained a figure, so it was discarded.");
-  }
+  // A figure in the wrapping words was invented, because the model was never
+  // asked for one. Drop the wrapper, not the reading: the quotations are about
+  // to be checked against the document itself, and a discarded span costs the
+  // reader nothing while a discarded document costs them the whole reading.
+  const summary = findMoneyLike(candidateSummary) ? "" : candidateSummary;
 
-  return { quotations: toQuotations(toolUse.input), summary };
+  return { quotations, summary };
 }
