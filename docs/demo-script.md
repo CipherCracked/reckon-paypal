@@ -46,11 +46,12 @@ what the page says when the biller published no cancellation terms: **Not stated
 
 ### 4. The numbers are ours (≈20s) — stay on the bill page
 
-Point at the arithmetic line and at the notice that the figures come from PayPal's copy.
+Point at the arithmetic line and at the provenance note, which says the figures are the **biller's**
+arithmetic with the total agreeing with PayPal's copy — not that PayPal supplied them.
 
-> "PayPal is the source of the amount. Every sum is computed by our code in whole cents. If PayPal's
-> copy and the published terms ever disagreed, this page would show no figures at all rather than a
-> wrong one."
+> "Every sum here is computed by our code in whole cents, from what the biller published. PayPal is
+> consulted for one thing on this screen: whether its copy of the bill agrees. If it disagreed, this
+> page would show no figures at all rather than a wrong one."
 
 ### 5. A document the shopper brings (≈45s) — `/read`, paste `sample-document.md`
 

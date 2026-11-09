@@ -33,6 +33,9 @@ export async function POST(request: Request) {
       // commitment view multiplies by the term.
       amount: addMoney(product.terms.itemPrice, product.terms.tax),
       interval: product.terms.recurrence.period === "month" ? "MONTH" : "YEAR",
+      // The same count the screen prints. A plan that never ends would outlive
+      // the term the shopper agreed to.
+      totalCycles: product.terms.recurrence.count,
     });
 
     const subscription = await createSubscription(planId);

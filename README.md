@@ -52,9 +52,11 @@ PayPal holds the agreement.
 
 ## Why the numbers can be trusted
 
-1. **PayPal is the source of the amount.** The screen projects what the processor holds; it never
-   invents a total. Where a number comes from PayPal's copy and our terms disagree, the figure is
-   withheld rather than shown.
+1. **Every figure names the source it was read from.** Where a product has a PayPal id configured,
+   the price and the term come from the billing plan PayPal holds; otherwise they come from the
+   published terms in `lib/catalog/` — and the screen says which, on the screen, every time. A
+   source that cannot answer (no plan, no fixed price, no end to the term) is a fallback with its
+   own label, never a blank and never a guess.
 2. **Our code does every calculation**, in integer minor units (`lib/money.ts`,
    `lib/commitment/compute.ts`). No floating point touches money and no model is asked for a figure.
 3. **The model may only quote.** Its tool schemas have no monetary field. For a pasted document,
@@ -67,9 +69,10 @@ PayPal holds the agreement.
 
 ## How it is built
 
-- **PayPal** is the source of truth for amounts. Orders API v2 creates and captures one-time and
-  financed purchases; Subscriptions v1 with Billing Plans carries the recurring product; Invoicing v2
-  creates and sends the bill. All three are exercised in the sandbox.
+- **PayPal** is where the money moves, and the only place it moves. Orders API v2 creates and
+  captures one-time and financed purchases; Subscriptions v1 with Billing Plans carries the
+  recurring product and, where a product id is configured, holds the price and term the screen
+  reads; Invoicing v2 creates and sends the bill. All three are exercised in the sandbox.
 - **Deterministic code** does the arithmetic and the projection to the screen.
 - **The language model** reads merchant copy and documents and returns labels, one plain summary,
   or quotations. `lib/ai/guard.ts` rejects any figure-shaped string it writes.
@@ -88,7 +91,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists the six variables:
+`env.example` lists nine variables — six required, three optional:
 
 | Variable | Purpose |
 |---|---|
@@ -98,16 +101,27 @@ npm run dev
 | `AI_BASE_URL` | Base URL of an endpoint serving `POST {AI_BASE_URL}/chat/completions` |
 | `AI_MODEL` | Model id to ask for |
 | `AI_API_KEY` | Bearer token; leave blank for a model on this machine |
+| `PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION` | Optional. A catalog product id whose billing plan holds the price and term |
+| `PAYPAL_PRODUCT_HEADPHONES` | Optional. Same, for the one-time product |
+| `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
+
+The three `PAYPAL_PRODUCT_*` ids are empty by default, and the app never creates them: that is a
+deliberate step at PayPal. With them set, the consent screen reads the price and term from the plan
+and says so; with them empty it computes from the published terms in `lib/catalog/` and says that
+instead.
 
 Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Every value
 above stays server-side — the app loads no PayPal client script into the page, so there is no public
 key to expose.
 
-**No provider is named anywhere in the code.** The one thing the endpoint must support is function
-calling with a forced tool choice — the whole design rests on the model pointing at spans rather
-than writing prose. That format is common enough that the app runs unchanged against a hosted model,
-an aggregator, a proxy, or a daemon on the same laptop; switching is three environment variables.
-`AI_BASE_URL` must include the provider's version path as it publishes it (for example
+**No provider is named in the configuration.** The endpoint, the key and the model id are three
+environment variables and nothing else. One dependency in `package.json` carries a vendor's name on
+its import (`lib/ai/client.ts`), and it is there for what an SDK is for — retries, timeouts, error
+classes — not for deciding what the model may say. The one thing the endpoint must support is
+function calling with a forced tool choice — the whole design rests on the model pointing at spans
+rather than writing prose. That format is common enough that the app runs unchanged against a hosted
+model, an aggregator, a proxy, or a daemon on the same laptop; switching is three environment
+variables. `AI_BASE_URL` must include the provider's version path as it publishes it (for example
 `https://your-provider.example/v1`); the app appends only `/chat/completions`.
 `lib/ai/client.ts` is the only file that knows what a request looks like on the wire.
 

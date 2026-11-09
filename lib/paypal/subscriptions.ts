@@ -6,12 +6,20 @@ export type EnsurePlanInput = {
   planId: string;
   amount: Money;
   interval: "MONTH" | "YEAR";
+  /** How many charges the term has. The plan must end when the screen says it does. */
+  totalCycles: number;
 };
 
 export type Subscription = { id: string; status: string; approveUrl: string | null };
 
-function planName(planId: string): string {
-  return `Commitment demo plan ${planId}`;
+/**
+ * The plan's name carries its cycle count. A PayPal plan is immutable once
+ * created, and a repeat run resolves to the plan it made last time by name —
+ * so a name that did not state the term would keep handing back an open-ended
+ * plan after the screen had learned to promise an end.
+ */
+function planName(planId: string, totalCycles: number): string {
+  return `Commitment demo plan ${planId} ${totalCycles}x`;
 }
 
 function isDuplicate(error: unknown): boolean {
@@ -27,13 +35,17 @@ function isDuplicate(error: unknown): boolean {
  * only way back to the existing plan is to list the product's plans and match
  * by name.
  */
-async function findExistingPlan(productId: string, planId: string): Promise<string> {
+async function findExistingPlan(
+  productId: string,
+  planId: string,
+  totalCycles: number,
+): Promise<string> {
   const list = await paypalRequest<{ plans?: Array<{ id: string; name?: string }> }>(
     `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20&page=1`,
     { method: "GET" },
   );
 
-  const match = list.plans?.find((plan) => plan.name === planName(planId));
+  const match = list.plans?.find((plan) => plan.name === planName(planId, totalCycles));
   if (!match) {
     throw new Error("PayPal reports the plan exists, but it could not be found.");
   }
@@ -47,6 +59,14 @@ async function findExistingPlan(productId: string, planId: string): Promise<stri
  * resolves to the existing plan instead of failing.
  */
 export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
+  // A plan with no end charges until it is cancelled. The screen says how many
+  // payments there are, so the plan has to say the same thing.
+  if (!Number.isInteger(input.totalCycles) || input.totalCycles < 1) {
+    throw new RangeError(
+      `A plan needs a whole number of charges, received ${input.totalCycles}`,
+    );
+  }
+
   const product = await paypalRequest<{ id: string }>("/v1/catalogs/products", {
     method: "POST",
     body: JSON.stringify({
@@ -65,14 +85,14 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
       method: "POST",
       body: JSON.stringify({
         product_id: product.id,
-        name: planName(input.planId),
+        name: planName(input.planId, input.totalCycles),
         status: "ACTIVE",
         billing_cycles: [
           {
             frequency: { interval_unit: input.interval, interval_count: 1 },
             tenure_type: "REGULAR",
             sequence: 1,
-            total_cycles: 0,
+            total_cycles: input.totalCycles,
             pricing_scheme: { fixed_price: toPayPalAmount(input.amount) },
           },
         ],
@@ -86,7 +106,7 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     return plan.id;
   } catch (error) {
     if (isDuplicate(error)) {
-      return findExistingPlan(product.id, input.planId);
+      return findExistingPlan(product.id, input.planId, input.totalCycles);
     }
     throw error;
   }

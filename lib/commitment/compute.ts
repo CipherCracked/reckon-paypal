@@ -25,7 +25,6 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
     tax: terms.tax,
   };
   const exit = translateExit(terms.exit);
-
   switch (terms.shape) {
     case "one_time": {
       const today = addMoney(addMoney(terms.itemPrice, terms.shipping), terms.tax);
@@ -64,6 +63,19 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
         multiplyMoney(installment.amount, installment.count),
         installment.fee,
       );
+
+      // The three rows explain *today's* charge on every other shape, so they
+      // have to here too: today is one instalment and nothing else. The cash
+      // price is not a part of it, and the origination fee is in the term total
+      // rather than in what leaves the account now. Showing the cash price here
+      // put $1,200.00 under a $1,320.00 total and a $105.00 charge — three
+      // numbers a reader could not reconcile, on a screen that exists to let
+      // them be reconciled.
+      const breakdown = {
+        item: installment.amount,
+        shipping: zeroMoney(),
+        tax: zeroMoney(),
+      };
 
       return { today, acrossTerm, exit, breakdown };
     }

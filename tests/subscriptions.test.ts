@@ -34,6 +34,7 @@ const planInput = {
   planId: "P-DEMO-COFFEE-MONTHLY",
   amount: money(1200),
   interval: "MONTH" as const,
+  totalCycles: 12,
 };
 
 describe("ensurePlan", () => {
@@ -56,6 +57,29 @@ describe("ensurePlan", () => {
     });
   });
 
+  it("gives the plan the same number of charges the screen promises", async () => {
+    // A plan with total_cycles 0 charges until it is cancelled. The schedule
+    // line says "12 payments", so the plan has to stop at twelve.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan(planInput);
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.billing_cycles[0].total_cycles).toBe(12);
+  });
+
+  it("refuses a term with no end rather than creating an open-ended plan", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+
+    await expect(ensurePlan({ ...planInput, totalCycles: 0 })).rejects.toThrow(/whole number/);
+    await expect(ensurePlan({ ...planInput, totalCycles: 1.5 })).rejects.toThrow(/whole number/);
+  });
+
   it("treats an existing product and plan as success instead of creating a duplicate", async () => {
     vi.stubGlobal(
       "fetch",
@@ -67,7 +91,7 @@ describe("ensurePlan", () => {
         .mockResolvedValueOnce(
           json({
             plans: [
-              { id: "P-EXISTING", name: "Commitment demo plan P-DEMO-COFFEE-MONTHLY" },
+              { id: "P-EXISTING", name: "Commitment demo plan P-DEMO-COFFEE-MONTHLY 12x" },
             ],
           }),
         ),
@@ -181,5 +205,27 @@ describe("POST /api/paypal/subscriptions", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("creates the plan for the term the screen states", async () => {
+    // The coffee subscription is a 12-month term. Whatever the screen says the
+    // shopper is agreeing to, the plan PayPal charges them from must say it too.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }))
+      .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "coffee-subscription" }),
+      }),
+    );
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.billing_cycles[0].total_cycles).toBe(12);
   });
 });
