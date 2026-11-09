@@ -3,15 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { BackLink } from "@/components/BackLink";
 import { CommitmentView } from "@/components/CommitmentView";
-import { DisplayControls } from "@/components/DisplayControls";
-import { ReadAloud } from "@/components/ReadAloud";
-import {
-  DEFAULT_PREFERENCES,
-  readPreferences,
-  writePreferences,
-  type Preferences,
-} from "@/lib/preferences";
-import { formatMoney } from "@/lib/money";
+import { PaceControl } from "@/components/PaceControl";
+import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
+import { exampleDocuments, type ExampleDocument } from "@/lib/catalog/examples";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { FigureId } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
@@ -24,7 +18,6 @@ type ReadResponse = {
   figures: RenderedFigure[];
   breakdown: CommitmentBreakdown;
   notes: Partial<Record<FigureId, string>>;
-  sources: Partial<Record<FigureId, string | null>>;
   schedule: string;
   dueDate: string | null;
   quotationCount: number;
@@ -39,27 +32,23 @@ type CandidatesResponse = {
 
 type ReadResult = ReadResponse | CandidatesResponse;
 
-const SOURCE_LABELS: Record<FigureId, string> = {
-  acrossTerm: "Across the term",
-  exit: "Cost to leave",
-  today: "Charged today",
-};
-
-const FIGURE_IDS: FigureId[] = ["acrossTerm", "exit", "today"];
-
 export default function ReadPage() {
   const [text, setText] = useState("");
   const [status, setStatus] = useState<"idle" | "reading" | "done" | "failed">("idle");
   const [result, setResult] = useState<ReadResult | null>(null);
   const [error, setError] = useState("");
-  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
+  // Which example is being read, so the button that was pressed is the one that
+  // says so rather than all four saying "Reading…".
+  const [readingExample, setReadingExample] = useState<string | null>(null);
+  // The text size is the frame's (IPD 24); this page owns only the pacing.
+  const [progressive, setProgressive] = useState(DEFAULT_PREFERENCES.progressive);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Preferences belong to the reader's browser and are read after mount, so the
   // first paint is the accessible default rather than a flash of someone else's
   // saved size (IPD 10).
   useEffect(() => {
-    setPreferences(readPreferences());
+    setProgressive(readPreferences().progressive);
   }, []);
 
   // The figures arrive inside the live region, but the region also holds the
@@ -69,13 +58,15 @@ export default function ReadPage() {
     if (status === "done") resultsRef.current?.focus();
   }, [status]);
 
-  function updatePreferences(next: Preferences) {
-    setPreferences(next);
-    writePreferences(next);
+  function updateProgressive(next: boolean) {
+    setProgressive(next);
+    // Merged with what is stored, so a pacing choice here cannot overwrite a
+    // text size chosen in the frame (IPD 24).
+    savePreference("progressive", next);
   }
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
+  /** The one path to a reading, whether the text was typed or an example's. */
+  async function runReading(value: string) {
     setStatus("reading");
     setError("");
     setResult(null);
@@ -84,7 +75,7 @@ export default function ReadPage() {
       const response = await fetch("/api/read", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: value }),
       });
       const body = (await response.json()) as ReadResult | { error?: string };
 
@@ -99,7 +90,21 @@ export default function ReadPage() {
     } catch {
       setStatus("failed");
       setError("The reading service could not be reached. Nothing was sent and nothing was kept.");
+    } finally {
+      setReadingExample(null);
     }
+  }
+
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    void runReading(text);
+  }
+
+  /** An example fills the box and starts the reading, so the click is the whole visit (IPD 22). */
+  function startExample(example: ExampleDocument) {
+    setText(example.text);
+    setReadingExample(example.slug);
+    void runReading(example.text);
   }
 
   function startAgain() {
@@ -122,6 +127,42 @@ export default function ReadPage() {
           charged first. Every figure shows the sentence it came from.
         </p>
       </header>
+
+      {/* The examples come first because they are the demonstration; the box
+          stays empty and stays the visitor's own way in. */}
+      <section className="examples" aria-labelledby="examples-heading">
+        <h2 id="examples-heading">Or start from one of these</h2>
+        <p className="field-hint">
+          Examples, written for this page. None of them is a real seller and none of them is yours.
+          Their readings were made when the server started, so a click answers at once — and if one
+          has to be read now, the button says so and the wait is a minute.
+        </p>
+        <ul className="example-list">
+          {exampleDocuments.map((example) => (
+            <li
+              key={example.slug}
+              className="example"
+              data-example={example.slug}
+              data-refused={example.refused ? "true" : undefined}
+            >
+              <button
+                type="button"
+                className="button-secondary"
+                onClick={() => startExample(example)}
+                disabled={status === "reading"}
+                aria-describedby={`example-note-${example.slug}`}
+              >
+                {readingExample === example.slug && status === "reading"
+                  ? "Reading…"
+                  : example.label}
+              </button>
+              <span id={`example-note-${example.slug}`} className="example-note">
+                {example.note}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       <form className="read-form" onSubmit={submit}>
         <label htmlFor="document">
@@ -157,13 +198,12 @@ export default function ReadPage() {
           tabIndex={-1}
           role="region"
           aria-label="What this document asks of you"
-          data-text-scale={preferences.textScale}
         >
           {result.mode === "read" ? (
             <ReadResultPanel
               result={result}
-              preferences={preferences}
-              onPreferences={updatePreferences}
+              progressive={progressive}
+              onProgressive={updateProgressive}
               onReset={startAgain}
             />
           ) : (
@@ -177,13 +217,13 @@ export default function ReadPage() {
 
 function ReadResultPanel({
   result,
-  preferences,
-  onPreferences,
+  progressive,
+  onProgressive,
   onReset,
 }: {
   result: ReadResponse;
-  preferences: Preferences;
-  onPreferences: (next: Preferences) => void;
+  progressive: boolean;
+  onProgressive: (progressive: boolean) => void;
   onReset: () => void;
 }) {
   const schedule = result.dueDate
@@ -208,7 +248,7 @@ function ReadResultPanel({
         summary={result.summary}
         schedule={schedule}
         figureNotes={result.notes}
-        progressive={preferences.progressive}
+        progressive={progressive}
         sourceNote={describeSources({
           published: "the sentence beside each figure, which is quoted from your document",
           absent: absentFigureNote(result.figures),
@@ -216,48 +256,14 @@ function ReadResultPanel({
       />
 
       <div className="consent-adjust">
-        <DisplayControls
-          textScale={preferences.textScale}
-          progressive={preferences.progressive}
-          onTextScale={(textScale) => onPreferences({ ...preferences, textScale })}
-          onProgressive={(progressive) => onPreferences({ ...preferences, progressive })}
-        />
-        <ReadAloud text={spokenText(result, schedule)} />
+        <PaceControl progressive={progressive} onProgressive={onProgressive} />
       </div>
-
-      <section className="read-sources" aria-labelledby="sources-heading">
-        <h3 id="sources-heading">Where each figure came from</h3>
-        <dl>
-          {FIGURE_IDS.map((id) => (
-            <div key={id} data-source={id}>
-              <dt>{SOURCE_LABELS[id]}</dt>
-              <dd>
-                {result.sources[id] ? (
-                  <q>{result.sources[id]}</q>
-                ) : (
-                  <span className="commitment-hint">The document does not state this.</span>
-                )}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </section>
 
       <button type="button" className="button-secondary" onClick={onReset}>
         Read a different document
       </button>
     </>
   );
-}
-
-/** What the browser reads out: the figures in the order they are shown, then the schedule. */
-function spokenText(result: ReadResponse, schedule: string): string {
-  const parts = result.figures.map((figure) =>
-    figure.amount === null
-      ? `${figure.label}: not stated by this document.`
-      : `${figure.label}: ${formatMoney(figure.amount)}.`,
-  );
-  return [...parts, schedule].join(" ");
 }
 
 function CandidatesPanel({ result, onReset }: { result: CandidatesResponse; onReset: () => void }) {

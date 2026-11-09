@@ -24,6 +24,12 @@ export type SubscriptionRecord = {
   status: string;
   /** ISO timestamp of the next charge, when PayPal states one. */
   nextBillingTime: string | null;
+  /**
+   * ISO timestamp of the last state change. A record that says a subscription
+   * was cancelled can say *when*, in PayPal's own words rather than ours
+   * (IPD 23).
+   */
+  statusChangeTime: string | null;
   /** The per-period price PayPal holds on the plan, when it holds a usable one. */
   amount: Money | null;
   /**
@@ -67,6 +73,7 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
       id: string;
       status: string;
       plan_id?: string;
+      status_change_time?: string;
       billing_info?: { next_billing_time?: string };
     }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET", signal }),
   );
@@ -79,6 +86,7 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
     id: subscription.id,
     status: subscription.status,
     nextBillingTime: subscription.billing_info?.next_billing_time ?? null,
+    statusChangeTime: subscription.status_change_time ?? null,
     amount: terms?.itemPrice ?? null,
     terms,
   };
@@ -107,9 +115,13 @@ async function retrievePlanTerms(planId: string): Promise<CommitmentTerms | null
  * it is captured (`COMPLETED`); `APPROVED` means the payer agreed at PayPal and
  * no money moved yet — a record built on it would report a payment that did not
  * happen. A subscription is settled when it is `ACTIVE`.
+ *
+ * `CANCELLED` is settled too (IPD 23). It ran, money was taken, and this screen
+ * is the copy the shopper was told to keep — answering it with "nothing has been
+ * taken" would be false in the one case the product itself can now cause.
  */
 export function isSettled(status: string): boolean {
-  return status === "COMPLETED" || status === "ACTIVE";
+  return status === "COMPLETED" || status === "ACTIVE" || status === "CANCELLED";
 }
 
 export type InvoiceRecord = {
@@ -133,7 +145,11 @@ export async function retrieveInvoice(id: string): Promise<InvoiceRecord> {
       id: string;
       status: string;
       amount?: PayPalAmountJson;
-      detail?: { payment_term?: { due_date?: string } };
+      detail?: {
+        payment_term?: { due_date?: string };
+        /** Where the payer opens the bill. The only field that is a payer page. */
+        metadata?: { recipient_view_url?: string };
+      };
       links?: Array<{ href?: string; rel?: string }>;
     }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET", signal }),
   );
@@ -143,9 +159,13 @@ export async function retrieveInvoice(id: string): Promise<InvoiceRecord> {
     status: invoice.status,
     amount: parsePayPalAmount(invoice.amount),
     dueDate: invoice.detail?.payment_term?.due_date ?? null,
+    // `recipient_view_url` is the payer's page. The `self` link is the REST
+    // resource — a JSON response — and must never stand in for it: the bill page
+    // labelled that link "Pay this bill at PayPal", and a payer who followed it
+    // got the API. A bill with no payer page is reported as one.
     payerUrl:
+      invoice.detail?.metadata?.recipient_view_url ??
       invoice.links?.find((link) => link.rel === "payer-view")?.href ??
-      invoice.links?.find((link) => link.rel === "self")?.href ??
       null,
   };
 }

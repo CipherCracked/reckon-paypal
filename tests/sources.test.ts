@@ -31,24 +31,19 @@ describe("the provenance line (IPD 18)", () => {
     );
   });
 
-  it("prints the seller's sentence when the exit figure was read from one", () => {
-    expect(
-      describeSources({
-        paypal: "the PayPal plan for Coffee Subscription",
-        quoted: { source: "the description shown on this page", span: "cancel any time, no fee." },
-      }),
-    ).toBe(
-      'Read from the PayPal plan for Coffee Subscription. What it costs to leave is quoted from the description shown on this page: "cancel any time, no fee".',
-    );
-  });
-
-  it("does not put a full stop inside the quotation", () => {
+  it("names sources and absences only — the quoted sentence travels on the figure", () => {
+    // ITD 19: the span moved onto the figure it produced, so the line beneath
+    // the figures no longer prints it. Printing it twice gave a screen two ways
+    // to say one thing.
     const line = describeSources({
-      published: "the terms shown on this page",
-      quoted: { source: "the seller's notice", span: "Early exit: $40.00" },
+      paypal: "the PayPal plan for Coffee Subscription",
+      absent: "what it costs to leave",
     });
 
-    expect(line).toContain('"Early exit: $40.00".');
+    expect(line).toBe(
+      "Read from the PayPal plan for Coffee Subscription. Nobody published what it costs to leave.",
+    );
+    expect(line).not.toContain('"');
   });
 
   it("never reports a failed read as the seller's silence", () => {

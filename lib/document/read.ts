@@ -1,7 +1,13 @@
 import { addMoney, zeroMoney, formatMoney, type Money } from "../money";
 import type { CommitmentTerms, CommitmentTranslation, ExitTerms } from "../commitment/types";
 import { computeCommitment } from "../commitment/compute";
-import { presentFigures, type FigureId, type RenderedFigure } from "../commitment/present";
+import {
+  FIGURE_ORDER,
+  presentFigures,
+  type FigureId,
+  type FigureSources,
+  type RenderedFigure,
+} from "../commitment/present";
 import { describeSchedule } from "../commitment/schedule";
 import type { FieldName } from "./fields";
 import { parseAmount, parseCount, parseDate, parsePeriod } from "./parse";
@@ -195,7 +201,18 @@ const TERM_UNSTATED =
  */
 export function presentReading(reading: Reading): ReadingView {
   const translation = computeCommitment(reading.terms);
-  const figures = presentFigures(reading.terms, translation, { extra: "charged once" });
+  // Every verified span the document gave up travels on the figure it produced,
+  // so the screen shows a sentence beside its figure rather than joining two
+  // structures by convention (ITD 19).
+  const sources: FigureSources = {};
+  for (const id of FIGURE_ORDER) {
+    const span = reading.sources[id];
+    if (span) sources[id] = { label: "your document", span };
+  }
+  const figures = presentFigures(reading.terms, translation, {
+    extra: "charged once",
+    sources,
+  });
 
   // An absence is only announced where there is an absence. A note under a
   // figure the document did state would contradict the figure above it.

@@ -1,5 +1,5 @@
 import { computeCommitment } from "@/lib/commitment/compute";
-import { findProduct } from "@/lib/catalog/products";
+import { resolveProduct } from "@/lib/catalog/resolve";
 import { createPayPalOrder } from "@/lib/paypal/orders";
 import { PayPalError } from "@/lib/paypal/client";
 
@@ -17,7 +17,11 @@ async function readBody(request: Request): Promise<OrderRequestBody | null> {
 export async function POST(request: Request) {
   const body = await readBody(request);
   const slug = typeof body?.slug === "string" ? body.slug : null;
-  const product = slug ? findProduct(slug) : undefined;
+  // The same resolution the consent screen used to show the figures: PayPal
+  // first, the file second. Creating the order from the file alone while the
+  // screen read PayPal's plan is how a shopper is shown one number and charged
+  // another — the one failure this product exists to prevent.
+  const product = slug ? await resolveProduct(slug) : null;
 
   if (!product) {
     return Response.json({ error: "Unknown product." }, { status: 404 });

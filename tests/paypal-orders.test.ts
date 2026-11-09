@@ -65,6 +65,21 @@ describe("createPayPalOrder", () => {
     expect(body.purchase_units[0].amount).toEqual({ currency_code: "USD", value: "58.95" });
   });
 
+  it("asks PayPal to state the amount it created the order with", async () => {
+    // A bare create reply is `id`, `status` and `links` — no purchase unit — so
+    // the amount check would refuse every order, including correct ones.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(tokenResponse)
+      .mockResolvedValueOnce(orderResponse("58.95"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createPayPalOrder(orderInput);
+
+    const [, init] = fetchMock.mock.calls[1] as [string, RequestInit];
+    expect((init.headers as Record<string, string>).Prefer).toBe("return=representation");
+  });
+
   it("refuses an order PayPal created without stating an amount", async () => {
     // Standing our own figure in for PayPal's would make the agreement check
     // pass by agreeing with itself, and would let the screen call it PayPal's.

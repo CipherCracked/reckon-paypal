@@ -47,7 +47,11 @@ export const bills: Bill[] = [
       itemPrice: money(38000),
       shipping: money(2500),
       tax: money(1500),
-      exit: { kind: "fee", fee: money(5700) },
+      // The bill states a 1.5% monthly charge on overdue balances — a late
+      // charge, not a price for leaving — and states no exit figure. A number
+      // here would be this repo's invention, printed under a line claiming it
+      // came from the biller. Unstated is the truthful term.
+      exit: { kind: "unknown" },
     },
     dueInDays: 7,
   },

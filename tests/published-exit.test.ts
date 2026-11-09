@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestQuotations } from "@/lib/ai/read-document";
 import { ModelError } from "@/lib/ai/client";
-import { exitFromSpans, readPublishedExit } from "@/lib/commitment/published-exit";
+import { exitFromSpans, readPublishedExit, clearPublishedExitCache } from "@/lib/commitment/published-exit";
 import { normaliseText } from "@/lib/document/normalise";
 import { money } from "@/lib/money";
 
@@ -18,6 +18,7 @@ function source(text = description): string {
 
 beforeEach(() => {
   vi.mocked(requestQuotations).mockReset();
+  clearPublishedExitCache();
 });
 
 describe("verified spans become the exit figure (IPD 19)", () => {
@@ -131,5 +132,94 @@ describe("reading a seller's published text (ITD 18)", () => {
 
     // The no-fee span is real and wins; the invented fee span is discarded.
     expect(finding).toMatchObject({ kind: "stated", exit: { kind: "none" } });
+  });
+
+  it("reads the same seller's text once, because every render asks again", async () => {
+    vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+
+    await readPublishedExit(description);
+    await readPublishedExit(description);
+
+    expect(requestQuotations).toHaveBeenCalledTimes(1);
+  });
+
+  it("shares one reading between readers who arrive while it is running", async () => {
+    // A page render that gives up waiting does not cancel the reading, so the
+    // next reader must join it rather than start a second model call.
+    let release: (value: { quotations: never[]; summary: string }) => void = () => {};
+    vi.mocked(requestQuotations).mockReturnValue(
+      new Promise((resolve) => {
+        release = resolve;
+      }),
+    );
+
+    const first = readPublishedExit(description);
+    const second = readPublishedExit(description);
+    release({ quotations: [], summary: "" });
+
+    await expect(first).resolves.toEqual({ kind: "silent" });
+    await expect(second).resolves.toEqual({ kind: "silent" });
+    expect(requestQuotations).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not remember a failed read as if it were the seller's answer", async () => {
+    // A timeout is a fact about one attempt. Remembering it would turn a slow
+    // minute into ten minutes of "could not be read" on every screen (ITD 20).
+    vi.mocked(requestQuotations).mockRejectedValueOnce(new ModelError("Request timed out."));
+
+    const first = await readPublishedExit(description);
+    expect(first.kind).toBe("unreadable");
+
+    vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+    const second = await readPublishedExit(description);
+
+    expect(requestQuotations).toHaveBeenCalledTimes(2);
+    expect(second).toEqual({ kind: "silent" });
+  });
+
+  it("serves an aged reading rather than making the reader wait for it again", async () => {
+    // A sentence that has not changed does not become wrong by aging, so the
+    // entry keeps its answer while the refresh runs behind the reader (IPD 21).
+    vi.useFakeTimers();
+    try {
+      vi.mocked(requestQuotations).mockResolvedValueOnce({ quotations: [], summary: "" });
+      await readPublishedExit(description);
+
+      vi.advanceTimersByTime(11 * 60 * 1000);
+      // The refresh never settles; the reader must not wait for it.
+      vi.mocked(requestQuotations).mockReturnValue(new Promise(() => {}));
+
+      await expect(readPublishedExit(description)).resolves.toEqual({ kind: "silent" });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops waiting on a reading that never comes back, and tries again later", async () => {
+    // Observed live: one request to the endpoint simply never answered. The
+    // in-flight entry must not hold the slot for the life of the process, or
+    // every later reader joins a dead request and is told the seller's terms
+    // could not be read.
+    vi.useFakeTimers();
+    try {
+      vi.mocked(requestQuotations).mockReturnValue(new Promise(() => {}));
+      void readPublishedExit(description);
+
+      await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
+
+      vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+      await expect(readPublishedExit(description)).resolves.toEqual({ kind: "silent" });
+      expect(requestQuotations).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("passes the caller's retry budget through to the request", async () => {
+    vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+
+    await readPublishedExit(description, { retries: 0 });
+
+    expect(requestQuotations).toHaveBeenCalledWith(description, { retries: 0 });
   });
 });

@@ -45,17 +45,17 @@ Schedule: Paid once. Nothing further is charged, so there is no term to run out.
 **The shopper reads**
 
 - Across the term: $144.00 — 12 × $12.00
-- Cost to leave: $0.00
+- Cost to leave: Not stated
 - Charged today: $12.00 — $12.00
 
 | Measure | Seller's copy | This screen |
 |---|---|---|
-| Words | 17 | 11 |
-| Money amounts written out | 1 | 3 |
+| Words | 17 | 12 |
+| Money amounts written out | 1 | 2 |
 | Times the cost across the term appears | 0 | 1 |
 | Reading level (Flesch–Kincaid) | 1.2 | 0 |
 
-Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: $0.00; Charged today: $12.00 ($12.00).
+Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: not stated; Charged today: $12.00 ($12.00).
 
 Schedule: 12 payments of $12.00, one a month — today's is the first of the 12. What happens if a payment is missed is not stated on this screen.
 

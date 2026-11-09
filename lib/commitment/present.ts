@@ -10,6 +10,20 @@ export const FIGURE_ORDER = ["acrossTerm", "exit", "today"] as const;
 
 export type FigureId = (typeof FIGURE_ORDER)[number];
 
+/**
+ * A sentence of someone else's, which a figure was read out of (ITD 19).
+ *
+ * The span is the one verification accepted, character for character — never a
+ * substring the screen chose, because a screen that trims a quote can make it
+ * say something the check never saw.
+ */
+export type FigureSource = {
+  /** How the screen names where the sentence came from. */
+  label: string;
+  /** The sentence itself. */
+  span: string;
+};
+
 export type RenderedFigure = {
   id: FigureId;
   label: string;
@@ -17,7 +31,17 @@ export type RenderedFigure = {
   amount: Money | null;
   /** What the figure was built from, when it can be said without inventing a number. */
   arithmetic: string | null;
+  /**
+   * The sentence this figure was read out of, or `null` when it was not read
+   * from one. A figure carries its evidence or carries nothing; there is no
+   * third state, and nothing has to be joined up by convention at a render site
+   * (ITD 19).
+   */
+  source: FigureSource | null;
 };
+
+/** Per-figure sentences, for the callers that have just read one. */
+export type FigureSources = Partial<Record<FigureId, FigureSource | null>>;
 
 const LABELS: Record<FigureId, string> = {
   acrossTerm: "Across the term",
@@ -80,11 +104,16 @@ function todayArithmetic(terms: CommitmentTerms): string | null {
  * `extra` names the one-off part in the arithmetic line: a shop charges
  * shipping, a document charges a joining fee, and calling the second one
  * "shipping" is how a page tells a reader it was not paying attention.
+ *
+ * `sources` attaches a verified sentence to the figure it produced (ITD 19).
+ * It is passed in rather than looked up, because only the caller knows which
+ * read produced which figure, and a figure with no verified sentence must say
+ * so by carrying `null`.
  */
 export function presentFigures(
   terms: CommitmentTerms,
   translation: CommitmentTranslation,
-  labels: { extra?: string } = {},
+  labels: { extra?: string; sources?: FigureSources } = {},
 ): RenderedFigure[] {
   const arithmetic: Record<FigureId, string | null> = {
     acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once"),
@@ -103,5 +132,6 @@ export function presentFigures(
     label: LABELS[id],
     amount: amounts[id],
     arithmetic: arithmetic[id],
+    source: labels.sources?.[id] ?? null,
   }));
 }

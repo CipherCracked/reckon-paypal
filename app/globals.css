@@ -145,6 +145,11 @@ a {
 .site-header {
   padding-top: var(--space-5);
   padding-bottom: var(--space-1);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
 }
 
 .service-name {
@@ -227,6 +232,47 @@ main {
 
 .entry-worked > .commitment {
   border-color: var(--line-strong);
+}
+
+/* The entry shows the work: the seller's words on one side, the figures — and
+   the sentence each was read out of — on the other (IPD 21). Two columns where
+   there is room, stacked on a phone, and in that order in the markup either
+   way, because the reading order is "what they wrote, then what it means". */
+.entry-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 44rem) {
+  .entry-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.entry-said h2 {
+  margin-block: 0 var(--space-3);
+}
+
+.entry-words {
+  margin: 0;
+  padding-left: var(--space-4);
+  border-left: 3px solid var(--line-strong);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+.entry-words-absent {
+  color: var(--ink-muted);
+}
+
+.entry-relationship,
+.entry-contrast {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: 46rem;
+  margin: 0;
 }
 
 .entry-action {
@@ -400,6 +446,20 @@ button.door-link {
   color: var(--ink-muted);
 }
 
+/* Read-aloud sits under the figures it speaks, in the same place on every
+   screen that shows figures (IPD 24). */
+.commitment-spoken {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.read-aloud-note {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: 34rem;
+}
+
 /* The arithmetic sits under the figure it explains, quieter than the figure —
    it is there to be checked, not to compete. */
 .commitment-arithmetic {
@@ -409,6 +469,62 @@ button.door-link {
   font-weight: 400;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* Somebody else's sentence, under the figure it produced (ITD 19). Kept apart
+   from the arithmetic on purpose: one is our working, the other is the seller's
+   words, and a screen that merges them makes the reading look like our sum. */
+.commitment-quote {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.commitment-quote q {
+  quotes: "\201C" "\201D" "\2018" "\2019";
+  font-style: italic;
+}
+
+.commitment-quote-source {
+  color: var(--ink-muted);
+  font-style: normal;
+}
+
+/* The verb beside the cost-to-leave figure (IPD 23). Two presses: the first
+   opens a warning that says what will happen, the second sends it. */
+.cancel-open,
+.cancel-warning,
+.cancel-outcome {
+  display: block;
+  margin-top: var(--space-3);
+}
+
+.cancel-warning {
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  font-weight: 400;
+}
+
+.cancel-warning:focus-visible,
+.cancel-outcome:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.cancel-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.cancel-outcome {
+  font-weight: 600;
 }
 
 .commitment-breakdown {
@@ -554,15 +670,19 @@ button.door-link {
   }
 }
 
-/* Reader-owned adjustments (IPD 10). The default is already the accessible
-   rendering; these only change its scale and pace. They multiply the token
-   scale rather than replace it, so hierarchy survives enlargement. */
-.consent[data-text-scale="large"] {
-  font-size: calc(var(--text-body) * 1.06);
+/* The reader's text size (IPD 24, correcting IPD 10's implementation). The
+   default is already the accessible rendering; this only multiplies it.
+   Applied to the root because every size below is written in rem, which is
+   root-relative: the container rule this replaces set a font-size that no rem
+   descendant could see, so the control changed almost nothing and on `/read`
+   matched no selector at all. A root percentage is also a real zoom — the reader
+   gets the whole page bigger, not one block reflowed in the same box. */
+html[data-text-scale="large"] {
+  font-size: 112.5%;
 }
 
-.consent[data-text-scale="larger"] {
-  font-size: calc(var(--text-body) * 1.18);
+html[data-text-scale="larger"] {
+  font-size: 125%;
 }
 
 /* Held back from sight, not from the page: a reader who navigates by list
@@ -623,6 +743,15 @@ button.door-link {
   min-height: 44px;
 }
 
+/* The frame's copy of the control (IPD 24): quiet, one line, same place on
+   every screen. It sits in the header rather than the content column so a page
+   can never reorder it or forget it. */
+.site-header .text-size-controls {
+  margin: 0;
+  padding: var(--space-2);
+  border-color: var(--line);
+}
+
 .chip {
   min-height: 44px;
   padding: var(--space-2) var(--space-4);
@@ -667,6 +796,39 @@ button.door-link {
   border-radius: var(--radius-sm);
   padding: var(--space-1) var(--space-2);
   font-variant-numeric: tabular-nums;
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.example-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.example {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+
+.example-note {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  max-width: 34rem;
+}
+
+/* The one written to be refused is marked before the click, not after it. */
+.example[data-refused="true"] .button-secondary {
+  border-style: dashed;
 }
 
 .read-form {

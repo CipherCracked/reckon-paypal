@@ -4,6 +4,24 @@ import { resetTokenCache } from "@/lib/paypal/client";
 import { POST } from "@/app/api/paypal/subscriptions/route";
 import { money } from "@/lib/money";
 
+// The route resolves through PayPal first, the file second. These tests are
+// about what the route sends to PayPal, so the resolver answers from the file
+// and the fetch mock counts only the calls the route itself makes.
+vi.mock("@/lib/catalog/resolve", async () => {
+  const { findProduct } = await import("@/lib/catalog/products");
+  return {
+    resolveProduct: vi.fn(async (slug: string) => {
+      const product = findProduct(slug);
+      if (!product) return null;
+      return {
+        ...product,
+        sources: { paypal: null, published: "the terms shown on this page" },
+        descriptionLabel: "the description shown on this page",
+      };
+    }),
+  };
+});
+
 const json = (body: unknown, ok = true, status = 200) => ({
   ok,
   status,
@@ -32,6 +50,7 @@ afterEach(() => {
 const planInput = {
   productId: "DEMO-COFFEE",
   planId: "P-DEMO-COFFEE-MONTHLY",
+  description: "Freshly roasted, $12.00 a bag, delivered every month.",
   amount: money(1200),
   interval: "MONTH" as const,
   totalCycles: 12,
@@ -134,10 +153,35 @@ describe("createSubscription", () => {
         ),
     );
 
-    await expect(createSubscription("P-1")).resolves.toEqual({
+    await expect(
+      createSubscription("P-1", {
+        returnUrl: "http://localhost/consent/pending?slug=coffee&approved=1",
+        cancelUrl: "http://localhost/consent/pending?slug=coffee&cancelled=1",
+      }),
+    ).resolves.toEqual({
       id: "I-SUB-1",
       status: "APPROVAL_PENDING",
       approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
+    });
+  });
+
+  it("tells PayPal where to send the shopper back, or the flow ends at PayPal", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await createSubscription("P-1", {
+      returnUrl: "http://localhost/consent/pending?slug=coffee&approved=1",
+      cancelUrl: "http://localhost/consent/pending?slug=coffee&cancelled=1",
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body);
+    expect(body.application_context).toEqual({
+      user_action: "SUBSCRIBE_NOW",
+      return_url: "http://localhost/consent/pending?slug=coffee&approved=1",
+      cancel_url: "http://localhost/consent/pending?slug=coffee&cancelled=1",
     });
   });
 });
@@ -194,6 +238,31 @@ describe("POST /api/paypal/subscriptions", () => {
     const body = await response.json();
 
     expect(body.approveUrl).toBe("https://www.sandbox.paypal.com/webapps/billing/x");
+  });
+
+  it("sends the shopper back to this origin after approving", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }))
+      .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await POST(
+      new Request("https://shop.example/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "coffee-subscription" }),
+      }),
+    );
+
+    const subscriptionRequest = JSON.parse(fetchMock.mock.calls[3][1].body);
+    expect(subscriptionRequest.application_context.return_url).toBe(
+      "https://shop.example/consent/pending?slug=coffee-subscription&approved=1",
+    );
+    expect(subscriptionRequest.application_context.cancel_url).toBe(
+      "https://shop.example/consent/pending?slug=coffee-subscription&cancelled=1",
+    );
   });
 
   it("refuses a product that does not repeat", async () => {

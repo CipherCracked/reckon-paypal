@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ReadAloud } from "@/components/ReadAloud";
+import { spokenCommitment } from "@/lib/commitment/spoken";
 import { formatMoney } from "@/lib/money";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
@@ -84,6 +86,16 @@ export function CommitmentView({
               {figure.arithmetic ? (
                 <span className="commitment-arithmetic">{figure.arithmetic}</span>
               ) : null}
+              {figure.source ? (
+                // The seller's sentence, in their words, under the figure it
+                // produced — the trace the whole product exists to show (ITD 19).
+                // Not clamped: a quoted sentence that has been shortened is no
+                // longer the span that was checked.
+                <span className="commitment-quote">
+                  <q>{figure.source.span}</q>{" "}
+                  <span className="commitment-quote-source">— {figure.source.label}</span>
+                </span>
+              ) : null}
             </dd>
           </div>
         ))}
@@ -98,6 +110,17 @@ export function CommitmentView({
           Show the next figure
         </button>
       ) : null}
+
+      {/* The same control in the same place on every screen that shows figures
+          (IPD 24): a layout cannot receive what its page is showing, so the
+          composition lives with the figures it speaks. */}
+      <div className="commitment-spoken">
+        {/* Reads what has been revealed, not what is hidden: a reader who asked
+            for one figure at a time does not want the rest spoken past them. */}
+        <ReadAloud
+          text={spokenCommitment({ summary, figures: figures.slice(0, revealed), schedule })}
+        />
+      </div>
 
       <h3 id="commitment-breakdown-heading" tabIndex={-1}>
         Where these figures come from

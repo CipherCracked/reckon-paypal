@@ -48,8 +48,10 @@ export async function GET(request: Request, context: RouteContext) {
   const terms: CommitmentTerms = { ...resolved.terms, exit: exitOutcome.exit };
   const translation = computeCommitment(terms);
   // The ordering and the arithmetic are derived here, from the same terms the
-  // totals came from, so the screen never decides either.
-  const figures = presentFigures(terms, translation);
+  // totals came from, so the screen never decides either. The verified sentence
+  // rides on the figure it produced (ITD 19), so there is no second field for a
+  // screen to join back up — or to forget to.
+  const figures = presentFigures(terms, translation, { sources: { exit: exitOutcome.quoted } });
   const schedule = describeSchedule(terms);
 
   const wording = settled[1].status === "fulfilled" ? settled[1].value : null;
@@ -67,7 +69,6 @@ export async function GET(request: Request, context: RouteContext) {
     // Whether the absence is the seller's or ours. The screen states it, because
     // a screen may not decide a source's silence for itself (IPD 18, IPD 19).
     exitUnreadable: exitOutcome.kind === "unreadable",
-    quotedExit: exitOutcome.quoted,
     // Only the wording is missing when the model is unavailable; the figures
     // are computed from the terms that were read and are still true.
     degraded: wording === null,

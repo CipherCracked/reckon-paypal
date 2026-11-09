@@ -117,14 +117,17 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
       kind: "stated",
       exit: { kind: "none" },
       note: null,
-      quoted: { source: "the description shown on this page", span: "cancel any time, no fee" },
+      quoted: { label: "the description shown on this page", span: "cancel any time, no fee" },
     });
 
     const { body } = await get("mattress-financed");
 
     expect(body.translation.exit).toEqual(money(0));
-    expect(body.quotedExit).toEqual({
-      source: "the description shown on this page",
+    // The sentence rides on the figure it produced, not on a field beside it
+    // (ITD 19) — so a screen cannot show the figure without it.
+    const exitFigure = body.figures.find((figure: { id: string }) => figure.id === "exit");
+    expect(exitFigure.source).toEqual({
+      label: "the description shown on this page",
       span: "cancel any time, no fee",
     });
     expect(body.exitNote).toBeNull();

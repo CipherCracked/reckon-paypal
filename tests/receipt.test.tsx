@@ -18,6 +18,8 @@ const base = {
   acrossTerm: money(14400),
   exit: money(0),
   exitNote: null,
+  exitSource: null,
+  standing: null,
   manageUrl: "https://www.sandbox.paypal.com/myaccount/autopay/",
   calendarHref: "/api/receipt/I-SUB-1/calendar?slug=coffee-subscription",
   sourceNote: "Read from the PayPal plan for this subscription.",
@@ -71,6 +73,23 @@ describe("CommitmentRecord", () => {
     expect(screen.queryByText("$12.00")).toBeNull();
   });
 
+  it("quotes the sentence the exit figure was read out of, when there is one", () => {
+    render(
+      <CommitmentRecord
+        {...base}
+        nextCharge={null}
+        calendarHref={null}
+        exitSource={{ label: "the description published with the PayPal product", span: "cancel any time, no fee." }}
+      />,
+    );
+
+    // The record is the screen a shopper keeps, so it carries the evidence too.
+    expect(screen.getByText("cancel any time, no fee.")).toBeInTheDocument();
+    expect(
+      screen.getByText(/the description published with the PayPal product/i),
+    ).toBeInTheDocument();
+  });
+
   it("offers a calendar entry when there is a dated next charge", () => {
     render(
       <CommitmentRecord
@@ -83,6 +102,36 @@ describe("CommitmentRecord", () => {
       "href",
       base.calendarHref,
     );
+  });
+
+  it("offers the cancel beside the cost to leave while PayPal reports it running", () => {
+    render(
+      <CommitmentRecord
+        {...base}
+        nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(1200) }}
+        standing={{ kind: "running", subscriptionId: "I-SUB-1" }}
+      />,
+    );
+
+    // The figure and the way to leave it are one part of the record (IPD 23).
+    expect(screen.getByRole("button", { name: /cancel this subscription/i })).toBeInTheDocument();
+    expect(screen.queryByText(/PayPal reports this subscription as cancelled/i)).toBeNull();
+  });
+
+  it("states a cancelled subscription as cancelled, and offers nothing to press", () => {
+    render(
+      <CommitmentRecord
+        {...base}
+        nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(1200) }}
+        standing={{ kind: "cancelled", at: new Date("2026-11-10T00:00:00Z") }}
+      />,
+    );
+
+    // The payment happened, so the record is still shown — with PayPal's own
+    // statement of where it stands now, rather than a button that would lie.
+    expect(screen.getByText(/paypal reports this subscription as cancelled on 10 November 2026/i)).toBeInTheDocument();
+    expect(screen.getByText(/none — paypal reports this subscription as cancelled/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /cancel this subscription/i })).toBeNull();
   });
 });
 
@@ -126,6 +175,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
+      statusChangeTime: null,
       amount: money(1200),
       terms: null,
     });
@@ -144,6 +194,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "APPROVAL_PENDING",
       nextBillingTime: null,
+      statusChangeTime: null,
       amount: null,
       terms: null,
     });
@@ -160,6 +211,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
+      statusChangeTime: null,
       amount: null,
       terms: null,
     });
@@ -194,5 +246,12 @@ describe("what counts as a payment PayPal has confirmed", () => {
   it("counts a captured order and an active subscription", () => {
     expect(isSettled("COMPLETED")).toBe(true);
     expect(isSettled("ACTIVE")).toBe(true);
+  });
+
+  it("keeps the record of a subscription PayPal reports cancelled", () => {
+    // It ran, money was taken, and this screen is the copy the shopper was told
+    // to keep. Answering it with "nothing has been taken" would be false in the
+    // one case this product can now cause (IPD 23).
+    expect(isSettled("CANCELLED")).toBe(true);
   });
 });

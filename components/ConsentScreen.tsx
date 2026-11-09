@@ -2,19 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
-import { DisplayControls } from "@/components/DisplayControls";
-import { ReadAloud } from "@/components/ReadAloud";
+import { PaceControl } from "@/components/PaceControl";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
-import { formatMoney } from "@/lib/money";
-import {
-  DEFAULT_PREFERENCES,
-  readPreferences,
-  writePreferences,
-  type Preferences,
-} from "@/lib/preferences";
+import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
 
 export type CommitmentPayload = {
   shape: CommitmentShape;
@@ -29,8 +22,6 @@ export type CommitmentPayload = {
   exitNote: string | null;
   /** True when that absence is a failed read rather than the seller's silence. */
   exitUnreadable: boolean;
-  /** The seller's sentence the exit figure came from, when one did (IPD 19). */
-  quotedExit: { source: string; span: string } | null;
   degraded: boolean;
 };
 
@@ -49,17 +40,6 @@ type PaymentState =
   | { status: "pending"; message: string }
   | { status: "failed"; message: string };
 
-/** What read-aloud says: the summary, then each figure with the arithmetic behind it. */
-function spokenText(payload: CommitmentPayload): string {
-  const figures = payload.figures.map((figure) =>
-    figure.amount === null
-      ? `${figure.label}: not stated.`
-      : `${figure.label}: ${formatMoney(figure.amount)}.${figure.arithmetic ? ` That is ${figure.arithmetic}.` : ""}`,
-  );
-
-  return [payload.summary, ...figures].filter(Boolean).join(" ");
-}
-
 export function ConsentScreen({
   orderId,
   slug,
@@ -74,13 +54,17 @@ export function ConsentScreen({
   cancelled?: boolean;
 }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
-  const [preferences, setPreferences] = useState<Preferences>(DEFAULT_PREFERENCES);
+  // Only the pacing preference is this screen's business: the text size belongs
+  // to the frame and is set there (IPD 24), so this screen never writes it.
+  const [progressive, setProgressive] = useState(DEFAULT_PREFERENCES.progressive);
   const [payment, setPayment] = useState<PaymentState>(
     cancelled
       ? { status: "cancelled", message: "You left PayPal before approving. Nothing has been charged." }
       : { status: "idle" },
   );
   const captured = useRef(false);
+  /** Where "Yes" sends the shopper: the next step, not the place they stood. */
+  const payButton = useRef<HTMLButtonElement>(null);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -114,12 +98,14 @@ export function ConsentScreen({
   // Read once on mount: the stored preference is the reader's, not ours, and it
   // must not cause a hydration mismatch by being read during render.
   useEffect(() => {
-    setPreferences(readPreferences());
+    setProgressive(readPreferences().progressive);
   }, []);
 
-  function updatePreferences(next: Preferences) {
-    setPreferences(next);
-    writePreferences(next);
+  function updateProgressive(next: boolean) {
+    setProgressive(next);
+    // Merged with what is stored, so choosing a pacing here cannot overwrite a
+    // text size chosen in the frame (IPD 24).
+    savePreference("progressive", next);
   }
 
   const captureApprovedOrder = useCallback(async (id: string) => {
@@ -265,7 +251,7 @@ export function ConsentScreen({
   const { payload } = state;
 
   return (
-    <section className="consent" data-text-scale={preferences.textScale}>
+    <section className="consent">
       {payload.degraded ? (
         // Only the wording failed. The figures are calculated from the order
         // itself, so they are still the ones to show.
@@ -281,32 +267,28 @@ export function ConsentScreen({
         labels={payload.labels}
         summary={payload.summary}
         schedule={payload.schedule}
-        progressive={preferences.progressive}
+        progressive={progressive}
         figureNotes={payload.exitNote ? { exit: payload.exitNote } : undefined}
         sourceNote={describeSources({
           paypal: payload.sources.paypal,
           published: payload.sources.published,
-          quoted: payload.quotedExit,
           absent: payload.exitUnreadable ? null : absentFigureNote(payload.figures),
           unreadable: payload.exitUnreadable ? "what it costs to leave" : null,
         })}
       />
 
       <div className="consent-adjust">
-        <DisplayControls
-          textScale={preferences.textScale}
-          progressive={preferences.progressive}
-          onTextScale={(textScale) => updatePreferences({ ...preferences, textScale })}
-          onProgressive={(progressive) => updatePreferences({ ...preferences, progressive })}
-        />
-        <ReadAloud text={spokenText(payload)} />
+        <PaceControl progressive={progressive} onProgressive={updateProgressive} />
       </div>
 
       {payload.degraded ? null : (
         <RecognitionCheck
           amount={payload.translation.today}
           onResult={(matched) => {
-            if (matched) return;
+            if (matched) {
+              payButton.current?.focus();
+              return;
+            }
             // Saying "no" must take the shopper somewhere, not leave them
             // where they were: focus moves to the itemisation right above.
             const heading = document.getElementById("commitment-breakdown-heading");
@@ -327,6 +309,7 @@ export function ConsentScreen({
 
       <div className="consent-actions">
         <button
+          ref={payButton}
           type="button"
           className="button-primary"
           onClick={() => void pay()}

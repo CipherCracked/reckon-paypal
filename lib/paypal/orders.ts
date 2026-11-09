@@ -31,6 +31,11 @@ export async function createPayPalOrder(input: CreateOrderInput): Promise<PayPal
     links?: Array<{ href?: string; rel?: string }>;
   }>("/v2/checkout/orders", {
     method: "POST",
+    // PayPal answers a create with the id, the status and the links, and leaves
+    // the purchase unit out unless it is asked for it. Without this header the
+    // amount it will actually charge is never stated, so the check below has
+    // nothing to compare against and refuses an order PayPal made correctly.
+    headers: { Prefer: "return=representation" },
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [

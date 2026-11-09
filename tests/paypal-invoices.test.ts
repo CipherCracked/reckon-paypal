@@ -179,4 +179,64 @@ describe("createInvoice", () => {
 
     expect(invoice.payerUrl).toBe("https://draft");
   });
+
+  it("never offers the invoice resource as the page a payer opens", async () => {
+    // `self` is the REST endpoint: a JSON response, not a page. The bill screen
+    // labels whatever comes back "Pay this bill at PayPal", so an API URL there
+    // sends the payer to JSON and calls it a payment.
+    const resource = [
+      { href: "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-TEST-0001", rel: "self" },
+    ];
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(tokenResponse)
+        .mockResolvedValueOnce(created("260.00"))
+        .mockResolvedValueOnce(sent(resource))
+        .mockResolvedValueOnce(created("260.00", "2026-11-21", resource)),
+    );
+
+    const invoice = await createInvoice(draft);
+
+    expect(invoice.payerUrl).toBeNull();
+    expect(invoice.missingLink).toBe(true);
+  });
+
+  it("takes the payer's page from the recipient view PayPal keeps on the bill", async () => {
+    // PayPal holds the payer's page in `detail.metadata.recipient_view_url`, and
+    // the read-back is where it can be found when sending did not return it.
+    const readBack = {
+      ok: true,
+      json: async () => ({
+        id: "INV2-TEST-0001",
+        status: "SENT",
+        amount: { currency_code: "USD", value: "260.00" },
+        detail: {
+          payment_term: { due_date: "2026-11-21" },
+          metadata: { recipient_view_url: "https://www.sandbox.paypal.com/invoice/p/#INV2TEST" },
+        },
+        links: [
+          {
+            href: "https://api.sandbox.paypal.com/v2/invoicing/invoices/INV2-TEST-0001",
+            rel: "self",
+          },
+        ],
+      }),
+    };
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(tokenResponse)
+        .mockResolvedValueOnce(created("260.00"))
+        .mockResolvedValueOnce(sent([]))
+        .mockResolvedValueOnce(readBack),
+    );
+
+    const invoice = await createInvoice(draft);
+
+    expect(invoice.payerUrl).toBe("https://www.sandbox.paypal.com/invoice/p/#INV2TEST");
+    expect(invoice.missingLink).toBe(false);
+  });
 });

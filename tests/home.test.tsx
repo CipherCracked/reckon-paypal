@@ -9,14 +9,51 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
+// The entry reads the seller's exit sentence with a model, and no model is
+// configured in the suite. The reading itself is tested where it lives; here it
+// is fixed so the screen's own behaviour is what is under test.
+vi.mock("@/lib/commitment/published-exit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/commitment/published-exit")>(
+    "@/lib/commitment/published-exit",
+  );
+  return {
+    ...actual,
+    resolveExitTerm: vi.fn(async () => ({
+      kind: "stated" as const,
+      exit: { kind: "none" as const },
+      note: null,
+      quoted: {
+        label: "the description shown on this page",
+        span: "cancel any time, no fee.",
+      },
+    })),
+  };
+});
+
 describe("the front door", () => {
-  it("states the promise before asking anyone to choose", async () => {
+  it("states the promise, and who it is for, before asking anyone to choose", async () => {
     render(await Home());
 
     expect(
-      screen.getByRole("heading", { name: /every payment asks you to work something out/i }),
+      screen.getByRole("heading", { name: /what it costs, before you agree to it/i }),
     ).toBeInTheDocument();
     expect(screen.getByText(/what it costs to leave/i)).toBeInTheDocument();
+    // IPD 21: the audience is named in words, not left to be inferred from the
+    // scope of the vocabulary.
+    expect(screen.getByText(/dyscalculia, ADHD and dyslexia/i)).toBeInTheDocument();
+  });
+
+  it("puts the seller's words beside the figures they produced", async () => {
+    render(await Home());
+
+    expect(
+      screen.getByRole("heading", { name: /what the seller wrote/i }),
+    ).toBeInTheDocument();
+    // The shop's own copy, printed rather than summarised — once as the
+    // description, once as the span the exit figure was read out of.
+    expect(screen.getAllByText(/cancel any time, no fee/i).length).toBeGreaterThan(0);
+    // The figure and its sentence are on the screen together (IPD 21, ITD 19).
+    expect(document.querySelector("[data-figure='exit'] .commitment-quote")).not.toBeNull();
   });
 
   it("works one commitment in full before anything is clicked", async () => {

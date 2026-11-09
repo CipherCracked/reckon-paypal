@@ -119,28 +119,11 @@ export async function paypalRequest<T>(path: string, init: RequestInit = {}): Pr
 }
 
 /**
- * How long a read made during a page render may take. Past this the caller has
- * waited longer than the fallback would have cost, so the fallback is the better
- * answer — a slow third party must not outlast the page it is decorating.
+ * Reads made during a page render carry a deadline; the helper lives in
+ * `lib/deadline.ts` because a model read needs one too. Re-exported here so the
+ * PayPal callers keep importing it from the module that makes them slow.
  */
-export const READ_DEADLINE_MS = 2_000;
-
-/**
- * Gives a read a deadline, and applies it to the token handshake too: a read is
- * two requests in sequence, so a budget on the second one alone would be a lie.
- */
-export async function withinDeadline<T>(
-  read: (signal: AbortSignal) => Promise<T>,
-  ms: number = READ_DEADLINE_MS,
-): Promise<T> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), ms);
-  try {
-    return await read(controller.signal);
-  } finally {
-    clearTimeout(timer);
-  }
-}
+export { READ_DEADLINE_MS, withinDeadline } from "../deadline";
 
 /**
  * The wire spelling of a money amount, built from integers. Dividing by 100

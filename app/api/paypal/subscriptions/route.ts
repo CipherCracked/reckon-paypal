@@ -1,4 +1,4 @@
-import { findProduct } from "@/lib/catalog/products";
+import { resolveProduct } from "@/lib/catalog/resolve";
 import { addMoney } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
 import { createSubscription, ensurePlan } from "@/lib/paypal/subscriptions";
@@ -12,7 +12,10 @@ export async function POST(request: Request) {
     slug = null;
   }
 
-  const product = slug ? findProduct(slug) : undefined;
+  // PayPal first, the file second — the same resolution the consent screen
+  // used to show the figures. Building the plan from the file while the screen
+  // read PayPal is how a shopper agrees to one number and is charged another.
+  const product = slug ? await resolveProduct(slug) : null;
 
   if (!product) {
     return Response.json({ error: "Unknown product." }, { status: 404 });
@@ -25,10 +28,18 @@ export async function POST(request: Request) {
     );
   }
 
+  // PayPal sends the shopper back here after they approve, appending the
+  // subscription id to whatever return URL the subscription was created with.
+  // Without it there is no way back into this product at all.
+  const origin = new URL(request.url).origin;
+  const back = `${origin}/consent/pending?slug=${encodeURIComponent(product.slug)}`;
+
   try {
     const planId = await ensurePlan({
       productId: `DEMO-${product.slug.toUpperCase()}`,
       planId: `P-DEMO-${product.slug.toUpperCase()}`,
+      // The seller's copy, so the product PayPal stores can be quoted from.
+      description: product.description,
       // One period's charge: the item plus its tax, the same figure the
       // commitment view multiplies by the term.
       amount: addMoney(product.terms.itemPrice, product.terms.tax),
@@ -38,7 +49,11 @@ export async function POST(request: Request) {
       totalCycles: product.terms.recurrence.count,
     });
 
-    const subscription = await createSubscription(planId);
+    const subscription = await createSubscription(planId, {
+      returnUrl: `${back}&approved=1`,
+      cancelUrl: `${back}&cancelled=1`,
+    });
+
     return Response.json({
       subscriptionId: subscription.id,
       status: subscription.status,

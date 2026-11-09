@@ -43,12 +43,21 @@ Three more things sit on the same screen:
 - **An optional recognition check** — shows the amount again and asks only whether it matches what
   the shopper expected. Never a gate; skipping it leaves the payment path untouched.
 - **Reader-owned controls** — text size, one figure at a time, and read-aloud using the browser's
-  own speech synthesis. There is no "accessibility mode" to select, and nothing is inferred.
+  own speech synthesis. The text size lives in the frame, so it is in the same place on every
+  screen and scales the whole document; read-aloud sits under the figures on every screen that has
+  them. There is no "accessibility mode" to select, and nothing is inferred.
 
 After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?slug=…` reads the
 order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
 entry for the next charge. Nothing is stored — the record survives because the shopper keeps it and
 PayPal holds the agreement.
+
+On a subscription PayPal still reports as active, the cost-to-leave figure carries a verb: **Cancel
+this subscription**. It asks once — naming the agreement and saying it cannot be undone here — and
+then calls PayPal's own cancel endpoint. The screen reports PayPal's answer and nothing more:
+*cancelled*, *not running* (PayPal's words), or *we cannot tell whether that went through — check
+PayPal*. A failed request is never shown as a cancellation. A subscription PayPal reports as
+cancelled still produces its record, with what was paid and a dated statement of where it stands.
 
 ## Why the numbers can be trusted
 

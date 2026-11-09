@@ -48,3 +48,19 @@ export function writePreferences(preferences: Preferences): void {
     // A reader who cannot store a preference still gets the control this visit.
   }
 }
+
+/**
+ * Changes one preference and leaves the others as the reader last chose them.
+ *
+ * Written as a merge rather than a whole-object write because the two controls
+ * no longer live on the same screen (IPD 24): the text size belongs to the frame
+ * and the pacing to the figures, so each writes its own key from a screen that
+ * does not hold the other's current value. Writing the whole object from a stale
+ * copy is how a reader's text size disappears when they tick a checkbox.
+ */
+export function savePreference<K extends keyof Preferences>(
+  key: K,
+  value: Preferences[K],
+): void {
+  writePreferences({ ...readPreferences(), [key]: value });
+}

@@ -1,8 +1,9 @@
 import { ModelError } from "@/lib/ai/client";
-import { requestQuotations, type ModelQuotation } from "@/lib/ai/read-document";
+import { requestQuotations, type ModelQuotation, type ReadOptions } from "@/lib/ai/read-document";
 import { normaliseText } from "@/lib/document/normalise";
 import { parseAmount } from "@/lib/document/parse";
 import { verifyQuotations } from "@/lib/document/verify";
+import type { FigureSource } from "./present";
 import type { ExitTerms } from "./types";
 
 /**
@@ -66,28 +67,120 @@ export function exitFromSpans(
 }
 
 /**
+ * The same seller text is read on every render of a screen that shows it — a
+ * bill page re-reads it each time it opens. The reading is a fact about the
+ * seller's published words, not about the reader, so remembering it for a few
+ * minutes changes nothing on the screen and spares every render after the first
+ * a model round-trip. Nothing about a person is kept.
+ *
+ * The maps live on `globalThis` because Next compiles the start-up hook and the
+ * page into separate module graphs: a module-level map here would be two maps,
+ * and the warm-up would fill one that no page ever reads.
+ */
+type ExitCache = {
+  findings: Map<string, { finding: ExitFinding; at: number }>;
+  /** Readers that arrive while a reading is still running wait on it. */
+  inFlight: Map<string, Promise<ExitFinding>>;
+};
+
+const store = globalThis as unknown as { __publishedExit?: ExitCache };
+const cache: ExitCache = (store.__publishedExit ??= {
+  findings: new Map(),
+  inFlight: new Map(),
+});
+
+const CACHE_TTL_MS = 10 * 60 * 1000;
+
+/** Test hook: the cache is module state, like the PayPal token cache. */
+export function clearPublishedExitCache(): void {
+  cache.findings.clear();
+  cache.inFlight.clear();
+}
+
+/**
  * Reads a seller's published text for the exit figure. Text is short — a
  * product description, an invoice's terms — so nothing here is sized for a
  * document.
  */
-export async function readPublishedExit(text: string): Promise<ExitFinding> {
+export async function readPublishedExit(
+  text: string,
+  options: ReadOptions = {},
+): Promise<ExitFinding> {
   const source = text.trim();
   if (source.length === 0) return { kind: "silent" };
 
-  let reading;
+  const remembered = cache.findings.get(source);
+  if (remembered) {
+    if (Date.now() - remembered.at >= CACHE_TTL_MS) {
+      // The TTL bounds memory, not truth: a reading of a sentence that has not
+      // changed does not become wrong by aging. Refresh behind the reader rather
+      // than making the front door wait a second time for the same answer
+      // (IPD 21) — a first visitor after the window is not a reason to hand the
+      // next one a "could not be read".
+      void startReading(source, options);
+    }
+    return remembered.finding;
+  }
+
+  return startReading(source, options);
+}
+
+/**
+ * How long a reading may keep the "one at a time" slot before it is assumed
+ * stuck. The client gives up on its own well inside this; the ceiling exists for
+ * the case it does not, because a promise that never settles would hold the slot
+ * for the life of the process — every later reader joining a dead request and
+ * being told the seller's terms could not be read, with no way to try again.
+ */
+const READING_CEILING_MS = 3 * 60 * 1000;
+
+/** One reading per text at a time; callers that arrive mid-read join it. */
+function startReading(source: string, options: ReadOptions): Promise<ExitFinding> {
+  const pending = cache.inFlight.get(source);
+  if (pending) return pending;
+
+  const reading = readOnce(source, options).finally(() => {
+    // Frees the slot for the next reader, and only if it is still ours: a
+    // request can settle long after the ceiling has handed the slot on.
+    if (cache.inFlight.get(source) === reading) cache.inFlight.delete(source);
+  });
+
+  // Releases the slot even if the request never comes back, so the next reader
+  // starts a fresh attempt instead of joining a request that has already died.
+  // The check is what makes it safe: a request that hung past the ceiling is no
+  // longer the one holding the slot, and must not evict the attempt that is.
+  const ceiling = setTimeout(() => {
+    if (cache.inFlight.get(source) === reading) cache.inFlight.delete(source);
+  }, READING_CEILING_MS);
+  ceiling.unref?.();
+
+  cache.inFlight.set(source, reading);
+  return reading;
+}
+
+/** One attempt at one text: read it, verify the spans, remember the finding. */
+async function readOnce(source: string, options: ReadOptions): Promise<ExitFinding> {
+  let result;
   try {
-    reading = await requestQuotations(source);
+    result = await requestQuotations(source, options);
   } catch (error) {
-    return {
+    const finding: ExitFinding = {
       kind: "unreadable",
       reason:
         error instanceof ModelError
           ? error.message
           : "The seller's published terms could not be read.",
     };
+    // Deliberately not remembered. A timeout or a dropped connection is a fact
+    // about one attempt, not about the seller — caching it would turn one slow
+    // minute into ten minutes of "could not be read" on every screen that shows
+    // this text (ITD 20). The next render tries again.
+    return finding;
   }
 
-  return exitFromSpans(reading.quotations, normaliseText(source));
+  const finding = exitFromSpans(result.quotations, normaliseText(source));
+  cache.findings.set(source, { finding, at: Date.now() });
+  return finding;
 }
 
 /**
@@ -108,8 +201,8 @@ export type ExitOutcome = {
   exit: ExitTerms;
   /** Shown under the figure when there is no amount, so the reason is visible. */
   note: string | null;
-  /** The seller's sentence the figure came from, when one did. */
-  quoted: { source: string; span: string } | null;
+  /** The seller's sentence the figure came from, when one did. It travels on the figure (ITD 19). */
+  quoted: FigureSource | null;
 };
 
 /**
@@ -121,19 +214,20 @@ export async function resolveExitTerm(
   exit: ExitTerms,
   description: string,
   descriptionLabel: string,
+  options: ReadOptions = {},
 ): Promise<ExitOutcome> {
   if (exit.kind !== "unknown") {
     return { kind: "stated", exit, note: null, quoted: null };
   }
 
-  const finding = await readPublishedExit(description);
+  const finding = await readPublishedExit(description, options);
 
   if (finding.kind === "stated") {
     return {
       kind: "stated",
       exit: finding.exit,
       note: null,
-      quoted: { source: descriptionLabel, span: finding.quote },
+      quoted: { label: descriptionLabel, span: finding.quote },
     };
   }
 

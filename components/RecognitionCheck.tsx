@@ -15,6 +15,18 @@ export type RecognitionCheckProps = {
  */
 export function RecognitionCheck({ amount, onResult }: RecognitionCheckProps) {
   const [skipped, setSkipped] = useState(false);
+  const [matched, setMatched] = useState(false);
+
+  // "Yes" used to call back and change nothing: the shopper answered, got no
+  // acknowledgement, and was left staring at the same three buttons. A check
+  // that answers silence is worse than no check at all.
+  if (matched) {
+    return (
+      <p className="recognition-skipped" role="status">
+        Confirmed: {formatMoney(amount)} is what this screen says you pay today.
+      </p>
+    );
+  }
 
   if (skipped) {
     return (
@@ -30,7 +42,14 @@ export function RecognitionCheck({ amount, onResult }: RecognitionCheckProps) {
       <p className="recognition-amount">{formatMoney(amount)}</p>
       <p>Does this match what you expected?</p>
       <div className="recognition-actions">
-        <button type="button" className="button-primary" onClick={() => onResult(true)}>
+        <button
+          type="button"
+          className="button-primary"
+          onClick={() => {
+            setMatched(true);
+            onResult(true);
+          }}
+        >
           Yes
         </button>
         <button type="button" className="button-secondary" onClick={() => onResult(false)}>

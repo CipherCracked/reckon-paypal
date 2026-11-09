@@ -122,9 +122,11 @@ export async function createInvoice(
     body: JSON.stringify({ send_to_recipient: false }),
   });
 
+  // Only `payer-view` is a payer's page. The `self` link in the same reply is
+  // the REST resource, and handing that to the bill page would label a JSON
+  // response "Pay this bill at PayPal".
   let payerUrl =
-    findLink(sent.links, "payer-view", "self") ??
-    findLink(created.body.links, "payer-view", "self");
+    findLink(sent.links, "payer-view") ?? findLink(created.body.links, "payer-view");
 
   // Sending an invoice does not return the payer's page in every case, but the
   // bill does have one — so the bill is read back before it is called unpayable.

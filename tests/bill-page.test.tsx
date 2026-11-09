@@ -7,7 +7,12 @@ import { money } from "@/lib/money";
 
 vi.mock("@/lib/paypal/retrieve", () => ({ retrieveInvoice: vi.fn() }));
 
-vi.mock("@/lib/commitment/published-exit", () => ({ resolveExitTerm: vi.fn() }));
+vi.mock("@/lib/commitment/published-exit", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/commitment/published-exit")>();
+  // Keep the real note constants: the page prints them, and a copy in the test
+  // would let the two drift without anything failing.
+  return { ...actual, resolveExitTerm: vi.fn() };
+});
 
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -77,6 +82,13 @@ describe("the bill screen", () => {
     expect(
       screen.getByText(/The seller's published terms do not say what it costs to leave/i),
     ).toBeInTheDocument();
+  });
+
+  it("gives the model reading a budget, because the page is waiting on it", async () => {
+    await renderBill();
+
+    const [, , , options] = vi.mocked(resolveExitTerm).mock.calls[0];
+    expect(options?.retries).toBe(0);
   });
 
   it("hands payment to PayPal rather than collecting card details", async () => {

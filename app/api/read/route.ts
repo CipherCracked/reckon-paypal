@@ -1,9 +1,5 @@
-import { readDocumentWithModel } from "@/lib/ai/read-document";
-import { ModelError } from "@/lib/ai/client";
-import { findCandidates } from "@/lib/document/candidates";
-import { normaliseText } from "@/lib/document/normalise";
-import { presentReading, readQuotations } from "@/lib/document/read";
-import { verifyQuotations } from "@/lib/document/verify";
+import { answerReading } from "@/lib/document/answer";
+import { cachedReading } from "@/lib/document/reading-cache";
 
 /** Long enough for a real bill, short enough that the page stays usable. */
 const MIN_LENGTH = 40;
@@ -20,18 +16,13 @@ async function readBody(request: Request): Promise<ReadRequestBody | null> {
   }
 }
 
-function candidatesResponse(text: string, notice: string) {
-  return Response.json({
-    mode: "candidates" as const,
-    notice,
-    candidates: findCandidates(text),
-  });
-}
-
 export async function POST(request: Request) {
   const body = await readBody(request);
   const text = typeof body?.text === "string" ? body.text.trim() : "";
 
+  // A refused document is never cached: the same text would be refused by the
+  // same rule, and remembering refusals is a way to keep the answers people did
+  // not get.
   if (text.length < MIN_LENGTH) {
     return Response.json(
       { error: `Paste at least ${MIN_LENGTH} characters — a document short enough to be one line is short enough to read yourself.` },
@@ -46,50 +37,10 @@ export async function POST(request: Request) {
     );
   }
 
-  let reading;
-  try {
-    reading = await readDocumentWithModel({ text });
-  } catch (error) {
-    // The reason is logged without the document: a failure that cannot be
-    // diagnosed turns every bad key into "this document could not be read".
-    console.warn(
-      "POST /api/read — reading failed:",
-      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
-    );
+  // The cache decides whether this text has been read — by an earlier visitor, or
+  // at start-up for the example documents — and it is the cache, not this route,
+  // that knows which answers may be kept (ITD 20).
+  const answer = await cachedReading(text, () => answerReading(text));
 
-    const notice =
-      error instanceof ModelError && error.message.startsWith("No model")
-        ? "No model is configured here, so nothing was interpreted. These are the amounts written in your document, exactly as they appear."
-        : "The document could not be interpreted, so nothing was guessed. These are the amounts written in it, exactly as they appear.";
-
-    return candidatesResponse(text, notice);
-  }
-
-  const { accepted, rejected } = verifyQuotations(reading.quotations, normaliseText(text));
-  const parsed = readQuotations(accepted);
-
-  if (!parsed) {
-    return candidatesResponse(
-      text,
-      accepted.length === 0
-        ? "Nothing in this document could be matched to a commitment, so nothing was interpreted. These are the amounts written in it, exactly as they appear."
-        : "The document does not state enough to work out a commitment, so no total was computed. These are the amounts written in it, exactly as they appear.",
-    );
-  }
-
-  const view = presentReading(parsed);
-
-  return Response.json({
-    mode: "read" as const,
-    summary: reading.summary,
-    figures: view.figures,
-    breakdown: view.breakdown,
-    notes: view.notes,
-    sources: parsed.sources,
-    schedule: parsed.schedule,
-    dueDate: parsed.dueDate,
-    stated: parsed.stated,
-    quotationCount: accepted.length,
-    rejected,
-  });
+  return Response.json(answer);
 }

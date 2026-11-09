@@ -35,7 +35,11 @@ export const products: Product[] = [
       shipping: money(0),
       tax: money(0),
       recurrence: { count: 12, period: "month" },
-      exit: { kind: "fee", fee: money(0) },
+      // Unstated on purpose: the shop says "cancel any time, no fee" in its
+      // description, and the entry's whole claim is that this figure is read out
+      // of that sentence rather than written beside it (IPD 21). A structured
+      // `$0.00` here would be a number we typed, under copy claiming we read it.
+      exit: { kind: "unknown" },
     },
   },
   {

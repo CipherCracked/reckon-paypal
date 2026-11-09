@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/read/route";
 import { readDocumentWithModel } from "@/lib/ai/read-document";
 import { ModelError } from "@/lib/ai/client";
+import { clearReadingCache } from "@/lib/document/reading-cache";
 
 vi.mock("@/lib/ai/read-document", () => {
   class MockUnreadableDocumentError extends Error {}
@@ -30,6 +31,9 @@ function modelReturns(quotations: Array<{ field: string; quote: string }>) {
 
 beforeEach(() => {
   vi.mocked(readDocumentWithModel).mockReset();
+  // Readings are remembered by their text, and every test here reads the same
+  // document; without this the second test would be answered by the first.
+  clearReadingCache();
 });
 
 describe("POST /api/read", () => {
@@ -69,7 +73,10 @@ describe("POST /api/read", () => {
     const body = await response.json();
 
     // The first span that parses wins; the second is ignored rather than merged.
-    expect(body.sources.today).toBe("Setup fee: $10.00");
+    // The sentence travels on the figure it produced (ITD 19), so there is no
+    // separate map beside the figures for a screen to join up or forget.
+    const today = body.figures.find((figure: { id: string }) => figure.id === "today");
+    expect(today.source).toEqual({ label: "your document", span: "Setup fee: $10.00" });
   });
 
   it("discards a quotation the document does not contain, and says how many", async () => {

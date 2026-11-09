@@ -4,6 +4,8 @@ import type { Money } from "@/lib/money";
 export type EnsurePlanInput = {
   productId: string;
   planId: string;
+  /** The seller's published copy, stored on the PayPal product so a screen can quote it. */
+  description: string;
   amount: Money;
   interval: "MONTH" | "YEAR";
   /** How many charges the term has. The plan must end when the screen says it does. */
@@ -72,6 +74,11 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     body: JSON.stringify({
       id: input.productId,
       name: `Commitment demo product ${input.productId}`,
+      // The seller's own copy goes onto the PayPal product, because the front
+      // door reads the description from here and reads the cost to leave out of
+      // it (IPD 21). A product created without one leaves the entry with
+      // nothing to quote.
+      description: input.description,
       type: "SERVICE",
       category: "SOFTWARE",
     }),
@@ -112,14 +119,69 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
   }
 }
 
-export async function createSubscription(planId: string): Promise<Subscription> {
+/**
+ * The one sentence PayPal stores as the reason for the cancellation. Fixed text,
+ * because nothing about the person should travel to PayPal in a free field.
+ */
+const CANCEL_REASON = "Cancelled from the receipt for this subscription";
+
+/**
+ * Ends a subscription at PayPal (ITD 21).
+ *
+ * PayPal answers a successful cancel with **no body at all**, so there is
+ * nothing to return: the only evidence of success is that the call did not fail.
+ * Anything else comes back as a `PayPalError` — an unprocessable-entity reply
+ * when the subscription is not in a cancellable state, or a status when it could
+ * not be reached — and the caller decides what each of those means.
+ *
+ * The signal is the caller's: an action a person is waiting on gets a deadline,
+ * and aborting mid-request is exactly the case that must be reported as "we
+ * cannot tell", never as "nothing changed".
+ */
+export async function cancelSubscription(
+  id: string,
+  signal?: AbortSignal | null,
+): Promise<void> {
+  await paypalRequest<unknown>(
+    `/v1/billing/subscriptions/${encodeURIComponent(id)}/cancel`,
+    {
+      method: "POST",
+      body: JSON.stringify({ reason: CANCEL_REASON }),
+      signal,
+    },
+  );
+}
+
+export type ApprovalReturn = {
+  /** Where PayPal sends the shopper after they approve. */
+  returnUrl: string;
+  /** Where it sends them if they back out. */
+  cancelUrl: string;
+};
+
+export async function createSubscription(
+  planId: string,
+  returnTo: ApprovalReturn,
+): Promise<Subscription> {
   const subscription = await paypalRequest<{
     id: string;
     status: string;
     links?: Array<{ href: string; rel: string }>;
   }>("/v1/billing/subscriptions", {
     method: "POST",
-    body: JSON.stringify({ plan_id: planId }),
+    body: JSON.stringify({
+      plan_id: planId,
+      // Without this PayPal leaves the shopper on its own confirmation page:
+      // the subscription exists, they approved it, and this product never
+      // sees them again — no receipt, no record, a dead end at the end of the
+      // flagship flow. The order path has always sent these. The recurring
+      // path, which carries the twelve-month term, did not.
+      application_context: {
+        user_action: "SUBSCRIBE_NOW",
+        return_url: returnTo.returnUrl,
+        cancel_url: returnTo.cancelUrl,
+      },
+    }),
   });
 
   const approveUrl = subscription.links?.find((link) => link.rel === "approve")?.href ?? null;

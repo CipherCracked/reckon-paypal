@@ -82,6 +82,11 @@ export type DocumentReading = {
   summary: string;
 };
 
+/** The caller's budget, passed straight through to the wire. */
+export type ReadOptions = {
+  retries?: number;
+};
+
 function toQuotations(input: unknown): ModelQuotation[] {
   const raw = (input ?? {}) as Record<string, unknown>;
   const list = Array.isArray(raw.quotations) ? raw.quotations : [];
@@ -105,11 +110,15 @@ function toQuotations(input: unknown): ModelQuotation[] {
  * Throws when there is nothing verifiable to work with — no tool result, no
  * provider, a network error.
  */
-export async function requestQuotations(text: string): Promise<DocumentReading> {
+export async function requestQuotations(
+  text: string,
+  options: ReadOptions = {},
+): Promise<DocumentReading> {
   const answer = await callTool({
     system: SYSTEM_PROMPT,
     user: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${text}\nDOCUMENT>>>`,
     tool: QUOTATIONS_TOOL,
+    retries: options.retries,
   });
 
   const quotations = toQuotations(answer);

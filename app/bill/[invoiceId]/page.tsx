@@ -4,8 +4,9 @@ import { CommitmentView } from "@/components/CommitmentView";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
-import { resolveExitTerm } from "@/lib/commitment/published-exit";
+import { resolveExitTerm, EXIT_UNREADABLE_NOTE, type ExitOutcome } from "@/lib/commitment/published-exit";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
+import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
 import { formatMoney } from "@/lib/money";
 import { retrieveInvoice } from "@/lib/paypal/retrieve";
 
@@ -39,15 +40,30 @@ export default async function BillPage({ params, searchParams }: PageProps) {
   // to have said nothing: PayPal has no field for it, so when the terms are
   // silent the biller's own words are read and the absence is reported as
   // theirs (IPD 19). Same rule as the consent screen, same code.
-  const exitOutcome = await resolveExitTerm(
-    bill.terms.exit,
-    bill.description,
-    `what ${bill.biller} published`,
+  //
+  // The reading is a model call, and the model is slow enough that a page
+  // cannot wait for it: the sellers' texts are read at start-up, so this is
+  // normally a cache hit. When it is not, the page gives up after its budget
+  // and says the figure could not be read — a statement about this attempt,
+  // not about the biller — while the reading carries on and is remembered for
+  // the next view.
+  const exitOutcome = await withBudget(
+    resolveExitTerm(bill.terms.exit, bill.description, `what ${bill.biller} published`, {
+      retries: 0,
+    }),
+    MODEL_READ_DEADLINE_MS,
+    {
+      kind: "unreadable",
+      exit: { kind: "unknown" },
+      note: EXIT_UNREADABLE_NOTE,
+      quoted: null,
+    } satisfies ExitOutcome,
   );
   const terms = { ...bill.terms, exit: exitOutcome.exit };
 
   const translation = computeCommitment(terms);
-  const figures = presentFigures(terms, translation);
+  // The biller's sentence rides on the figure it produced (ITD 19).
+  const figures = presentFigures(terms, translation, { sources: { exit: exitOutcome.quoted } });
   const figureNotes = exitOutcome.note ? { exit: exitOutcome.note } : undefined;
 
   let record;
@@ -77,7 +93,6 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           schedule="No due date stated — PayPal could not be reached to read this bill."
           sourceNote={describeSources({
             published: `what ${bill.biller} published`,
-            quoted: exitOutcome.quoted,
             absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
             unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
           })}
@@ -124,7 +139,6 @@ export default async function BillPage({ params, searchParams }: PageProps) {
             // was read to agree the total, not to supply one. Saying "read from
             // PayPal" here would claim a source the numbers never came from.
             published: `what ${bill.biller} published, with the total agreeing with PayPal's copy of this invoice`,
-            quoted: exitOutcome.quoted,
             absent: absentFigureNote(figures),
           })}
         />

@@ -29,6 +29,11 @@ export type ToolRequest = {
   system: string;
   user: string;
   tool: ToolDefinition;
+  /**
+   * Attempts beyond the first. A caller rendering a page passes 0: the page is
+   * waiting on this answer, so a second attempt is more waiting, not more care.
+   */
+  retries?: number;
 };
 
 export class ModelError extends Error {
@@ -74,6 +79,9 @@ function describeFailure(error: unknown): string {
 
   const name = error instanceof Error ? error.name : "";
   if (name === "APIConnectionTimeoutError") return "The model did not answer in time.";
+  // The caller's own deadline ran out. This is not the seller's silence and not
+  // the endpoint's failure — it is us choosing to stop waiting.
+  if (name === "APIUserAbortError") return "The model did not answer in time.";
 
   return "The model endpoint could not be reached.";
 }
@@ -90,26 +98,30 @@ export async function callTool(request: ToolRequest): Promise<unknown> {
 
   let completion;
   try {
-    completion = await createClient().chat.completions.create({
-      model: aiModel(),
-      messages: [
-        { role: "system", content: request.system },
-        { role: "user", content: request.user },
-      ],
-      tools: [
-        {
-          type: "function",
-          function: {
-            name: request.tool.name,
-            description: request.tool.description,
-            parameters: request.tool.parameters,
+    completion = await createClient().chat.completions.create(
+      {
+        model: aiModel(),
+        messages: [
+          { role: "system", content: request.system },
+          { role: "user", content: request.user },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: request.tool.name,
+              description: request.tool.description,
+              parameters: request.tool.parameters,
+            },
           },
-        },
-      ],
-      // The model has no other permitted answer. A provider that ignores this
-      // returns prose, which fails the check below rather than becoming data.
-      tool_choice: { type: "function", function: { name: request.tool.name } },
-    });
+        ],
+        // The model has no other permitted answer. A provider that ignores this
+        // returns prose, which fails the check below rather than becoming data.
+        tool_choice: { type: "function", function: { name: request.tool.name } },
+      },
+      // Per-request, so a caller with a budget overrides the client's defaults.
+      { maxRetries: request.retries },
+    );
   } catch (error) {
     throw new ModelError(describeFailure(error));
   }

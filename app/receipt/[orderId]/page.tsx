@@ -1,10 +1,15 @@
 import Link from "next/link";
-import { CommitmentRecord } from "@/components/CommitmentRecord";
+import { CommitmentRecord, type RecordStanding } from "@/components/CommitmentRecord";
 import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
-import { resolveExitTerm } from "@/lib/commitment/published-exit";
+import {
+  EXIT_UNREADABLE_NOTE,
+  resolveExitTerm,
+  type ExitOutcome,
+} from "@/lib/commitment/published-exit";
 import { describeSources } from "@/lib/commitment/sources";
 import type { CommitmentTerms } from "@/lib/commitment/types";
+import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
 import { zeroMoney, type Money } from "@/lib/money";
 import { paypalBaseUrl } from "@/lib/paypal/client";
 import { isSettled, retrieveOrder, retrieveSubscription } from "@/lib/paypal/retrieve";
@@ -49,6 +54,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
 
   let status: string;
   let nextBillingTime: string | null = null;
+  let statusChangeTime: string | null = null;
   let paypalAmount: Money | null = null;
   let planTerms: CommitmentTerms | null = null;
 
@@ -57,6 +63,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
       const subscription = await retrieveSubscription(orderId);
       status = subscription.status;
       nextBillingTime = subscription.nextBillingTime;
+      statusChangeTime = subscription.statusChangeTime;
       paypalAmount = subscription.amount;
       planTerms = subscription.terms;
     } else {
@@ -88,11 +95,20 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
     );
   }
 
-  // The third figure is the seller's, as everywhere else (IPD 19).
-  const exitOutcome = await resolveExitTerm(
-    resolved.terms.exit,
-    resolved.description,
-    resolved.descriptionLabel,
+  // The third figure is the seller's, as everywhere else (IPD 19). The reading
+  // is a model call, so it carries the same budget the bill page gives it: a
+  // record that waited most of a minute would be a record nobody reads.
+  const exitOutcome = await withBudget(
+    resolveExitTerm(resolved.terms.exit, resolved.description, resolved.descriptionLabel, {
+      retries: 0,
+    }),
+    MODEL_READ_DEADLINE_MS,
+    {
+      kind: "unreadable",
+      exit: { kind: "unknown" },
+      note: EXIT_UNREADABLE_NOTE,
+      quoted: null,
+    } satisfies ExitOutcome,
   );
   const exit = exitOutcome.exit;
 
@@ -147,10 +163,20 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
 
   const sourceNote =
     paypalLabel || publishedLabel
-      ? describeSources({ paypal: paypalLabel, published: publishedLabel, quoted: exitOutcome.quoted })
+      ? describeSources({ paypal: paypalLabel, published: publishedLabel })
       : "PayPal confirmed this payment and did not return an amount for it.";
 
   const nextDate = nextBillingTime ? new Date(nextBillingTime) : null;
+
+  // Only PayPal's own state decides whether the record offers to end the
+  // subscription: a button on a commitment it has already ended would be a lie
+  // about what pressing it does (IPD 23).
+  const standing: RecordStanding | null =
+    recurring && status === "ACTIVE"
+      ? { kind: "running", subscriptionId: orderId }
+      : recurring && status === "CANCELLED"
+        ? { kind: "cancelled", at: statusChangeTime ? new Date(statusChangeTime) : null }
+        : null;
 
   return (
     <div className="page">
@@ -161,9 +187,11 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
         acrossTerm={translation?.acrossTerm ?? null}
         exit={translation?.exit ?? null}
         exitNote={exit.kind === "unknown" ? exitOutcome.note : null}
+        exitSource={exitOutcome.quoted}
         nextCharge={
           recurring ? { date: nextDate, amount: translation?.today ?? null } : null
         }
+        standing={standing}
         manageUrl={manageUrl()}
         calendarHref={
           recurring
