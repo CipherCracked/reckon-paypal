@@ -55,8 +55,21 @@ Three more things sit on the same screen:
 
 After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?slug=…` reads the
 order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
-entry for the next charge. Nothing is stored — the record survives because the shopper keeps it and
-PayPal holds the agreement.
+entry for the next charge. Nothing about the purchase is stored — the record survives because the
+shopper keeps it and PayPal holds the agreement.
+
+**A way back when the link is lost.** `/account` signs a shopper in with their own PayPal account
+and lists the subscriptions this store holds under it — each with the same three figures, read from
+PayPal at the moment they ask. There is still no account and no user record: the sign-in is a
+signed cookie that expires in two hours, and the list is rebuilt on every visit by reading PayPal.
+Two things it will not pretend: one-time purchases cannot appear (PayPal gives a merchant no way to
+look them up without an id), and when the check cannot run the page says *"we could not check"*
+rather than *"you have none"*.
+
+Signing in needs **Log in with PayPal** enabled on the REST app — a dashboard setting, not a code
+one: *Apps & Credentials → your app → Log in with PayPal → Enable*, with
+`http://localhost:3000/auth/paypal/callback` as a return URL (add your deployed origin too), and
+`SESSION_SECRET` set. Without them the page says it cannot check.
 
 On a subscription PayPal still reports as active, the cost-to-leave figure carries a verb: **Cancel
 this subscription**. It asks once — naming the agreement and saying it cannot be undone here — and
@@ -115,7 +128,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists ten variables — four required, six optional:
+`env.example` lists eleven variables — four required, seven optional:
 
 | Variable | Purpose |
 |---|---|
@@ -129,6 +142,7 @@ npm run dev
 | `PAYPAL_PRODUCT_HEADPHONES` | Optional. Same, for the one-time product |
 | `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
 | `CHANNEL3_API_KEY` | Optional. Server-side key for the live product catalogue behind `/shop` |
+| `SESSION_SECRET` | Optional. Signs the `/account` sign-in cookie (16+ characters). Absent, that page says it cannot check |
 
 The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
 price and term from the plan and says so; with them empty it computes from the published terms in

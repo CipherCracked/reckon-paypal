@@ -818,3 +818,33 @@ payment path contradicts "nothing is stored" on the one screen a judge is most l
 to inspect, email login fails for a judge with no account, and the record already
 survives without one — PayPal holds it. The two items at the top of this section are
 what "login" was actually standing in for.
+
+---
+
+## 13. "What this store holds for you" (2026-11-11)
+
+Built after the user asked why not add login, and pushed back on "not enough time" as
+the reason. The answer that survived the research: PayPal can tell us *who* someone
+is and cannot tell us *what they bought*, so the only honest login is one that reads
+the store's own records live. Decomposition and four decisions:
+`docs/signed-in-commitments/`.
+
+- [x] Problem decomposition + IPD 25–26, ITD 22–23.
+- [x] `/account`: sign in with PayPal → this store's subscriptions under that payer,
+      three figures each, rebuilt on every visit. No database; the session is a
+      signed `httpOnly` cookie (2 h, `SESSION_SECRET`).
+- [x] `GET /v1/billing/subscriptions` scan with `subscriber.payer_id` matching,
+      bounded to 5 pages / 5 concurrent reads / 8 s, and the bound is *stated* when hit.
+- [x] "Looked and found none" vs "could not look" kept apart — the page never says
+      "none" on a failure.
+- [ ] **BLOCKED, and only the user can clear it:** enable *Log in with PayPal* on the
+      sandbox app (Developer Dashboard → Apps & Credentials → app → Log in with
+      PayPal → Enable) with return URL `http://localhost:3001/auth/paypal/callback`.
+      Probe today: the connect endpoint answers *"invalid client_id or redirect_uri"*.
+- [ ] Once enabled: sign in live and confirm `user_id` from userinfo equals
+      `subscriber.payer_id` (`D5CKAUQ8V7ADL` for the sandbox buyer). If they differ,
+      matching falls back to the verified email and the page says which key it used.
+- [ ] Approve one **active** subscription before the video: both records in the
+      sandbox are `CANCELLED`, so the page currently demonstrates only that state.
+- [ ] Entry point: the home page links to it; the receipt does not yet ("Lost this
+      link? Sign in" is a one-line addition).

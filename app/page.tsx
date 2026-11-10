@@ -219,6 +219,12 @@ export default async function Home() {
         <Link href="/shop">Or search real products</Link> — live listings and prices from thousands
         of shops, so the figures are about something you could actually buy.
       </p>
+
+      <p className="scope-note">
+        <Link href="/account">Already agreed to something here?</Link> Sign in with the PayPal
+        account you paid with and see what this store holds for you — read from PayPal when you ask,
+        kept nowhere.
+      </p>
     </div>
   );
 }
