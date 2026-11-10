@@ -7,13 +7,29 @@ The subscription return path was fixed on 2026-11-09 (`application_context` with
 `subscription_id` to `/receipt/{id}`). Tests cover the wiring; no live approval has
 been done yet, because that needs a PayPal sandbox **buyer** login.
 
-- [ ] Start the dev server: `npm run dev`
-- [ ] Open the coffee subscription (the 12-month recurring product) and click approve
-- [ ] Log in on PayPal's sandbox page with a **sandbox buyer** account — not the
-      merchant account whose keys are in `.env.local`
-- [ ] Approve the subscription
-- [ ] Confirm you land on `/receipt/I-...` with the figures, **not** on PayPal's own
-      confirmation page
+**Driven end to end with a browser on 2026-11-11.** It found two things.
+
+- [x] The entry point is `/product/ch3-YyLUjLT` (or any of the other three curated
+      ids) — the coffee subscription named below was deleted when the live listings
+      landed. **Check this commitment** → consent screen → **Approve subscription
+      with PayPal** reaches PayPal.
+- [x] **Defect, fixed 2026-11-11.** The first run failed at PayPal with
+      `INVALID_STRING_MAX_LENGTH`: the route sent the seller's copy as the catalog
+      product description (cap 256; BARK six-month is 338, Detox Box 442). A listing
+      now sends no description, and `ensurePlan` clamps with the cut marked. Covered
+      by three tests in `tests/subscriptions.test.ts`.
+- [ ] **Blocked: the sandbox buyer supplied is an India account.** PayPal refuses it
+      with `UNSUPPORTED_PAYEE_CURRENCY` — "this seller doesn't accept payments in
+      your currency" — because the merchant is a US business charging USD. The same
+      account's own settings page shows `(GMT+05:30) Kolkata`. The subscription
+      checkout fails the same way, as `genericError?code=RETRY`.
+      **Needed:** a **US** sandbox Personal account (Testing Tools → Sandbox
+      Accounts), added to the README's Test credentials section.
+- [ ] With a US buyer: approve the subscription, confirm you land on `/receipt/I-...`
+      with the figures — **not** on PayPal's own confirmation page
+- [ ] With a live subscription: press **Cancel this subscription** and confirm
+      PayPal's answer comes back (`cancelled` / `not running` / the cannot-tell
+      wording), then that a cancelled subscription still produces its record
 
 If it fails, the first thing to check is the request body sent to
 `POST /v1/billing/subscriptions` — it must carry `application_context.return_url`.
