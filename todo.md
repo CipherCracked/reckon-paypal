@@ -168,19 +168,28 @@ nothing. Each item below is an absence that is **ours**, not the source's.
       this listing does not state its terms."* **Fixed 2026-11-10**; verified on
       `/api/commitment/pending?slug=ch3-jOFatvj` (exit `0`, both totals still floors).
 
-- [ ] **"What happens if a payment is missed is not stated on this screen."** For
-      the demo catalogue this is no longer true: we create the plan, so
-      `payment_preferences` says it (`auto_bill_outstanding: true`,
-      `payment_failure_threshold: 1`). Fix: carry those two fields onto
-      `CommitmentTerms` from `termsFromPlan`, and have the schedule state what
-      PayPal will do. **Needs PayPal's own wording checked first** — the sentence
-      must not paraphrase a mechanism we have not read or run.
+- [x] **"What happens if a payment is missed is not stated on this screen."** For
+      the demo catalogue this was no longer true: we create the plan, so
+      `payment_preferences` says it. `CommitmentTerms` now carries
+      `failure: { suspendAfter }`, `termsFromPlan` reads it back off
+      `payment_preferences.payment_failure_threshold`, both catalogue entries state
+      it, and the schedule prints *"If a payment does not go through, PayPal
+      suspends the plan after one failed payment."* The number is one constant
+      (`lib/commitment/plan-policy.ts`) sent to PayPal and stated on screen, so the
+      promise and the plan cannot drift. A plan that carries no threshold still
+      says *"not stated in the terms"* — the absence now belongs to the source, not
+      to the screen. **Fixed 2026-11-10.** Open sub-question: PayPal's *retry*
+      behaviour (whether it re-attempts before suspending) is still unverified —
+      both research tools were unavailable — so the sentence states the threshold
+      and claims nothing beyond it.
 
-- [ ] **Ending a financed plan is not offered while ending a subscription is.**
-      The plan we build carries no early-termination fee, so the asymmetry is our
-      caution rather than a fact about the money. Either offer the button and
-      report PayPal's answer as the subscription path does, or keep it off and say
-      what PayPal does when a 12-cycle plan is cancelled. Cross-ref §6.
+- [x] **Ending a financed plan is not offered while ending a subscription is.**
+      The receipt now offers the cancel for both, through the same route, with
+      PayPal's answer reported the same way. What changed is the words and one
+      sentence: the record calls the agreement a *payment plan*, and the
+      confirmation says *"This stops the schedule at PayPal; it does not settle
+      what you owe the seller, so ask them about that."* **Fixed 2026-11-10.**
+      Still needs the sandbox click to see a real plan cancelled (§1).
 
 - [ ] **The market product page narrates its own plumbing.** *"the catalogue's
       figure, not this page's"* · *"If that offer leaves the catalogue, this page
@@ -275,6 +284,52 @@ findings below are from a live run, not a read.
 1. Video (~5 h) · 2. `LICENSE` (15 min) · 3. Credentials + an `ACTIVE` subscription id
 (1–2 h) · 4. Cache the consent wording (2–3 h) · 5. Figures on the product page
 (3–4 h) · 6. Correct the claims (1 h) · 7. Screenshots (1 h).
+
+### 7e. Blind UI/UX audit (2026-11-10, second pass)
+
+A context-free agent screened the running app at 1280×1000 and 390×844, clicked
+every reachable flow, and wrote 18 findings plus a "protect this" list. The
+recurring theme is the same as §6a: the product narrates its own plumbing where a
+good product answers the question. Its top four are kept here in its order.
+
+- [x] **`/read` crashed on three of its four example documents.** `Cannot read
+      properties of undefined (reading 'minor')` in `CommitmentView`, from a cached
+      reading made by an earlier build that had no `breakdown.fee`. **Fixed
+      2026-11-10**, two ways: the cache key carries an `ANSWER_VERSION` (a cache on
+      `globalThis` outlives a recompile, so an old-shaped answer was still being
+      served), and the view reads an absent fee as no fee instead of crashing the
+      one screen a shopper cannot reload past.
+- [x] **`/read` could hang for two and a half minutes.** The model client's own
+      socket timeout was the only bound: a dead endpoint held the button on
+      *"Reading…"* for 156 s and then fell back. **Fixed 2026-11-10** with
+      `MODEL_ANSWER_DEADLINE_MS` (60 s) in the route; a timed-out attempt is not
+      cached, and the fallback is the amounts the page can find without the model.
+      The endpoint was unreachable during the audit — see §9.
+- [ ] **"No, show me the breakdown" does nothing.** The person who says the figure
+      does not match their expectation — the user this product exists for — gets
+      silence. The handler moves focus and scrolls to a heading; neither is visible
+      on that screen. ~30 min, and it is the worst kind of defect.
+- [ ] **Approving is a two-stage handshake with near-identical labels.** The first
+      press greys out, then a second outlined link appears that is the real
+      approval. One control, one label. ~1 h.
+- [ ] **No navigation.** `/shop` and `/read` are reachable only from three body
+      links 1,500 px down the home page; every interior page's only exit is *"Back
+      to the ways in"*, a phrase used nowhere else, pointing at `/`. ~2 h.
+- [ ] **The three-figure frame is semantically wrong on a bill.** "Cost to leave /
+      Not stated" and "Charged today" on an invoice with a future due date. Honesty
+      is the thesis; a figure that answers a question the document does not ask
+      damages it more than a gap would.
+- [ ] **Load states are a word, and sometimes a lie.** *"Reading…"* with no
+      spinner or progress; the status line points at the box below it while sitting
+      above it.
+- [ ] Smaller: figure cards repeat the amount on the arithmetic line ("$12.00" over
+      "$12.00"); the shop has no empty state; every route shares one `<title>`;
+      read-aloud has no playing state; three different "back" voices.
+
+**Protect (its words):** the identical three-figure frame across five screens,
+"Not stated" instead of $0.00, the "what the seller wrote / what this asks of you"
+pair, the real focus ring and persisted text size, "Show one figure at a time",
+and the restraint — no gradients, no shadows, no fake urgency.
 
 ## 8. The realness problem (2026-11-10, from the user)
 
@@ -412,10 +467,21 @@ asserted. Only new findings are listed here.
       `/`, `/bill/…` and `/receipt/…` can render "could not be read" for up to ~3 min
       on a fresh server — which is the first thing a judge sees after a deploy or a
       restart. Measured cold round-trip: **42.8 s**.
-- [ ] **The document door has no server-side deadline.** `app/api/read/route.ts` leans
+- [x] **The document door has no server-side deadline.** `app/api/read/route.ts` leans
       on 45 s × 3 attempts (`lib/ai/client.ts:16-19, 63-69`); a custom paste returned in
       **over 120 s**. Give it a budget and an honest in-progress answer. The built-in
       examples are warm (0.03 s), so only a stranger's text is exposed.
+      **Fixed 2026-11-10:** `MODEL_ANSWER_DEADLINE_MS` (60 s) bounds the route, a
+      timed-out attempt is not cached, and the fallback states what it could not
+      interpret. Re-measured during the §7e audit at **156 s → the budget**, though see
+      the outage note below.
+- [ ] **The model endpoint was unreachable on 2026-11-10.** Two consecutive reads of a
+      live document returned `ModelError: The model endpoint could not be reached.` and
+      fell back to candidate mode after 137–156 s. Nothing in the product is wrong —
+      this is the `AI_*` credentials or the provider's quota, owned by the user. The
+      reader still works without it (it shows the amounts and says it did not interpret
+      them), but the flagship AI claim is not demonstrated until this is restored.
+      **Check before recording the video.**
 - [x] **README:103 says "six required" env vars.** Wrong — `PAYPAL_BASE_URL` has a
       default (`lib/paypal/client.ts:17`) and `AI_API_KEY` is optional; four are
       required, the rest optional. **Fixed 2026-11-10:** "nine variables — four
