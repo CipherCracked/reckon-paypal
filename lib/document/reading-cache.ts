@@ -34,6 +34,22 @@ const store = globalThis as unknown as { __readingCache?: Store };
 const cache: Store = (store.__readingCache ??= { entries: new Map(), inFlight: new Map() });
 
 /**
+ * The shape of the answer this code produces, as a cache-key prefix.
+ *
+ * The cache lives on `globalThis`, so it outlives a recompile: a dev server that
+ * has been up all day still holds answers built by the code from this morning.
+ * That is invisible until one of those answers is rendered by a screen that has
+ * moved on — which is exactly what happened when the breakdown gained its
+ * opening-fee row, and three example documents began crashing the reader on a
+ * figure that was simply absent from the cached payload.
+ *
+ * Bump it whenever `ReadingAnswer` gains, loses, or renames a field. The cost is
+ * one model call per example document after the change; the alternative is a
+ * page that fails on data from an older build.
+ */
+const ANSWER_VERSION = 2;
+
+/**
  * How long a visitor's own document is kept: long enough to spare a second look
  * at the same paste, and not a record of anything. A time limit alone bounds
  * age, not growth — see `MAX_ENTRIES`.
@@ -44,8 +60,13 @@ const VISITOR_TTL_MS = 10 * 60 * 1000;
 const MAX_ENTRIES = 50;
 
 const PERMANENT: ReadonlySet<string> = new Set(
-  exampleDocuments.map((example) => normaliseText(example.text)),
+  exampleDocuments.map((example) => cacheKey(normaliseText(example.text))),
 );
+
+/** The text, and the shape of answer this build knows how to read back. */
+function cacheKey(normalised: string): string {
+  return `${ANSWER_VERSION}:${normalised}`;
+}
 
 /** Test hook: the cache is module state, like the PayPal token cache. */
 export function clearReadingCache(): void {
@@ -64,7 +85,7 @@ export async function cachedReading(
   text: string,
   work: () => Promise<Attempt>,
 ): Promise<ReadingAnswer> {
-  const key = normaliseText(text);
+  const key = cacheKey(normaliseText(text));
   const remembered = cache.entries.get(key);
 
   if (remembered) {

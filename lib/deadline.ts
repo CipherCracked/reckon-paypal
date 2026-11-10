@@ -38,6 +38,18 @@ export const DETAIL_READ_DEADLINE_MS = 8_000;
 export const MODEL_READ_DEADLINE_MS = 3_000;
 
 /**
+ * How long the reader page waits for a model to read a pasted document.
+ *
+ * That read is the page's whole purpose, so it gets longer than a render does —
+ * but it does get one. A model endpoint that had stopped answering took two and
+ * a half minutes to say so, and the visitor spent all of it on a button reading
+ * "Reading…" with no way to tell a slow read from a dead one. A minute is six
+ * times the slowest good reading measured here: long enough that a working model
+ * always finishes, short enough that a broken one is over.
+ */
+export const MODEL_ANSWER_DEADLINE_MS = 60_000;
+
+/**
  * Gives a read a deadline, and applies it to the token handshake too: a read is
  * two requests in sequence, so a budget on the second one alone would be a lie.
  */

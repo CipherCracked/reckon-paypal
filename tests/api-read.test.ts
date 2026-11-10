@@ -3,6 +3,7 @@ import { POST } from "@/app/api/read/route";
 import { readDocumentWithModel } from "@/lib/ai/read-document";
 import { ModelError } from "@/lib/ai/client";
 import { clearReadingCache } from "@/lib/document/reading-cache";
+import { MODEL_ANSWER_DEADLINE_MS } from "@/lib/deadline";
 
 vi.mock("@/lib/ai/read-document", () => {
   class MockUnreadableDocumentError extends Error {}
@@ -128,6 +129,26 @@ describe("POST /api/read", () => {
     expect(body.mode).toBe("candidates");
     expect(body.notice).not.toMatch(/No model is configured/);
     expect(body.notice).toMatch(/nothing was guessed/i);
+  });
+
+  it("stops waiting for a model that never answers, and says what it found instead", async () => {
+    // A dead endpoint must not hold the page for the model client's own timeout:
+    // the visitor sees one button reading "Reading…" and cannot tell slow from
+    // broken. The budget is the page's, and it ends in a plain statement.
+    vi.useFakeTimers();
+    vi.mocked(readDocumentWithModel).mockReturnValue(new Promise(() => {}) as never);
+
+    try {
+      const pending = POST(request({ text: document }));
+      await vi.advanceTimersByTimeAsync(MODEL_ANSWER_DEADLINE_MS);
+      const body = await (await pending).json();
+
+      expect(body.mode).toBe("candidates");
+      expect(body.notice).toMatch(/did not come back/i);
+      expect(body.candidates.amounts).toEqual(["$35.00", "$10.00", "$25.00"]);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("refuses a fragment too short to be a document", async () => {

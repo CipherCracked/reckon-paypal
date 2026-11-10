@@ -1,5 +1,6 @@
-import { answerReading } from "@/lib/document/answer";
+import { answerReading, candidatesAnswer } from "@/lib/document/answer";
 import { cachedReading } from "@/lib/document/reading-cache";
+import { MODEL_ANSWER_DEADLINE_MS, withBudget } from "@/lib/deadline";
 
 /** Long enough for a real bill, short enough that the page stays usable. */
 const MIN_LENGTH = 40;
@@ -40,7 +41,21 @@ export async function POST(request: Request) {
   // The cache decides whether this text has been read — by an earlier visitor, or
   // at start-up for the example documents — and it is the cache, not this route,
   // that knows which answers may be kept (ITD 20).
-  const answer = await cachedReading(text, () => answerReading(text));
+  //
+  // The budget is the route's, not the model client's: the client waits far
+  // longer than a person does, and its own timeout is what made a dead endpoint
+  // look like a slow one for two and a half minutes. A reading that outlives the
+  // budget is not remembered (`keep: false`), because a minute is a fact about
+  // this attempt and not about the document.
+  const answer = await cachedReading(text, () =>
+    withBudget(answerReading(text), MODEL_ANSWER_DEADLINE_MS, {
+      answer: candidatesAnswer(
+        text,
+        "The reading did not come back within a minute, so nothing was interpreted. These are the amounts written in your document, exactly as they appear.",
+      ),
+      keep: false,
+    }),
+  );
 
   return Response.json(answer);
 }
