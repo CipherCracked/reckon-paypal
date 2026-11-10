@@ -43,4 +43,33 @@ describe("describeSchedule", () => {
     expect(schedule).toContain("12 payments of $105.00");
     expect(schedule).toContain("not stated");
   });
+
+  it("does not call a listing's price the whole charge", () => {
+    // The sentence a real product page shows. "Nothing further is charged" is
+    // what it used to say, and it was false: the retailer adds shipping and tax
+    // at checkout, and the listing states neither.
+    const schedule = describeSchedule({
+      shape: "one_time",
+      itemPrice: money(17995),
+      shipping: null,
+      tax: null,
+      exit: { kind: "unknown" },
+    });
+
+    expect(schedule).not.toContain("Nothing further is charged");
+    expect(schedule).toContain("Shipping and sales tax are not stated here.");
+    expect(schedule).toContain("not everything the checkout will ask for");
+  });
+
+  it("names only the part that is missing", () => {
+    const schedule = describeSchedule({
+      shape: "one_time",
+      itemPrice: money(17995),
+      shipping: money(500),
+      tax: null,
+      exit: { kind: "unknown" },
+    });
+
+    expect(schedule).toContain("Sales tax is not stated here.");
+  });
 });

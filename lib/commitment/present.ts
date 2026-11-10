@@ -1,5 +1,5 @@
 import { formatMoney, type Money } from "../money.ts";
-import type { CommitmentTerms, CommitmentTranslation } from "./types";
+import type { CommitmentTerms, CommitmentTranslation, UnstatedPart } from "./types";
 
 /**
  * The order the shopper reads the figures in — by decision weight, not by
@@ -29,6 +29,13 @@ export type RenderedFigure = {
   label: string;
   /** `null` only for a cost to leave the seller never published. */
   amount: Money | null;
+  /**
+   * True when the amount is the sum of the parts the source *stated*, with at
+   * least one part unstated. The screen prints "At least", because the figure is
+   * a floor: a retailer that never mentions shipping has not said shipping is
+   * free.
+   */
+  floor: boolean;
   /** What the figure was built from, when it can be said without inventing a number. */
   arithmetic: string | null;
   /**
@@ -55,32 +62,73 @@ function isZero(amount: Money): boolean {
 
 /** "$47.99 + $6.95 + $4.01" — the parts of a single charge, in the order the terms state them. */
 function sumOfParts(terms: CommitmentTerms): string | null {
-  const parts = [terms.itemPrice, terms.shipping, terms.tax].filter((part) => !isZero(part));
+  const parts = [terms.itemPrice, terms.shipping, terms.tax].filter(
+    (part): part is Money => part !== null && !isZero(part),
+  );
   if (parts.length === 0) return null;
   return parts.map(formatMoney).join(" + ");
 }
 
-function acrossTermArithmetic(terms: CommitmentTerms, extra: string): string | null {
+const UNSTATED_NAMES: Record<UnstatedPart, string> = {
+  shipping: "shipping",
+  tax: "sales tax",
+};
+
+/** "shipping", "sales tax", "shipping and sales tax" — the parts no one stated. */
+function unstatedText(unstated: UnstatedPart[]): string {
+  if (unstated.length === 0) return "";
+  if (unstated.length === 1) return UNSTATED_NAMES[unstated[0]];
+  return `${UNSTATED_NAMES[unstated[0]]} and ${UNSTATED_NAMES[unstated[1]]}`;
+}
+
+/**
+ * The arithmetic line names what is missing as well as what is there, so the
+ * reader can see that the total above it is the sum of the stated parts rather
+ * than the whole charge. Naming a missing part is not a number, so nothing here
+ * can put a figure on the screen that the code did not derive.
+ */
+function withUnstated(arithmetic: string | null, unstated: UnstatedPart[]): string | null {
+  if (unstated.length === 0) return arithmetic;
+  const missing = `${unstatedText(unstated)} not stated`;
+  return arithmetic ? `${arithmetic}, plus ${missing}` : missing;
+}
+
+function acrossTermArithmetic(
+  terms: CommitmentTerms,
+  extra: string,
+  unstated: UnstatedPart[],
+): string | null {
   switch (terms.shape) {
     case "one_time":
-      return "1 payment";
+      // A stated one-off charge needs no arithmetic — the figure is the charge.
+      // Once a part is unstated the total is a floor, and the line has to show
+      // what it was summed from and what it left out.
+      return unstated.length === 0
+        ? "1 payment"
+        : withUnstated(sumOfParts(terms), unstated);
 
     case "recurring": {
       if (!terms.recurrence) return null;
       const perPeriod = formatMoney({
         currency: terms.itemPrice.currency,
-        minor: terms.itemPrice.minor + terms.tax.minor,
+        minor: terms.itemPrice.minor + (terms.tax?.minor ?? 0),
       });
       const repeated = `${terms.recurrence.count} × ${perPeriod}`;
-      return isZero(terms.shipping) ? repeated : `${repeated} + ${formatMoney(terms.shipping)} ${extra}`;
+      const shipping = terms.shipping;
+      const line =
+        shipping === null || isZero(shipping)
+          ? repeated
+          : `${repeated} + ${formatMoney(shipping)} ${extra}`;
+      return withUnstated(line, unstated);
     }
 
     case "financed": {
       if (!terms.installment) return null;
       const repeated = `${terms.installment.count} × ${formatMoney(terms.installment.amount)}`;
-      return isZero(terms.installment.fee)
+      const line = isZero(terms.installment.fee)
         ? repeated
         : `${repeated} + ${formatMoney(terms.installment.fee)} fee`;
+      return withUnstated(line, unstated);
     }
 
     default:
@@ -88,12 +136,12 @@ function acrossTermArithmetic(terms: CommitmentTerms, extra: string): string | n
   }
 }
 
-function todayArithmetic(terms: CommitmentTerms): string | null {
+function todayArithmetic(terms: CommitmentTerms, unstated: UnstatedPart[]): string | null {
   if (terms.shape === "financed") {
     if (!terms.installment) return null;
     return `1 of ${terms.installment.count} payments`;
   }
-  return sumOfParts(terms);
+  return withUnstated(sumOfParts(terms), unstated);
 }
 
 /**
@@ -115,10 +163,11 @@ export function presentFigures(
   translation: CommitmentTranslation,
   labels: { extra?: string; sources?: FigureSources } = {},
 ): RenderedFigure[] {
+  const unstated = translation.unstated;
   const arithmetic: Record<FigureId, string | null> = {
-    acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once"),
+    acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once", unstated),
     exit: null,
-    today: todayArithmetic(terms),
+    today: todayArithmetic(terms, unstated),
   };
 
   const amounts: Record<FigureId, Money | null> = {
@@ -127,10 +176,15 @@ export function presentFigures(
     today: translation.today,
   };
 
+  // Cost to leave is not a sum of parts, so an unstated part of the charge does
+  // not make it a floor; the two totals are.
+  const floor = unstated.length > 0;
+
   return FIGURE_ORDER.map((id) => ({
     id,
     label: LABELS[id],
     amount: amounts[id],
+    floor: floor && id !== "exit",
     arithmetic: arithmetic[id],
     source: labels.sources?.[id] ?? null,
   }));

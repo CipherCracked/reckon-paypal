@@ -1,6 +1,6 @@
 import type { CommitmentTerms } from "@/lib/commitment/types";
 import { DETAIL_READ_DEADLINE_MS, withinDeadline } from "@/lib/deadline";
-import { fromDecimalString, zeroMoney, type Money } from "@/lib/money";
+import { fromDecimalString, type Money } from "@/lib/money";
 
 /**
  * The live product catalogue.
@@ -82,17 +82,18 @@ export function cheapestInStock(offers: MarketOffer[]): MarketOffer | null {
 }
 
 /**
- * The terms a listed price supports: one charge, of that price, and nothing
- * else. The catalogue does not carry shipping, tax or cancellation terms, so
- * those stay zero/unknown and the screen reports the absence instead of
- * guessing.
+ * The terms a listed price supports: one charge of that price, and nothing else
+ * the catalogue can vouch for. Shipping and tax are `null` — not zero — because
+ * the offer states neither, and a retailer that says nothing about shipping has
+ * not said shipping is free. The totals built over these terms are therefore
+ * floors, and the screen prints them as such.
  */
 export function marketTerms(offer: MarketOffer): CommitmentTerms {
   return {
     shape: "one_time",
     itemPrice: offer.price,
-    shipping: zeroMoney(),
-    tax: zeroMoney(),
+    shipping: null,
+    tax: null,
     exit: { kind: "unknown" },
   };
 }

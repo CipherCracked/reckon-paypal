@@ -377,6 +377,16 @@ actually working.
       **2026-11-10 — partly fixed:** `CommitmentView` no longer prints a zero part, so
       "Sales tax $0.00" / "Tax $0.00" are gone. Still open: the typed `$4.01` on the
       headphones, and the nullable-tax model change that Channel3 needs.
+      **2026-11-10 (later) — the model change is done, and it went further than the
+      row.** `CommitmentTerms.shipping` and `.tax` are now `Money | null`: `null` means
+      *the source did not state it*, `money(0)` means *stated as nothing*. A translation
+      carries `unstated[]`; the two totals become `floor: true`, the screen prints "At
+      least $179.95", the arithmetic line names what is missing, and the breakdown gives
+      an unstated part its own "Not stated" row. `marketTerms` passes `null` for both,
+      so a real listing's schedule no longer says "Nothing further is charged". Still
+      open: the demo catalogue's typed `$4.01` and the document path's `zeroMoney()`,
+      both of which now have a true way to say "not stated" and have not been moved to
+      it.
 - [x] **"Nothing here was typed in by hand" is false** — `app/page.tsx:32`, printed
       directly under a figure whose tax was typed. **Fixed 2026-11-10:** the sentence
       now points at the source line instead of claiming nothing was authored.

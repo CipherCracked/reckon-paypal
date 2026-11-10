@@ -35,17 +35,26 @@ export type ExitTerms =
 export interface CommitmentTerms {
   shape: CommitmentShape;
   itemPrice: Money;
-  shipping: Money;
-  tax: Money;
+  /**
+   * `null` means the source did not state this part — which is not the same as
+   * stating zero. A listing that never mentions shipping has not said shipping
+   * is free, so the totals built over these parts are floors, and the screen
+   * says so.
+   */
+  shipping: Money | null;
+  tax: Money | null;
   recurrence?: Recurrence;
   installment?: Installment;
   exit: ExitTerms;
 }
 
+/** A part of the charge the source did not state. */
+export type UnstatedPart = "shipping" | "tax";
+
 export interface CommitmentBreakdown {
   item: Money;
-  shipping: Money;
-  tax: Money;
+  shipping: Money | null;
+  tax: Money | null;
 }
 
 export interface CommitmentTranslation {
@@ -56,4 +65,10 @@ export interface CommitmentTranslation {
   /** `null` means the seller has not published this. Never zero. */
   exit: Money | null;
   breakdown: CommitmentBreakdown;
+  /**
+   * The parts the totals could not include. Non-empty means `today` and
+   * `acrossTerm` are floors — the sum of what was stated, not the whole charge —
+   * and a screen that prints them as final is claiming something nobody said.
+   */
+  unstated: UnstatedPart[];
 }

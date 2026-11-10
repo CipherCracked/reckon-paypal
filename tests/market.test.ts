@@ -170,10 +170,11 @@ describe("the terms a listed price supports", () => {
 
     expect(terms.shape).toBe("one_time");
     expect(terms.itemPrice).toEqual(money(2499));
-    // The catalogue carries no shipping, tax or cancellation terms, so these
-    // are zero/unknown rather than invented.
-    expect(terms.shipping).toEqual(money(0));
-    expect(terms.tax).toEqual(money(0));
+    // `null`, not zero: the offer states neither part, and a retailer that says
+    // nothing about shipping has not said shipping is free. That distinction is
+    // what makes the totals on the product page read "At least".
+    expect(terms.shipping).toBeNull();
+    expect(terms.tax).toBeNull();
     expect(terms.exit).toEqual({ kind: "unknown" });
   });
 });

@@ -84,4 +84,38 @@ describe("CommitmentView", () => {
     expect(screen.getByText(/not stated/i)).toBeInTheDocument();
     expect(figure(container, "exit")).not.toHaveTextContent("$0.00");
   });
+
+  it("prints a total the source only partly stated as a floor", () => {
+    // A real listing: a price and nothing else.
+    const { container } = renderView({
+      shape: "one_time",
+      itemPrice: money(17995),
+      shipping: null,
+      tax: null,
+      exit: { kind: "unknown" },
+    });
+
+    expect(figure(container, "today")).toHaveTextContent("At least $179.95");
+    expect(figure(container, "acrossTerm")).toHaveTextContent("At least $179.95");
+    // The exit figure is not a sum of parts, so it never reads "At least".
+    expect(figure(container, "exit")).not.toHaveTextContent("At least");
+    expect(
+      screen.getAllByText("$179.95, plus shipping and sales tax not stated").length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("gives an unstated part its own row, which a zero part does not get", () => {
+    renderView({
+      shape: "one_time",
+      itemPrice: money(17995),
+      shipping: null,
+      tax: null,
+      exit: { kind: "unknown" },
+    });
+
+    // "Not stated" is a different fact from "$0.00", and the row now says which
+    // one it is instead of the row disappearing.
+    expect(screen.getAllByText("Not stated").length).toBe(3);
+    expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
 });

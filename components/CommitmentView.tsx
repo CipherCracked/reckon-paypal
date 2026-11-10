@@ -81,7 +81,12 @@ export function CommitmentView({
                   ) : null}
                 </>
               ) : (
-                formatMoney(figure.amount)
+                // A floor, not a total: the source stated these parts and no
+                // others, so "At least" is the only honest word for it.
+                <>
+                  {figure.floor ? "At least " : null}
+                  {formatMoney(figure.amount)}
+                </>
               )}
               {figure.arithmetic ? (
                 <span className="commitment-arithmetic">{figure.arithmetic}</span>
@@ -130,19 +135,27 @@ export function CommitmentView({
           <dt>{labels.item}</dt>
           <dd>{formatMoney(breakdown.item)}</dd>
         </div>
-        {/* A zero part is omitted rather than printed as "$0.00": the terms
-            model cannot tell a part the seller priced at nothing from one the
-            seller never mentioned, and a "$0.00 tax" row claims the first. A
-            part worth nothing also adds nothing, so the itemisation still adds
-            up to the charge without it — and the arithmetic line above already
-            omits zero parts for the same reason. */}
-        {breakdown.shipping.minor === 0 ? null : (
+        {/* A part the source stated as zero gets no row: it adds nothing and
+            the arithmetic line already leaves it out. A part it never stated —
+            `null` — gets a row that says so, because now the two cases are
+            different things and the model can tell them apart. */}
+        {breakdown.shipping === null ? (
+          <div>
+            <dt>{labels.shipping}</dt>
+            <dd>Not stated</dd>
+          </div>
+        ) : breakdown.shipping.minor === 0 ? null : (
           <div>
             <dt>{labels.shipping}</dt>
             <dd>{formatMoney(breakdown.shipping)}</dd>
           </div>
         )}
-        {breakdown.tax.minor === 0 ? null : (
+        {breakdown.tax === null ? (
+          <div>
+            <dt>{labels.tax}</dt>
+            <dd>Not stated</dd>
+          </div>
+        ) : breakdown.tax.minor === 0 ? null : (
           <div>
             <dt>{labels.tax}</dt>
             <dd>{formatMoney(breakdown.tax)}</dd>

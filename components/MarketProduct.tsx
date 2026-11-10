@@ -116,7 +116,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
           <CommitmentView
             figures={figures}
             breakdown={translation.breakdown}
-            labels={{ item: "The listed price", shipping: "Shipping", tax: "Tax" }}
+            labels={{ item: "The listed price", shipping: "Shipping", tax: "Sales tax" }}
             summary=""
             schedule={describeSchedule(terms)}
             figureNotes={{ exit: EXIT_NOTE }}

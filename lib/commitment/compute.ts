@@ -1,5 +1,10 @@
 import { addMoney, multiplyMoney, zeroMoney, type Money } from "../money.ts";
-import type { CommitmentTerms, CommitmentTranslation, ExitTerms } from "./types";
+import type {
+  CommitmentTerms,
+  CommitmentTranslation,
+  ExitTerms,
+  UnstatedPart,
+} from "./types";
 
 function translateExit(exit: ExitTerms): Money | null {
   switch (exit.kind) {
@@ -18,21 +23,44 @@ function assertRepeats(count: number, label: string): void {
   }
 }
 
+/** Adds what the source stated, and nothing for what it did not. */
+function stated(amount: Money | null): Money {
+  return amount ?? zeroMoney();
+}
+
+/**
+ * The parts no source stated. Reading a `null` as zero is how a page tells a
+ * shopper "$179.95 is the whole charge" when the retailer will add shipping and
+ * tax at checkout, so the totals are floors whenever this is non-empty.
+ */
+function unstatedParts(terms: CommitmentTerms): UnstatedPart[] {
+  const parts: UnstatedPart[] = [];
+  if (terms.shipping === null) parts.push("shipping");
+  if (terms.tax === null) parts.push("tax");
+  return parts;
+}
+
 export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation {
   const breakdown = {
     item: terms.itemPrice,
     shipping: terms.shipping,
     tax: terms.tax,
   };
+  const unstated = unstatedParts(terms);
   const exit = translateExit(terms.exit);
+
   switch (terms.shape) {
     case "one_time": {
-      const today = addMoney(addMoney(terms.itemPrice, terms.shipping), terms.tax);
+      const today = addMoney(
+        addMoney(terms.itemPrice, stated(terms.shipping)),
+        stated(terms.tax),
+      );
       return {
         today,
         acrossTerm: today,
         exit,
         breakdown,
+        unstated,
       };
     }
 
@@ -43,12 +71,15 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
       }
       assertRepeats(recurrence.count, "Recurrence count");
 
-      const today = addMoney(addMoney(terms.itemPrice, terms.shipping), terms.tax);
+      const today = addMoney(
+        addMoney(terms.itemPrice, stated(terms.shipping)),
+        stated(terms.tax),
+      );
       // Shipping is charged once; the item and its tax repeat every period.
-      const perPeriod = addMoney(terms.itemPrice, terms.tax);
+      const perPeriod = addMoney(terms.itemPrice, stated(terms.tax));
       const acrossTerm = addMoney(today, multiplyMoney(perPeriod, recurrence.count - 1));
 
-      return { today, acrossTerm, exit, breakdown };
+      return { today, acrossTerm, exit, breakdown, unstated };
     }
 
     case "financed": {
@@ -77,7 +108,7 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
         tax: zeroMoney(),
       };
 
-      return { today, acrossTerm, exit, breakdown };
+      return { today, acrossTerm, exit, breakdown, unstated };
     }
 
     default:

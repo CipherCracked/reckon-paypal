@@ -23,10 +23,12 @@ export type SpokenCommitment = {
  */
 export function spokenCommitment({ summary, figures, schedule }: SpokenCommitment): string {
   const spoken = figures.map((figure) => {
+    // The screen says "At least $179.95"; the voice has to say the same thing,
+    // or the two readings of the same screen disagree.
     const amount =
       figure.amount === null
         ? `${figure.label}: not stated.`
-        : `${figure.label}: ${formatMoney(figure.amount)}.`;
+        : `${figure.label}: ${figure.floor ? "at least " : ""}${formatMoney(figure.amount)}.`;
     return figure.arithmetic ? `${amount} That is ${figure.arithmetic}.` : amount;
   });
 

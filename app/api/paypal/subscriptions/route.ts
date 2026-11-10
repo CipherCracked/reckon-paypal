@@ -1,5 +1,5 @@
 import { resolveProduct } from "@/lib/catalog/resolve";
-import { addMoney } from "@/lib/money";
+import { addMoney, zeroMoney } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
 import { createSubscription, ensurePlan } from "@/lib/paypal/subscriptions";
 
@@ -41,8 +41,9 @@ export async function POST(request: Request) {
       // The seller's copy, so the product PayPal stores can be quoted from.
       description: product.description,
       // One period's charge: the item plus its tax, the same figure the
-      // commitment view multiplies by the term.
-      amount: addMoney(product.terms.itemPrice, product.terms.tax),
+      // commitment view multiplies by the term. A tax the source never stated
+      // is not part of a plan PayPal will charge for, so it adds nothing here.
+      amount: addMoney(product.terms.itemPrice, product.terms.tax ?? zeroMoney()),
       interval: product.terms.recurrence.period === "month" ? "MONTH" : "YEAR",
       // The same count the screen prints. A plan that never ends would outlive
       // the term the shopper agreed to.

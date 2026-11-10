@@ -114,3 +114,42 @@ describe("presentFigures", () => {
     }
   });
 });
+
+describe("when the source states only part of the charge", () => {
+  // A real listing: a price, and nothing about shipping or tax.
+  const listed: CommitmentTerms = {
+    shape: "one_time",
+    itemPrice: money(17995),
+    shipping: null,
+    tax: null,
+    exit: { kind: "unknown" },
+  };
+
+  it("marks both totals as floors, and the exit cost is not one", () => {
+    const figures = byId(listed);
+
+    expect(figures.acrossTerm.floor).toBe(true);
+    expect(figures.today.floor).toBe(true);
+    expect(figures.exit.floor).toBe(false);
+    // Still the computed amount — nothing is added for what nobody stated.
+    expect(figures.today.amount).toEqual(money(17995));
+  });
+
+  it("names what is missing beside the arithmetic it is missing from", () => {
+    const figures = byId(listed);
+
+    expect(figures.today.arithmetic).toBe("$179.95, plus shipping and sales tax not stated");
+    expect(figures.acrossTerm.arithmetic).toBe(
+      "$179.95, plus shipping and sales tax not stated",
+    );
+  });
+
+  it("leaves a fully stated charge alone", () => {
+    for (const terms of [oneTime, recurring, financed]) {
+      const figures = byId(terms);
+
+      expect(figures.today.floor).toBe(false);
+      expect(figures.acrossTerm.floor).toBe(false);
+    }
+  });
+});
