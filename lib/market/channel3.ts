@@ -69,13 +69,19 @@ export function marketProductId(slug: string): string | null {
 }
 
 /**
- * What a retail listing can say about leaving. The catalogue carries no
- * cancellation or return field, so this is a fact about the source rather than
- * the seller's silence — and it is the sentence every screen shows for a
- * listing, so it is written once.
+ * What a listing can say about leaving.
+ *
+ * It said "Channel3 does not carry cancellation or return terms for this
+ * listing", which is true and useless: it explains the data vendor to a shopper
+ * and leaves the third figure empty on every real product in the shop. The
+ * figure is not actually unknown. A listing offers one payment, so once it is
+ * paid there is no continuing agreement to leave — that follows from the shape
+ * of the purchase, not from a seller's copy, and the demo product of the same
+ * shape has always shown it. What the retailer charges to *return* the item is a
+ * different question, and this sentence does not pretend to answer it.
  */
 export const MARKET_EXIT_NOTE =
-  "Channel3 does not carry cancellation or return terms for this listing.";
+  "Paid once, so there is nothing to cancel. A return is a different question, and this listing does not state its terms.";
 
 /**
  * The offer a purchase would use: the cheapest one the retailer says is in
@@ -96,6 +102,11 @@ export function cheapestInStock(offers: MarketOffer[]): MarketOffer | null {
  * the offer states neither, and a retailer that says nothing about shipping has
  * not said shipping is free. The totals built over these terms are therefore
  * floors, and the screen prints them as such.
+ *
+ * The exit is `none` rather than `unknown`: one payment ends the agreement, so
+ * there is nothing to leave. That is a fact about the shape, not a claim about
+ * the retailer's return policy, which the listing does not state and this page
+ * does not invent.
  */
 export function marketTerms(offer: MarketOffer): CommitmentTerms {
   return {
@@ -103,7 +114,7 @@ export function marketTerms(offer: MarketOffer): CommitmentTerms {
     itemPrice: offer.price,
     shipping: null,
     tax: null,
-    exit: { kind: "unknown" },
+    exit: { kind: "none" },
   };
 }
 

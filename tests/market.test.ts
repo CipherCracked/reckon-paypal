@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MarketError,
+  MARKET_EXIT_NOTE,
   cheapestInStock,
   isMarketSlug,
   marketProductId,
@@ -12,6 +13,7 @@ import {
   type MarketOffer,
   type MarketProduct,
 } from "@/lib/market/channel3";
+import { computeCommitment } from "@/lib/commitment/compute";
 import { money } from "@/lib/money";
 
 /* ------------------------------------------------------------------ */
@@ -175,7 +177,23 @@ describe("the terms a listed price supports", () => {
     // what makes the totals on the product page read "At least".
     expect(terms.shipping).toBeNull();
     expect(terms.tax).toBeNull();
-    expect(terms.exit).toEqual({ kind: "unknown" });
+    // Not `unknown`: one payment ends the agreement, so there is nothing to
+    // leave. Leaving this unknown put "Not stated" where the shop's own demo
+    // product of the same shape showed $0.00, and left the third figure empty on
+    // every real product the shop carries.
+    expect(terms.exit).toEqual({ kind: "none" });
+  });
+
+  it("shows a paid-once listing as costing nothing to leave, and names what that is not", () => {
+    const terms = marketTerms(offer({ price: money(2499) }));
+    const translation = computeCommitment(terms);
+
+    expect(translation.exit).toEqual(money(0));
+    // The sentence answers the figure instead of apologising for it, and it does
+    // not imply the retailer's return terms are known.
+    expect(MARKET_EXIT_NOTE).toContain("nothing to cancel");
+    expect(MARKET_EXIT_NOTE).toContain("does not state");
+    expect(MARKET_EXIT_NOTE).not.toMatch(/Channel3|catalogue does not carry/);
   });
 });
 

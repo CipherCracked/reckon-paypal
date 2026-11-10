@@ -44,12 +44,13 @@ export async function GET(request: Request, context: RouteContext) {
   const { name, description, descriptionLabel, sources } = resolved;
 
   // A retail listing's description is the manufacturer's marketing copy, not
-  // terms, and the catalogue carries no cancellation data for it. Reading that
-  // copy with a model spends ten seconds to usually hear silence; the honest
-  // answer is the one the catalogue's shape already gives.
+  // terms. Reading it with a model spends ten seconds to usually hear silence,
+  // and the answer is already in the shape: a listing is paid once, so there is
+  // no continuing agreement to leave. The note says that, rather than naming the
+  // data vendor that does not carry a column for it.
   const exitOutcome: ExitOutcome =
     slug && isMarketSlug(slug)
-      ? { kind: "silent", exit: { kind: "unknown" }, note: MARKET_EXIT_NOTE, quoted: null }
+      ? { kind: "silent", exit: resolved.terms.exit, note: MARKET_EXIT_NOTE, quoted: null }
       : await readExit(resolved.terms.exit, description, descriptionLabel);
 
   const terms: CommitmentTerms = { ...resolved.terms, exit: exitOutcome.exit };

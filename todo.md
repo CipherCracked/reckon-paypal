@@ -132,6 +132,74 @@ figure without deciding what it means is how a screen starts lying.
       12 × $105.00 monthly, `setup_fee` $60.00. Decision: ITD 2,
       `docs/accessible-commerce-companion/itds/paypal-integration.md`.
 
+**Two things the plan deliberately does not do (raised 2026-11-10).**
+
+- [ ] **Ending an instalment plan is not offered.** The receipt shows a cancel
+      button for a repeating subscription but not for a financed one, because
+      what ending it mid-term costs the payer is stated nowhere and the screen
+      does not invent it. **Deliberate gap, not an oversight** — but it is the
+      asymmetry a shopper would notice ("I can stop the coffee, I cannot stop the
+      mattress"). Fixing it means either stating what PayPal does when a 12-cycle
+      plan is cancelled (a fact we can check in the sandbox), or offering the
+      button and reporting PayPal's answer as we do for a subscription.
+      Cross-ref §6a and ITD 2's TRADEOFFS.
+
+- [ ] **Full activation of the financed plan is unverified.** The plan exists and
+      reads back correctly (12 cycles, `setup_fee`, monthly), but no payment has
+      been taken from it: the shopper never approves at PayPal, so the $165.00
+      charged today has never actually left the sandbox account, and the receipt
+      has never shown a settled instalment. **Needs the sandbox buyer click** —
+      the same blocker as §1, §4 and the cancel success path. User-owned.
+
+## 6a. Honest instead of fixed (2026-11-10)
+
+The pattern the user named: when the product cannot show something, it adds a
+sentence explaining why — which is truthful and still leaves the shopper with
+nothing. Each item below is an absence that is **ours**, not the source's.
+
+- [x] **Cost to leave on a real listing said "Not stated".** Every product in the
+      live shop carried an empty third figure plus *"Channel3 does not carry
+      cancellation or return terms for this listing"* — a sentence about the data
+      vendor, in a shopper's face. The figure was never actually unknown: a listing
+      is paid once, so there is no continuing agreement to leave, which is what the
+      demo product of the same shape has always shown ($0.00). `marketTerms` now
+      returns `exit: { kind: "none" }` and the note answers the figure — *"Paid
+      once, so there is nothing to cancel. A return is a different question, and
+      this listing does not state its terms."* **Fixed 2026-11-10**; verified on
+      `/api/commitment/pending?slug=ch3-jOFatvj` (exit `0`, both totals still floors).
+
+- [ ] **"What happens if a payment is missed is not stated on this screen."** For
+      the demo catalogue this is no longer true: we create the plan, so
+      `payment_preferences` says it (`auto_bill_outstanding: true`,
+      `payment_failure_threshold: 1`). Fix: carry those two fields onto
+      `CommitmentTerms` from `termsFromPlan`, and have the schedule state what
+      PayPal will do. **Needs PayPal's own wording checked first** — the sentence
+      must not paraphrase a mechanism we have not read or run.
+
+- [ ] **Ending a financed plan is not offered while ending a subscription is.**
+      The plan we build carries no early-termination fee, so the asymmetry is our
+      caution rather than a fact about the money. Either offer the button and
+      report PayPal's answer as the subscription path does, or keep it off and say
+      what PayPal does when a 12-cycle plan is cancelled. Cross-ref §6.
+
+- [ ] **The market product page narrates its own plumbing.** *"the catalogue's
+      figure, not this page's"* · *"If that offer leaves the catalogue, this page
+      says so rather than charging a price nobody is offering"* · *"the price
+      Channel3 lists at …"*. One disclosure is required (the sandbox moves no
+      money); the rest explain the implementation to the shopper. Carry into the
+      UI pass.
+
+- [ ] **Check whether "we could not write a plain-language summary" is still
+      reachable.** The summary is derived from the terms now, so the degraded
+      notice may be a branch no one can reach — which would make it a sentence
+      about a failure that cannot happen.
+
+**Structural, and staying:** the sandbox/example disclosure, "we could not reach
+PayPal" and "we cannot tell whether that went through" (reports of a real failure,
+not apologies), `/read`'s no-model fallback, and "Not stated" for a **term**
+commitment whose seller published nothing (the mattress's exit, the coffee's
+repeating charges).
+
 ## 7. Review findings — judge pass (2026-11-10)
 
 A context-free reviewer scored the entry **as a judge**, with no access to
