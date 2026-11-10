@@ -176,8 +176,11 @@ describe("the pacing control", () => {
       );
 
     expect(held()).toHaveLength(2);
-    // Held back visually, still present for anyone reading by list.
-    expect(screen.getAllByRole("term")).toHaveLength(6);
+    // Held back visually, still present for anyone reading by list: all three
+    // figures stay in the document, plus every part of the charge the terms
+    // actually have a non-zero amount for (zero parts get no row).
+    expect(document.querySelectorAll(".commitment-figure")).toHaveLength(3);
+    expect(screen.getAllByRole("term")).toHaveLength(5);
 
     await userEvent.click(screen.getByRole("button", { name: /show the next figure/i }));
     expect(held()).toHaveLength(1);

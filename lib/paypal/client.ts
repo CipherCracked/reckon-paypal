@@ -123,7 +123,7 @@ export async function paypalRequest<T>(path: string, init: RequestInit = {}): Pr
  * `lib/deadline.ts` because a model read needs one too. Re-exported here so the
  * PayPal callers keep importing it from the module that makes them slow.
  */
-export { READ_DEADLINE_MS, withinDeadline } from "../deadline";
+export { DETAIL_READ_DEADLINE_MS, READ_DEADLINE_MS, withinDeadline } from "../deadline";
 
 /**
  * The wire spelling of a money amount, built from integers. Dividing by 100

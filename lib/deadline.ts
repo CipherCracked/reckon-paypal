@@ -14,6 +14,18 @@
 export const READ_DEADLINE_MS = 2_000;
 
 /**
+ * How long a read may take when the page is *about* the thing being read.
+ *
+ * `READ_DEADLINE_MS` fits a read that decorates a render: a product card PayPal
+ * does not answer for still has the catalogue file behind it. A receipt, a bill
+ * or a subscription page has no second source — giving up after two seconds
+ * shows the visitor an error where a slower, correct answer was available. A
+ * cold serverless start can spend longer than that before the first byte, so
+ * these reads get a deadline a reader will wait through.
+ */
+export const DETAIL_READ_DEADLINE_MS = 8_000;
+
+/**
  * How long a model read may hold a page render.
  *
  * The model is much slower than PayPal's reads — measured at roughly 47 seconds

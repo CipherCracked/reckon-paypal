@@ -302,9 +302,9 @@ export function ConsentScreen({
           involved (IPD 14). Everything else about what is and is not real
           belongs to the judge brief outside the product (IPD 16). */}
       <p className="commitment-source">
-        Payments run in PayPal&apos;s sandbox and the products in this shop are an example. The
-        check needs only the amount being charged and the terms the seller publishes, so it fits
-        any checkout, not just this one.
+        This shop is an example, and payments run in PayPal&apos;s sandbox, so no real money moves.
+        The check needs only the amount being charged and the terms the seller publishes, so it
+        fits any checkout, not just this one.
       </p>
 
       <div className="consent-actions">

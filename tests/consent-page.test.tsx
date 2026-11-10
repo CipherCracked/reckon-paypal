@@ -64,7 +64,9 @@ describe("consent screen", () => {
     render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
 
     expect(
-      await screen.findByText(/payments run in paypal's sandbox and the products in this shop are an example/i),
+      await screen.findByText(
+        /this shop is an example, and payments run in paypal's sandbox, so no real money moves/i,
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/it fits any checkout, not just this one/i),

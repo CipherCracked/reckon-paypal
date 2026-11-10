@@ -65,13 +65,17 @@ describe("CommitmentView", () => {
     expect(screen.getByText("$11.00 + $1.00")).toBeInTheDocument();
   });
 
-  it("itemises where the figures come from", () => {
+  it("itemises the parts of the charge, and leaves out a part worth nothing", () => {
     renderView(knownTerms);
 
     expect(screen.getByText("Coffee, one bag")).toBeInTheDocument();
-    expect(screen.getByText("Shipping")).toBeInTheDocument();
-    expect(screen.getByText("Sales tax")).toBeInTheDocument();
     expect(screen.getByText("$11.00")).toBeInTheDocument();
+    expect(screen.getByText("Sales tax")).toBeInTheDocument();
+    expect(screen.getByText("$1.00")).toBeInTheDocument();
+    // The terms cannot say whether a zero part was priced at nothing or never
+    // mentioned, so the row is left out rather than printed as "$0.00" — which
+    // would claim the seller said the first.
+    expect(screen.queryByText("Shipping")).not.toBeInTheDocument();
   });
 
   it("renders an unknown exit cost as Not stated, never as zero", () => {

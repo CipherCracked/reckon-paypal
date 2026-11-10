@@ -29,7 +29,7 @@ export const dynamic = "force-dynamic";
 function relationshipSentence(outcome: ExitOutcome): string {
   switch (outcome.kind) {
     case "stated":
-      return "Cost to leave was read out of the seller's own words above — the reader copies the sentence and this page checks it against the text. The other two figures are arithmetic over the price the seller states. Nothing here was typed in by hand.";
+      return "Cost to leave was read out of the seller's own words above — the reader copies the sentence and this page checks it against the text. The other two figures are arithmetic over the price the seller states, and the line under them says which source that price came from.";
     case "silent":
       return "The seller's words above say nothing about leaving, so the cost to leave reads Not stated rather than a number this page would have had to invent. The other two figures are arithmetic over the price the seller states.";
     case "unreadable":

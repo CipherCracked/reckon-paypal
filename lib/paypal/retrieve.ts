@@ -1,6 +1,6 @@
 import { fromDecimalString, type Currency, type Money } from "@/lib/money";
 import type { CommitmentTerms } from "@/lib/commitment/types";
-import { paypalRequest, withinDeadline } from "./client";
+import { DETAIL_READ_DEADLINE_MS, paypalRequest, withinDeadline } from "./client";
 import { termsFromPlan, type PayPalPlan } from "./catalog";
 
 type PayPalAmountJson = { currency_code?: string; value?: string };
@@ -45,16 +45,20 @@ export type SubscriptionRecord = {
  * from anything we kept, because we keep nothing (ITD 6).
  */
 export async function retrieveOrder(id: string): Promise<OrderRecord> {
-  // The receipt is a page render, so the read carries a deadline like every
-  // other read made while a page is being built (IPD 20, rule 2).
-  const order = await withinDeadline((signal) => paypalRequest<{
-    id: string;
-    status: string;
-    purchase_units?: Array<{
-      amount?: PayPalAmountJson;
-      payments?: { captures?: Array<{ amount?: PayPalAmountJson }> };
-    }>;
-  }>(`/v2/checkout/orders/${encodeURIComponent(id)}`, { method: "GET", signal }));
+  // The receipt is the page itself, so it gets the longer deadline: without
+  // this read there is no receipt to show, and a slow answer beats an error.
+  const order = await withinDeadline(
+    (signal) =>
+      paypalRequest<{
+        id: string;
+        status: string;
+        purchase_units?: Array<{
+          amount?: PayPalAmountJson;
+          payments?: { captures?: Array<{ amount?: PayPalAmountJson }> };
+        }>;
+      }>(`/v2/checkout/orders/${encodeURIComponent(id)}`, { method: "GET", signal }),
+    DETAIL_READ_DEADLINE_MS,
+  );
 
   const unit = order.purchase_units?.[0];
 
@@ -68,14 +72,17 @@ export async function retrieveOrder(id: string): Promise<OrderRecord> {
 }
 
 export async function retrieveSubscription(id: string): Promise<SubscriptionRecord> {
-  const subscription = await withinDeadline((signal) =>
-    paypalRequest<{
-      id: string;
-      status: string;
-      plan_id?: string;
-      status_change_time?: string;
-      billing_info?: { next_billing_time?: string };
-    }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET", signal }),
+  // The page is about this subscription, so it gets the longer deadline.
+  const subscription = await withinDeadline(
+    (signal) =>
+      paypalRequest<{
+        id: string;
+        status: string;
+        plan_id?: string;
+        status_change_time?: string;
+        billing_info?: { next_billing_time?: string };
+      }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET", signal }),
+    DETAIL_READ_DEADLINE_MS,
   );
 
   // The agreed price and the length of the term live on the plan, not on the
@@ -140,18 +147,20 @@ export type InvoiceRecord = {
  * to change, and an unauthorised copy of it would be a lie after the first edit.
  */
 export async function retrieveInvoice(id: string): Promise<InvoiceRecord> {
-  const invoice = await withinDeadline((signal) =>
-    paypalRequest<{
-      id: string;
-      status: string;
-      amount?: PayPalAmountJson;
-      detail?: {
-        payment_term?: { due_date?: string };
-        /** Where the payer opens the bill. The only field that is a payer page. */
-        metadata?: { recipient_view_url?: string };
-      };
-      links?: Array<{ href?: string; rel?: string }>;
-    }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET", signal }),
+  const invoice = await withinDeadline(
+    (signal) =>
+      paypalRequest<{
+        id: string;
+        status: string;
+        amount?: PayPalAmountJson;
+        detail?: {
+          payment_term?: { due_date?: string };
+          /** Where the payer opens the bill. The only field that is a payer page. */
+          metadata?: { recipient_view_url?: string };
+        };
+        links?: Array<{ href?: string; rel?: string }>;
+      }>(`/v2/invoicing/invoices/${encodeURIComponent(id)}`, { method: "GET", signal }),
+    DETAIL_READ_DEADLINE_MS,
   );
 
   return {

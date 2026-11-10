@@ -123,7 +123,7 @@ describe("the bill screen", () => {
 
     await renderBill();
 
-    expect(screen.getByText(/No due date stated/i)).toBeInTheDocument();
+    expect(screen.getByText(/No due date given/i)).toBeInTheDocument();
   });
 
   it("refuses an unknown bill", async () => {

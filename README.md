@@ -21,7 +21,7 @@ is clicked — and offers the other three ways in at a second rank.
 | **A purchase** | paid once | three figures, then PayPal's own approval page, then capture on return |
 | **A subscription** | paid every month for a year | three figures, then the subscription's approval page |
 | **A bill** | owed by a date | **creates a real PayPal invoice**, then opens the bill page, which re-reads it from PayPal |
-| **A document** | whatever someone sent you | paste the text; three figures, each beside the sentence it came from |
+| **A document** | whatever someone sent you | paste the text; three figures, each beside the sentence or arithmetic it came from |
 
 The shop (`/shop`) is one of these four, not the product.
 
@@ -61,17 +61,19 @@ cancelled still produces its record, with what was paid and a dated statement of
 
 ## Why the numbers can be trusted
 
-1. **Every figure names the source it was read from.** Where a product has a PayPal id configured,
+1. **Every figure shows what it was worked out from.** Where a product has a PayPal id configured,
    the price and the term come from the billing plan PayPal holds; otherwise they come from the
-   published terms in `lib/catalog/` — and the screen says which, on the screen, every time. A
-   source that cannot answer (no plan, no fixed price, no end to the term) is a fallback with its
-   own label, never a blank and never a guess.
+   published terms in `lib/catalog/` — and the screen says which, on the screen, every time. Each
+   figure carries either the seller's sentence it was read out of or the arithmetic that produced
+   it. A source that cannot answer (no plan, no fixed price, no end to the term) is a fallback with
+   its own label, never a blank and never a guess.
 2. **Our code does every calculation**, in integer minor units (`lib/money.ts`,
    `lib/commitment/compute.ts`). No floating point touches money and no model is asked for a figure.
-3. **The model may only quote.** Its tool schemas have no monetary field. For a pasted document,
-   every span it returns must appear literally in the shopper's text; anything else is discarded and
-   counted, and the count is shown. A model that invents `$420.00` produces a span that is not in
-   the text.
+3. **The model never supplies a figure.** Its extraction schema has no monetary field, and every
+   span it returns for a pasted document must appear literally in the shopper's text; anything else
+   is discarded and counted, and the count is shown. Its one free-prose output is a plain-language
+   summary, which cannot change a figure and is refused if it writes a figure-shaped string
+   (`lib/ai/guard.ts`).
 4. **An absence is stated as an absence.** A term the seller never published is "Not stated"; a
    total the document cannot support is blanked with its reason. Nothing is estimated, and no note
    contradicts the figure above it.
@@ -79,16 +81,21 @@ cancelled still produces its record, with what was paid and a dated statement of
 ## How it is built
 
 - **PayPal** is where the money moves, and the only place it moves. Orders API v2 creates and
-  captures one-time and financed purchases; Subscriptions v1 with Billing Plans carries the
-  recurring product and, where a product id is configured, holds the price and term the screen
-  reads; Invoicing v2 creates and sends the bill. All three are exercised in the sandbox.
+  captures the one-time purchase and the first payment of the financed example — the remaining
+  eleven payments are not scheduled at PayPal, and the checkout charges only what is due today.
+  Subscriptions v1 with Billing Plans carries the recurring product and, where a product id is
+  configured, holds the price and term the screen reads; Invoicing v2 creates and sends the bill.
+  All three have been exercised in the sandbox on their create, read and capture/approve paths; the
+  subscription **cancel** request has been checked on its error path only, because its success path
+  needs a buyer-approved subscription.
 - **Deterministic code** does the arithmetic and the projection to the screen.
 - **The language model** reads merchant copy and documents and returns labels, one plain summary,
   or quotations. `lib/ai/guard.ts` rejects any figure-shaped string it writes.
 
-The whole system works with no model at all, and says so: the consent screen keeps every computed
-figure and flags only the missing wording, and `/read` lists the amounts found in the document while
-stating that none of them was interpreted.
+The whole system works with no model at all, and says so: every figure the code computes is
+unchanged, the cost to leave is absent wherever the seller never published it, and the screen says
+the plain-language summary is missing. `/read` has no model-free reading, so it lists the amounts
+found in the document and states that none of them was interpreted.
 
 ## Setup
 
@@ -100,24 +107,25 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists nine variables — six required, three optional:
+`env.example` lists nine variables — four required, five optional:
 
 | Variable | Purpose |
 |---|---|
 | `PAYPAL_CLIENT_ID` | PayPal REST app client id (server-side) |
 | `PAYPAL_CLIENT_SECRET` | PayPal REST app secret (server-side) |
-| `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` for sandbox |
+| `PAYPAL_BASE_URL` | Optional. Defaults to `https://api-m.sandbox.paypal.com` |
 | `AI_BASE_URL` | Base URL of an endpoint serving `POST {AI_BASE_URL}/chat/completions` |
 | `AI_MODEL` | Model id to ask for |
-| `AI_API_KEY` | Bearer token; leave blank for a model on this machine |
+| `AI_API_KEY` | Optional. Bearer token; omit it for a model on this machine |
 | `PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION` | Optional. A catalog product id whose billing plan holds the price and term |
 | `PAYPAL_PRODUCT_HEADPHONES` | Optional. Same, for the one-time product |
 | `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
 
-The three `PAYPAL_PRODUCT_*` ids are empty by default, and the app never creates them: that is a
-deliberate step at PayPal. With them set, the consent screen reads the price and term from the plan
-and says so; with them empty it computes from the published terms in `lib/catalog/` and says that
-instead.
+The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
+price and term from the plan and says so; with them empty it computes from the published terms in
+`lib/catalog/` and says that instead. Starting a subscription creates its product and billing plan
+at PayPal on first use and reuses them afterwards (`lib/paypal/subscriptions.ts`); the purchases and
+bills create their own PayPal objects as they are used.
 
 Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Every value
 above stays server-side — the app loads no PayPal client script into the page, so there is no public

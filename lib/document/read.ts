@@ -164,6 +164,18 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
       exit,
     };
 
+    // A document can state one total and still mention payments spread over
+    // time ("$1,200 over 12 months") without ever stating an amount per
+    // payment. Saying "nothing further is charged" there would contradict the
+    // document, so the schedule says instead what this screen did with the
+    // total: shown it as a single charge, because that is the only amount the
+    // document actually states.
+    const paidInParts = values.paymentCount
+      ? `The document states a total of ${formatMoney(totalEntry.amount)} and mentions ${values.paymentCount.count} payments, but not how much each one is.`
+      : values.period
+        ? `The document states a total of ${formatMoney(totalEntry.amount)} and mentions payments spread over time, but not how much each one is.`
+        : null;
+
     return {
       terms,
       sources: {
@@ -172,7 +184,9 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
         today: totalEntry.quote,
       },
       dueDate,
-      schedule: describeSchedule(terms),
+      schedule: paidInParts
+        ? `${paidInParts} This screen shows that total as a single charge.`
+        : describeSchedule(terms),
       stated,
       countUnstated: false,
     };

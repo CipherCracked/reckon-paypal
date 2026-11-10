@@ -92,8 +92,8 @@
     <ul>
       <li><strong>PayPal</strong> is where the money moves: Orders v2 for a purchase, Subscriptions and Billing Plans for a repeating one, Invoicing v2 for a bill. Where a product has a PayPal id configured, its billing plan is where the price and term are read from; a bill's total is checked against PayPal's copy of that invoice. Every screen names on its face which source supplied the figures, and what it says when one cannot answer.</li>
       <li><strong>The seller's published terms</strong> supply the rest: term length, instalments, fees. The arithmetic is ordinary code with tests, not a guess by a model.</li>
-      <li><strong>For a pasted document</strong>, a language model is asked for the sentences that state the terms and nothing else. Every sentence it returns is checked as a literal substring of the text. A figure whose sentence cannot be found is discarded, and the screen says how many were discarded.</li>
-      <li><strong>A guard</strong> drops any figure the code did not derive. The model never produces a number; it produces a quotation.</li>
+      <li><strong>For a pasted document</strong>, a language model is asked for the sentences that state the terms, plus a one-line summary of them. Every sentence it returns is checked as a literal substring of the text. A figure whose sentence cannot be found is discarded, and the screen says how many were discarded.</li>
+      <li><strong>A guard</strong> drops any figure the code did not derive. The model never produces a money amount: its extraction output is a quotation, and its summary is refused if it writes a figure-shaped string.</li>
     </ul>
   </section>
 
@@ -116,20 +116,20 @@
       <li><strong>Payments run in PayPal's sandbox.</strong> No real money moves.</li>
       <li><strong>The catalogue is an example.</strong> Three products and two bills, written to contain the ambiguity the product exists to remove — a discount price, a monthly term, an instalment plan, a biller who leaves out what happens after a missed payment.</li>
       <li><strong>No user testing.</strong> The design rests on published research into cognitive accessibility and checkout behaviour, not on participants. The claim is that the commitment is legible, not that outcomes improved.</li>
-      <li><strong>The model's wording is not guaranteed.</strong> If it is unavailable, the figures remain — computed by the same code from the same source — and the screen says the plain-language summary is missing.</li>
+      <li><strong>The model's wording is not guaranteed.</strong> If it is unavailable, the PayPal paths keep their figures — computed by the same code from the same source — and the screen says the plain-language summary is missing. The document path has no model-free reading: it lists the amounts it found and says none of them was interpreted.</li>
     </ul>
   </section>
 
   <section class="closing">
     <h2>How to check it</h2>
     <p>
-      The repository's README carries the setup and the sandbox credentials. The fastest honest
-      check is the document path: paste any payment terms and compare each figure to the sentence
-      printed underneath it.
+      The repository's README carries the setup. The sandbox credentials a judge needs are supplied
+      with the submission. The fastest honest check is the document path: paste any payment terms
+      and compare each figure to the sentence — or the arithmetic — printed underneath it.
     </p>
     <p class="not">
-      Screenshots and the demo video live in the submission itself. Nothing on this page is a
-      mockup; every description above names behaviour the code performs.
+      The demo video and screenshots accompany the submission, not this page. Every description
+      above names behaviour the code performs; no illustration stands in for a working screen.
     </p>
   </section>
 

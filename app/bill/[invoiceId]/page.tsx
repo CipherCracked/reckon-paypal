@@ -97,6 +97,18 @@ export default async function BillPage({ params, searchParams }: PageProps) {
             unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
           })}
         />
+
+        {/* A read that timed out is worth retrying: the bill PayPal holds has
+            not changed, only this attempt failed. Without this the visitor's
+            only move is to give up on a page that would answer next time. */}
+        <p className="scope-note">
+          This bill is an example, created in PayPal&apos;s sandbox, so no real money is owed or
+          moves.{" "}
+          <a href={`/bill/${encodeURIComponent(invoiceId)}?slug=${encodeURIComponent(bill.slug)}`}>
+            Try reading PayPal&apos;s copy again
+          </a>
+          .
+        </p>
       </div>
     );
   }
@@ -130,8 +142,8 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           summary={bill.description}
           schedule={
             dueDate
-              ? `Due ${dueDate} — the date ${bill.biller} set on the bill.`
-              : "No due date stated — the biller did not put one on this invoice."
+              ? `Due ${dueDate} — the due date PayPal holds on this invoice.`
+              : "No due date given — PayPal's copy of this invoice does not carry one."
           }
           figureNotes={figureNotes}
           sourceNote={describeSources({
@@ -157,8 +169,9 @@ export default async function BillPage({ params, searchParams }: PageProps) {
       ) : null}
 
       <p className="scope-note">
-        This page is built from the bill PayPal holds each time it opens. Nothing about you is
-        stored here.
+        This bill is an example, created in PayPal&apos;s sandbox, so no real money is owed or
+        moves. The page is built from the bill PayPal holds each time it opens; nothing about you
+        is stored here.
       </p>
     </div>
   );

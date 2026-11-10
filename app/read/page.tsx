@@ -124,7 +124,7 @@ export default function ReadPage() {
         <p className="lede">
           A bill, a contract, a payment plan — anything you were asked to agree to. You get the same
           three figures: what it costs across the whole term, what it costs to leave, and what is
-          charged first. Every figure shows the sentence it came from.
+          charged first. Every figure shows the sentence — or the arithmetic — it came from.
         </p>
       </header>
 

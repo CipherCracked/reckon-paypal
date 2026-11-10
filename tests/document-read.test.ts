@@ -102,6 +102,22 @@ describe("a one-time charge", () => {
     expect(reading.terms.shape).toBe("one_time");
   });
 
+  it("does not claim nothing further is charged when the document mentions payments", () => {
+    const { reading } = figureAmounts([
+      { field: "totalDue", quote: "Total: $1,200.00" },
+      { field: "paymentCount", quote: "12 payments" },
+      { field: "period", quote: "per month" },
+    ]);
+
+    // The document states one amount, so it is shown as one charge — but it
+    // also says there are 12 payments, and "nothing further is charged" would
+    // contradict the sentence the reader just pasted.
+    expect(reading.terms.shape).toBe("one_time");
+    expect(reading.schedule).not.toContain("Nothing further is charged");
+    expect(reading.schedule).toContain("12 payments");
+    expect(reading.schedule).toContain("single charge");
+  });
+
   it("reads a stated cancellation fee as a cost to leave", () => {
     const { amounts } = figureAmounts([
       { field: "totalDue", quote: "Amount due: $240.00" },
