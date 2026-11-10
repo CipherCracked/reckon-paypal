@@ -76,8 +76,12 @@ export async function POST(request: Request) {
     const planId = await ensurePlan({
       productId: `DEMO-${product.slug.toUpperCase()}`,
       planId: `P-DEMO-${product.slug.toUpperCase()}`,
-      // The seller's copy, so the product PayPal stores can be quoted from.
-      description: product.description,
+      // The seller's copy, so the product PayPal stores can be quoted from —
+      // except for a listing, whose copy is longer than PayPal accepts on a
+      // product and every screen reads from the catalogue anyway. Sending the
+      // first 256 characters of a merchant's paragraph would be a sentence this
+      // app cut, offered as one the merchant wrote.
+      description: product.listed ? null : product.description,
       amount: plan.amount,
       interval: plan.interval,
       // The same count the screen prints. A plan that never ends would outlive

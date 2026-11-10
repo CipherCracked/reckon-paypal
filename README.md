@@ -161,6 +161,34 @@ deployment pattern, and it costs one line of configuration:
 AI_BASE_URL=https://your-gateway.example/v1
 ```
 
+## Test credentials
+
+Every payment here runs in PayPal's **sandbox**, so no real money moves and both accounts below are
+test accounts.
+
+**Sandbox buyer** — sign in with this when PayPal asks who is approving:
+
+| | |
+| --- | --- |
+| Email | `sb-ohjjo53751299@personal.example.com` |
+| Password | `pN6(GV)j` |
+
+The buyer must be a **US** account. PayPal's sandbox refuses a payment from a buyer registered
+elsewhere with `UNSUPPORTED_PAYEE_CURRENCY` ("this seller doesn't accept payments in your currency"),
+because the merchant here is a US business charging USD. The account above is registered in **India**
+and is refused for that reason — replace it with a US personal account from
+**Testing Tools → Sandbox Accounts**.
+
+The buyer is a *personal* account. The merchant keys in `.env.local` cannot approve anything: approval
+is a person signing in on PayPal's own page, which is why this login exists.
+
+To reach the approval step: open `/shop`, choose a listing whose term is stated (for example
+`/product/ch3-YyLUjLT`), press **Check this commitment**, then **Approve subscription with PayPal**.
+
+**To look at the receipt or the cancel button without approving anything**, open an existing sandbox
+subscription directly: `/receipt/<subscription id>`. Any id from the PayPal sandbox dashboard's
+**Subscriptions** list works once the app's merchant account owns it.
+
 ## Commands
 
 ```bash

@@ -5,8 +5,14 @@ import type { Money } from "@/lib/money";
 export type EnsurePlanInput = {
   productId: string;
   planId: string;
-  /** The seller's published copy, stored on the PayPal product so a screen can quote it. */
-  description: string;
+  /**
+   * The seller's published copy, stored on the PayPal product so a screen can
+   * quote it. Left out when the copy lives in a catalogue this app reads live:
+   * PayPal caps a product description at 256 characters and a merchant's
+   * paragraph is longer, so the choice is between sending nothing and sending a
+   * sentence someone else's limit cut in half.
+   */
+  description?: string | null;
   amount: Money;
   interval: "MONTH" | "YEAR";
   /** How many charges the term has. The plan must end when the screen says it does. */
@@ -39,6 +45,20 @@ function isDuplicate(error: unknown): boolean {
     error instanceof PayPalError &&
     (error.status === 409 || (error.issue ?? "").toUpperCase().includes("DUPLICATE"))
   );
+}
+
+/** PayPal refuses a catalog product description longer than this. */
+const DESCRIPTION_MAX = 256;
+
+/**
+ * A guard, not a habit. Every caller is expected to send copy that fits or to
+ * send none; this exists because the failure it prevents is a dead screen at the
+ * moment of agreement, which is the worst place in this product to stop. The cut
+ * is marked, so a description that was shortened never reads as a complete
+ * sentence someone wrote.
+ */
+function clampDescription(text: string): string {
+  return text.length <= DESCRIPTION_MAX ? text : `${text.slice(0, DESCRIPTION_MAX - 1)}…`;
 }
 
 /**
@@ -82,6 +102,8 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     );
   }
 
+  const description = input.description ? clampDescription(input.description) : null;
+
   const product = await paypalRequest<{ id: string }>("/v1/catalogs/products", {
     method: "POST",
     body: JSON.stringify({
@@ -90,8 +112,10 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
       // The seller's own copy goes onto the PayPal product, because the front
       // door reads the description from here and reads the cost to leave out of
       // it (IPD 21). A product created without one leaves the entry with
-      // nothing to quote.
-      description: input.description,
+      // nothing to quote — which is why a listing, whose copy the front door
+      // reads from the catalogue instead, sends none rather than a shortened
+      // one.
+      ...(description ? { description } : {}),
       type: "SERVICE",
       category: "SOFTWARE",
     }),
