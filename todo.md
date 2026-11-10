@@ -772,3 +772,49 @@ Judged out of scope, stated rather than silently dropped:
       regression guard against putting it back.
 - [ ] **The typed `$4.01` tax and `zeroMoney()` in the demo path** (§6) — untouched;
       the demo catalogue is a demonstration seller and the figures still add up.
+
+---
+
+## 12. UI/UX review + the login question (2026-11-11, two agents)
+
+Two reviewers were dispatched onto the running app (same model, read-only). Neither
+finding below is fixed yet — the first is the exception.
+
+- [x] **The reader printed a cost to leave the document did not state.** Found in the
+      same review: `/read`'s own phone-contract example showed **Cost to leave $0.00**
+      sourced to *"You are agreeing to 24 months of service"* while the next sentence
+      states a **$180.00** early termination fee, and the fee-schedule example (the one
+      written to be **refused**) was read as `$30.00 charged today` from one
+      *"$15.00, charged once"* card. The span was verified; the label on it was not.
+      Fixed in `lib/document/read.ts` with two content checks and a reversed
+      precedence (a stated fee outranks a free-exit sentence), 4 tests, suite
+      **413 → 417**; both re-read live. See `context.md` for the detail.
+
+Open, unapproved, in the order they cost points:
+
+- [ ] **`/receipt/{id}` needs `?slug=` to render.** Without it the page says *"This
+      record is for a purchase this store does not recognise."* for an order PayPal
+      has just settled — a judge who types the id they were given, or comes back from a
+      bookmark, sees a refusal. This is the login question's real answer: no accounts;
+      make the record self-sufficient from the PayPal id alone (the PayPal read already
+      carries the amount, the date and the next charge). ~1–2 h.
+- [ ] **Say what the link is.** One line on the receipt: *this link is your record — it
+      is not stored here, so keep it.* ~30 min, and it makes the "nothing is stored"
+      claim something a person can see rather than something they must believe.
+- [ ] **Consent screen has no heading naming the product.** The h1 is the question;
+      the thing being bought appears only in the body copy.
+- [ ] **Receipt's 3+1 figure grid orphans the last tile** at desktop width.
+- [ ] **Phone: the page header is 187 px tall** before any figure.
+- [ ] **Control borders are 1.42:1** against their background (needs ~3:1 for a
+      non-text boundary); the figures' own contrast passes.
+- [ ] **`/shop` with no match** says nothing on the page — the notice lives below the
+      fold.
+- [ ] **A missing route renders Next's own 404.**
+- [ ] **"Ctrl+P or ⌘P"** is shown to Windows users (`CommitmentRecord.tsx:225`).
+- [ ] **The reader's example grid** and the sandbox disclaimer's placement.
+
+**The login decision, recorded:** do not add accounts. A half-built auth seam on the
+payment path contradicts "nothing is stored" on the one screen a judge is most likely
+to inspect, email login fails for a judge with no account, and the record already
+survives without one — PayPal holds it. The two items at the top of this section are
+what "login" was actually standing in for.

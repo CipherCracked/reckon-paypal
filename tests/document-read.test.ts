@@ -67,17 +67,74 @@ describe("which sentence a figure is sourced to (IPD 18)", () => {
     expect(reading.sources.today).toBe("First payment $45.00");
   });
 
-  it("sources a free-to-leave figure to the sentence that made it free", () => {
+  it("takes the stated fee when a document promises both a free window and a fee", () => {
     const { amounts, reading } = figureAmounts([
       { field: "totalDue", quote: "Amount due: $240.00" },
       { field: "exitFee", quote: "Cancellation fee: $50.00" },
       { field: "freeToLeave", quote: "You may cancel free within 30 days" },
     ]);
 
-    // The figure is $0.00, so it is the free-cancellation sentence that made it
-    // — quoting the $50.00 fee beside it would name a source it never used.
-    expect(amounts.exit).toBe(0);
-    expect(reading.sources.exit).toBe("You may cancel free within 30 days");
+    // Reversed on 2026-11-11, after a live reading printed $0.00 beside a
+    // $180.00 early termination fee. The page has one figure and no way to say
+    // "free until March, $50 after", so it states the charge: understating what
+    // leaving costs is the failure this product exists to prevent.
+    expect(amounts.exit).toBe(5000);
+    expect(reading.sources.exit).toBe("Cancellation fee: $50.00");
+  });
+
+  it("refuses a one-off charge the model called the repeating amount", () => {
+    // Live on 2026-11-11: the reader's own fee-schedule sample was read as
+    // "$15.00 per period, plus $15.00 once" from one sentence that says
+    // "charged once", and the page offered $30.00 charged today for a document
+    // whose only figure is one $15.00 card. With the repetition gone, nothing
+    // in the document describes a commitment, so the reader refuses it.
+    expect(
+      readQuotations([
+        { field: "amountPerPeriod", quote: "Replacement key card: $15.00, charged once." },
+        { field: "oneTimeExtra", quote: "$15.00, charged once." },
+        {
+          field: "exitFee",
+          quote: "Cancelling more than 30 days before your renewal date costs $25.00.",
+        },
+      ]),
+    ).toBeNull();
+  });
+
+  it("keeps a repeating charge that is billed once a month", () => {
+    const { amounts } = figureAmounts([
+      { field: "amountPerPeriod", quote: "$35.00, billed once a month" },
+      { field: "paymentCount", quote: "for 12 months" },
+    ]);
+
+    // "once a month" states the cadence, not that the charge never repeats.
+    expect(amounts.acrossTerm).toBe(42000);
+  });
+
+  it("refuses a span the model called free-to-leave that never mentions leaving", () => {
+    // Live on 2026-11-11: "You are agreeing to 24 months of service" was
+    // offered as the free-exit sentence, and the page printed $0.00 for a
+    // contract with a $180.00 early termination fee. The span is real; the
+    // label on it was not.
+    const { amounts, reading } = figureAmounts([
+      { field: "amountPerPeriod", quote: "$32.00 per month" },
+      { field: "paymentCount", quote: "24 months of service" },
+      { field: "freeToLeave", quote: "You are agreeing to 24 months of service" },
+      { field: "exitFee", quote: "an early termination fee of $180.00 is charged" },
+    ]);
+
+    expect(amounts.exit).toBe(18000);
+    expect(reading.sources.exit).toBe("an early termination fee of $180.00 is charged");
+  });
+
+  it("states an exit as unknown when the only free-to-leave span says nothing about cost", () => {
+    const { amounts } = figureAmounts([
+      { field: "totalDue", quote: "Amount due: $240.00" },
+      { field: "freeToLeave", quote: "The first month is free" },
+    ]);
+
+    // A free month is a discount, not a free exit, and $0.00 here would say the
+    // document promised something it never mentioned.
+    expect(amounts.exit).toBeNull();
   });
 
   it("gives the term total no source until the document says how many payments", () => {

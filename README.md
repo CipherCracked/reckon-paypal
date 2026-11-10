@@ -32,7 +32,8 @@ Before the payment is taken, every path shows the same three figures, in the ord
 to the decision:
 
 - **Across the term** — every charge the commitment adds up to
-- **Cost to leave** — or "Not stated" when the seller published none, never `$0.00`
+- **Cost to leave** — or "Not stated" when the seller never said; `$0.00` only where a document
+  actually states that leaving is free
 - **Charged today** — what leaves the account now, last because the seller has already made it
   unmissable
 
@@ -76,9 +77,11 @@ cancelled still produces its record, with what was paid and a dated statement of
    `lib/commitment/compute.ts`). No floating point touches money and no model is asked for a figure.
 3. **The model never supplies a figure.** Its extraction schema has no monetary field, and every
    span it returns for a pasted document must appear literally in the shopper's text; anything else
-   is discarded and counted, and the count is shown. Its one free-prose output is a plain-language
-   summary, which cannot change a figure and is refused if it writes a figure-shaped string
-   (`lib/ai/guard.ts`).
+   is discarded and counted, and the count is shown. The label on a span is checked against the span
+   itself: a sentence offered as a free exit has to mention leaving *and* say it costs nothing, and a
+   sentence offered as the repeating amount cannot say it is charged once. Its one free-prose output
+   is a plain-language summary, which cannot change a figure and is refused if it writes a
+   figure-shaped string (`lib/ai/guard.ts`).
 4. **An absence is stated as an absence.** A term the seller never published is "Not stated"; a
    total the document cannot support is blanked with its reason. Nothing is estimated, and no note
    contradicts the figure above it.
@@ -228,3 +231,8 @@ The check needs only two things: the amount being charged, and the terms the sel
 is why it fits any checkout rather than this one. At scale it belongs on the payment layer, where it
 needs no merchant's cooperation — but it runs today in an ordinary store, on any order total, and on
 a bill that has already been issued.
+
+## Licence
+
+MIT — see [`LICENSE`](LICENSE). The catalogue listings, merchant copy and product images shown by
+`/shop` belong to the retailers they came from and are displayed, not redistributed.

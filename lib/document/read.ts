@@ -31,22 +31,77 @@ export type Reading = {
   countUnstated: boolean;
 };
 
+/**
+ * Words a span must contain before the field the model hung on it is believed.
+ *
+ * The span is verified as a literal substring of the shopper's own words; the
+ * label attached to it is not. A live reading on 2026-11-11 offered "You are
+ * agreeing to 24 months of service" as the sentence that says leaving is free,
+ * and the page printed `$0.00` for a contract that states a $180.00 early
+ * termination fee in the next sentence. The model pointing at a real sentence
+ * is not the same as that sentence saying what the model claims.
+ */
+const ABOUT_LEAVING = /\b(cancel\w*|leav(?:e|es|ing)\b|left|terminat\w*|exit\w*|quit\w*|resign\w*)\b/i;
+
+/**
+ * "No cancellation fee", "the fee is waived", "cancel free", "costs nothing".
+ * Deliberately requires a cost word near the negation: "the first month is
+ * free" is a discount, not a free exit, and reading it as one would print
+ * `$0.00` for leaving a document that never said leaving was free.
+ */
+const SAYS_NO_CHARGE = new RegExp(
+  [
+    String.raw`\b(?:no|not|never|without)\b[^.]{0,40}?\b(?:fee|fees|charge[ds]?|cost(?:s)?|penalt\w*|termination)\b`,
+    String.raw`\b(?:fee|fees|charge[ds]?|cost(?:s)?|penalt\w*)\b[^.]{0,40}?\b(?:free|none|nothing|zero|waived|nil)\b`,
+    String.raw`\b(?:cancel\w*|leav(?:e|es|ing)\b|exit\w*)\b[^.]{0,25}?\b(?:free|at no cost|without (?:a )?(?:fee|charge|penalty))\b`,
+  ].join("|"),
+  "i",
+);
+
+function saysLeavingIsFree(quote: string): boolean {
+  return ABOUT_LEAVING.test(quote) && SAYS_NO_CHARGE.test(quote);
+}
+
+/**
+ * A span that says it is charged once cannot be the amount charged every month,
+ * whatever the model called it.
+ *
+ * Live on 2026-11-11, the reader's own fee-schedule sample — the document written
+ * to be refused — had "$15.00, charged once" labelled as the amount per period,
+ * and the page offered `$30.00 charged today` for a page whose only figure is one
+ * $15.00 card. The sentence was real and the amount was real; the repetition the
+ * label implied was not.
+ *
+ * Deliberately narrow: "billed once a month" is a repeating charge and stays
+ * one, which is why this matches the charge-once phrases rather than `once` on
+ * its own.
+ */
+const SAYS_CHARGED_ONCE =
+  /\b(?:one[- ]?off|one[- ]?time|charged once|paid once|payable once|single (?:payment|charge))\b/i;
+
+/**
+ * What leaving costs, when the document says anything at all.
+ *
+ * A stated fee wins over a free-exit sentence when a document states both,
+ * because the page has one figure and no way to express "free until March, $50
+ * after". Printing the free window as the cost of leaving understates the case
+ * this product exists to expose; the sentence that promises a charge is the
+ * conservative reading, and it is the one the source beside it will match.
+ */
 function exitFrom(values: Values): ExitTerms {
-  if (values.freeToLeave) return { kind: "none" };
   const fee = values.exitFee?.amount;
   if (fee) return { kind: "fee", fee };
+  if (values.freeToLeave) return { kind: "none" };
   return { kind: "unknown" };
 }
 
 /**
- * The span the exit figure came from. It takes the same branch as `exitFrom`:
- * a document that says both "cancel free" and "cancellation fee $50" yields a
- * $0.00 figure, and quoting the $50 sentence beside it would name a source the
- * figure never used.
+ * The span the exit figure came from — the same branch `exitFrom` takes, so a
+ * figure is never quoted to a sentence it was not computed from.
  */
 function exitSource(values: Values): string | null {
-  if (values.freeToLeave) return values.freeToLeave.quote;
   if (values.exitFee?.amount) return values.exitFee.quote;
+  if (values.freeToLeave) return values.freeToLeave.quote;
   return null;
 }
 
@@ -67,11 +122,18 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
 
     switch (field) {
       case "totalDue":
-      case "amountPerPeriod":
       case "oneTimeExtra":
       case "exitFee": {
         const amount = parseAmount(quote);
         if (amount) values[field] = { quote, amount };
+        break;
+      }
+      case "amountPerPeriod": {
+        // The one amount whose label says how often it repeats — so a sentence
+        // that says it is charged once is refused here and can still be read as
+        // a one-time extra, where it would be true.
+        const amount = parseAmount(quote);
+        if (amount && !SAYS_CHARGED_ONCE.test(quote)) values[field] = { quote, amount };
         break;
       }
       case "paymentCount": {
@@ -90,7 +152,10 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
         break;
       }
       case "freeToLeave": {
-        values[field] = { quote };
+        // The one field with no amount to parse, so the sentence itself is the
+        // only evidence: it has to be about leaving and it has to say leaving
+        // costs nothing.
+        if (saysLeavingIsFree(quote)) values[field] = { quote };
         break;
       }
     }
