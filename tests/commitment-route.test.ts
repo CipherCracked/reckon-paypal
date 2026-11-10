@@ -179,19 +179,21 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
 });
 
 describe("the labels the screen prints beside each part", () => {
-  it("fills a label the model left blank rather than printing an empty line", async () => {
+  it("names the parts itself, so the provenance table cannot change between loads", async () => {
+    // The model once renamed the item "headphones" on one load and gave the full
+    // title on the next. The table a reader is told to rely on has to be the
+    // same table on every load, so the names are the route's, not the model's —
+    // including when the model offers different ones.
     vi.mocked(extractTerms).mockResolvedValue({
-      labels: { item: "", shipping: "Delivery", tax: "" },
+      labels: { item: "", shipping: "Delivery", tax: "VAT" },
       summary: "You pay monthly.",
     } as never);
 
     const { body } = await get("coffee-subscription");
 
-    // The blank item label becomes the product's name; the one the model did
-    // write is kept as it wrote it.
     expect(body.labels).toEqual({
       item: "Coffee Subscription",
-      shipping: "Delivery",
+      shipping: "Shipping",
       tax: "Sales tax",
     });
   });

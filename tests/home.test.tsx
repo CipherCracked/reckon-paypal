@@ -91,7 +91,7 @@ describe("the front door", () => {
   it("offers one primary action into the journey", async () => {
     render(await Home());
 
-    const primary = screen.getByRole("link", { name: /continue with this commitment/i });
+    const primary = screen.getByRole("link", { name: /check this commitment/i });
     expect(primary).toHaveAttribute("href", "/product/coffee-subscription");
   });
 

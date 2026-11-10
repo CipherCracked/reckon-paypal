@@ -3,11 +3,15 @@ import { CommitmentView } from "@/components/CommitmentView";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
-import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
-import { cheapestInStock, marketTerms, offerSpread, type MarketProduct } from "@/lib/market/channel3";
+import { describeSources } from "@/lib/commitment/sources";
+import {
+  cheapestInStock,
+  marketTerms,
+  MARKET_EXIT_NOTE,
+  offerSpread,
+  type MarketProduct,
+} from "@/lib/market/channel3";
 import { formatMoney, type Money } from "@/lib/money";
-
-const EXIT_NOTE = "Channel3 does not carry cancellation or return terms for this listing.";
 
 function extremes(offers: MarketProduct["offers"]): { low: Money; high: Money; count: number } | null {
   const prices = offers
@@ -68,7 +72,16 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
         ) : null}
 
         <div className="market-hero-body">
-          {product.description ? <p className="market-description">{product.description}</p> : null}
+          {product.description ? (
+            <>
+              {/* Whose words these are, before the reader meets them. The
+                  description is the retailer's own copy and the hardest text on
+                  the site; labelling it keeps it evidence rather than claiming
+                  the plain-language voice every other sentence uses. */}
+              <p className="field-hint">The manufacturer&apos;s description, in their words.</p>
+              <p className="market-description">{product.description}</p>
+            </>
+          ) : null}
           {range ? (
             <p className="market-spread" data-market-spread="true">
               Listed at {formatMoney(range.low)} to {formatMoney(range.high)} across{" "}
@@ -119,10 +132,13 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
             labels={{ item: "The listed price", shipping: "Shipping", tax: "Sales tax" }}
             summary=""
             schedule={describeSchedule(terms)}
-            figureNotes={{ exit: EXIT_NOTE }}
+            figureNotes={{ exit: MARKET_EXIT_NOTE }}
             sourceNote={describeSources({
               published: `the price Channel3 lists at ${offer.domain}`,
-              absent: absentFigureNote(figures),
+              // The figure's own note already says the catalogue carries no
+              // cancellation terms. "Nobody published it" would be a claim about
+              // every retailer, not about the one source this page read.
+              absent: null,
             })}
           />
 
@@ -133,7 +149,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
           </p>
 
           <Link className="button-primary" href={`/consent/pending?slug=${encodeURIComponent(slug)}`}>
-            Check this purchase
+            Check this commitment
           </Link>
         </>
       ) : (

@@ -58,7 +58,11 @@ describe("describeSchedule", () => {
 
     expect(schedule).not.toContain("Nothing further is charged");
     expect(schedule).toContain("Shipping and sales tax are not stated here.");
-    expect(schedule).toContain("not everything the checkout will ask for");
+    expect(schedule).toContain("not everything you will be asked for");
+    // The sentence prints above the figures it is about, and it is shown for
+    // documents too, so it may not point at a position or call everything a listing.
+    expect(schedule).not.toContain("figures above");
+    expect(schedule).not.toContain("listing");
   });
 
   it("names only the part that is missing", () => {

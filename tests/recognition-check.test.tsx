@@ -4,29 +4,54 @@ import userEvent from "@testing-library/user-event";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import { money } from "@/lib/money";
 
+const note = "This is today's charge, not the total across the term.";
+
+function renderCheck(onResult = vi.fn()) {
+  return render(
+    <RecognitionCheck
+      amount={money(1200)}
+      label="Charged today"
+      note={note}
+      onResult={onResult}
+    />,
+  );
+}
+
 describe("RecognitionCheck", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
   });
+
+  it("names the figure before showing it, so the reader knows what is being checked", () => {
+    renderCheck();
+
+    expect(screen.getByText("Charged today")).toBeInTheDocument();
+    expect(screen.getByText("$12.00")).toBeInTheDocument();
+    // The term context is the difference between "$12.00 does not match the
+    // $144.00 above" and a check that is actually correct.
+    expect(screen.getByText(/not the total across the term/i)).toBeInTheDocument();
+  });
+
   it("shows the amount and asks a recognition question, never a recall question", () => {
-    render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    renderCheck();
 
     expect(screen.getByText("$12.00")).toBeInTheDocument();
-    expect(screen.getByText(/does this match what you expected\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/does that match what you expected\?/i)).toBeInTheDocument();
   });
 
   it("reports a match when the shopper says yes", async () => {
     const onResult = vi.fn();
-    render(<RecognitionCheck amount={money(1200)} onResult={onResult} />);
+    renderCheck(onResult);
 
     await userEvent.click(screen.getByRole("button", { name: "Yes" }));
 
     expect(onResult).toHaveBeenCalledWith(true);
+    expect(screen.getByText(/confirmed: \$12\.00/i)).toBeInTheDocument();
   });
 
   it("asks for the breakdown when the shopper says no", async () => {
     const onResult = vi.fn();
-    render(<RecognitionCheck amount={money(1200)} onResult={onResult} />);
+    renderCheck(onResult);
 
     await userEvent.click(screen.getByRole("button", { name: /show me the breakdown/i }));
 
@@ -35,12 +60,12 @@ describe("RecognitionCheck", () => {
 
   it("can be skipped without reporting a result and without changing anything", async () => {
     const onResult = vi.fn();
-    render(<RecognitionCheck amount={money(1200)} onResult={onResult} />);
+    renderCheck(onResult);
 
     await userEvent.click(screen.getByRole("button", { name: /skip/i }));
 
     expect(onResult).not.toHaveBeenCalled();
-    expect(screen.queryByText(/does this match what you expected\?/i)).toBeNull();
+    expect(screen.queryByText(/does that match what you expected\?/i)).toBeNull();
     expect(screen.getByText(/check skipped/i)).toBeInTheDocument();
   });
 
@@ -53,15 +78,15 @@ describe("RecognitionCheck", () => {
       configurable: true,
     });
 
-    const answered = render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    const answered = renderCheck();
     await userEvent.click(screen.getByRole("button", { name: "Yes" }));
     answered.unmount();
 
-    const asked = render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    const asked = renderCheck();
     await userEvent.click(screen.getByRole("button", { name: /show me the breakdown/i }));
     asked.unmount();
 
-    render(<RecognitionCheck amount={money(1200)} onResult={vi.fn()} />);
+    renderCheck();
     await userEvent.click(screen.getByRole("button", { name: /skip/i }));
 
     expect(fetchSpy).not.toHaveBeenCalled();

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+﻿import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
@@ -7,6 +7,7 @@ import { ConsentScreen } from "@/components/ConsentScreen";
 import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
+import { describeSchedule } from "@/lib/commitment/schedule";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
@@ -16,7 +17,7 @@ vi.mock("next/navigation", () => ({
 
 // The front door reads the seller's exit sentence with a model; no model runs in
 // the suite, so the reading is fixed here. What the reading does is tested where
-// it lives — this test is about the journey between screens.
+// it lives â€” this test is about the journey between screens.
 vi.mock("@/lib/commitment/published-exit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/commitment/published-exit")>(
     "@/lib/commitment/published-exit",
@@ -36,6 +37,7 @@ vi.mock("@/lib/commitment/published-exit", async () => {
 });
 
 const headphones = findProduct("noise-cancelling-headphones");
+const subscription = findProduct("coffee-subscription");
 
 beforeEach(() => {
   pushMock.mockReset();
@@ -59,19 +61,29 @@ describe("demo flow", () => {
     // 2. The product page hands over to consent without creating anything.
     vi.stubGlobal("fetch", vi.fn());
 
-    render(
+    const productScreen = render(
       <ProductScreen
         slug="noise-cancelling-headphones"
         name={headphones!.name}
         description={headphones!.description}
+        figures={presentFigures(headphones!.terms, computeCommitment(headphones!.terms))}
+        breakdown={computeCommitment(headphones!.terms).breakdown}
+        schedule={describeSchedule(headphones!.terms)}
+        exitNote={null}
+        sourceNote="Computed from the terms shown on this page."
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+    // The product page states the figures too, so it is taken down before the
+    // consent screen is rendered â€” otherwise both screens answer to the same
+    // label and the test cannot tell which one it is looking at.
+    expect(screen.getByText("Across the term")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: /check this commitment/i }));
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=noise-cancelling-headphones"),
     );
+    productScreen.unmount();
 
     // 3. The consent screen states all three figures for the order.
     vi.stubGlobal(
@@ -109,10 +121,15 @@ describe("demo flow", () => {
         slug="coffee-subscription"
         name="Coffee Subscription"
         description="Delivered every month."
+        figures={presentFigures(subscription!.terms, computeCommitment(subscription!.terms))}
+        breakdown={computeCommitment(subscription!.terms).breakdown}
+        schedule={describeSchedule(subscription!.terms)}
+        exitNote={null}
+        sourceNote="Computed from the terms shown on this page."
       />,
     );
 
-    await userEvent.click(screen.getByRole("button", { name: /continue to payment/i }));
+    await userEvent.click(screen.getByRole("button", { name: /check this commitment/i }));
 
     await waitFor(() =>
       expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=coffee-subscription"),

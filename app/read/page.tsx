@@ -55,7 +55,12 @@ export default function ReadPage() {
   // controls; moving focus to it puts the reader at the start of the answer
   // instead of leaving them on a button that has already done its job.
   useEffect(() => {
-    if (status === "done") resultsRef.current?.focus();
+    if (status !== "done") return;
+    // Focus moves to the answer, and the answer is brought into view with it:
+    // the result can sit below a screen of form, and an answer nobody scrolls
+    // to is an answer nobody reads.
+    resultsRef.current?.scrollIntoView?.({ block: "start" });
+    resultsRef.current?.focus();
   }, [status]);
 
   function updateProgressive(next: boolean) {
@@ -164,6 +169,15 @@ export default function ReadPage() {
         </ul>
       </section>
 
+      {/* A click that changes nothing visible is a click that gets clicked
+          again. This says the reading started, where the click happened, while
+          the result is still being prepared further down the page. */}
+      {status === "reading" ? (
+        <p className="notice" role="status">
+          Reading this document now. The figures will appear below the box.
+        </p>
+      ) : null}
+
       <form className="read-form" onSubmit={submit}>
         <label htmlFor="document">
           The document
@@ -175,6 +189,7 @@ export default function ReadPage() {
           value={text}
           onChange={(event) => setText(event.target.value)}
           rows={12}
+          placeholder="Paste the text you were sent here."
           aria-describedby="document-hint"
         />
         <p id="document-hint" className="field-hint">
@@ -233,9 +248,9 @@ function ReadResultPanel({
   return (
     <>
       <p className="notice" role="status">
-        Read {result.quotationCount} sentence{result.quotationCount === 1 ? "" : "s"} from your
-        document. Each figure below was worked out by this page from the sentence shown beside it —
-        not by the model.
+        Took {result.quotationCount} quotation{result.quotationCount === 1 ? "" : "s"} from your
+        document, each checked word for word against your text. Each figure below was worked out
+        by this page from the sentence shown beside it — not by the model.
         {result.rejected > 0
           ? ` ${result.rejected} sentence${result.rejected === 1 ? "" : "s"} the model offered could not be found in your text and ${result.rejected === 1 ? "was" : "were"} discarded.`
           : ""}

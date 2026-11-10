@@ -139,8 +139,11 @@ describe("when the source states only part of the charge", () => {
     const figures = byId(listed);
 
     expect(figures.today.arithmetic).toBe("$179.95, plus shipping and sales tax not stated");
+    // The term figure says "1 payment of", because it and today's figure carry
+    // the same amount: without it, two identical figures side by side invite
+    // the reader to add them together.
     expect(figures.acrossTerm.arithmetic).toBe(
-      "$179.95, plus shipping and sales tax not stated",
+      "1 payment of $179.95, plus shipping and sales tax not stated",
     );
   });
 

@@ -130,7 +130,10 @@ export default async function Home() {
             figures={figures}
             breakdown={translation.breakdown}
             labels={{ item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" }}
-            summary={subscription.description}
+            // No summary here: the seller's sentence is already in the column
+            // beside this one, and repeating it word for word made the plain
+            // version look identical to the version it exists to explain.
+            summary=""
             schedule={describeSchedule(terms)}
             figureNotes={exitOutcome.note ? { exit: exitOutcome.note } : undefined}
             sourceNote={`${describeSources({
@@ -152,7 +155,7 @@ export default async function Home() {
           className="button-primary entry-action"
           href={`/product/${subscription.slug}`}
         >
-          Continue with this commitment
+          Check this commitment
         </Link>
       </section>
 

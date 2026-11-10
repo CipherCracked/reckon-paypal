@@ -743,6 +743,29 @@ html[data-text-scale="larger"] {
   min-height: 44px;
 }
 
+.display-control-check input[type="checkbox"] {
+  /* The browser default is 13px: below the size a finger can hit, on the one
+     control that decides how much of the page is shown at a time. */
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+/* On a phone the frame's control has to fit its own header. "Text size" takes
+   a line of its own and the three chips share the next one, instead of the
+   third chip dropping alone onto a line of its own. */
+@media (max-width: 480px) {
+  .site-header .display-control-options .display-control-label {
+    flex-basis: 100%;
+  }
+
+  .site-header .display-control-options .chip {
+    flex: 1 1 0;
+    padding: var(--space-2) var(--space-1);
+    text-align: center;
+  }
+}
+
 /* The frame's copy of the control (IPD 24): quiet, one line, same place on
    every screen. It sits in the header rather than the content column so a page
    can never reorder it or forget it. */
@@ -854,6 +877,16 @@ html[data-text-scale="larger"] {
 .field-hint {
   font-size: var(--text-sm);
   color: var(--ink-muted);
+}
+
+/* The suggestion links and retailer links are routes out of the page. A 20px
+   line of text is a 20px target; these give the finger somewhere to land
+   without changing how the line looks. */
+.field-hint a,
+.market-open {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
 }
 
 .scope-note {

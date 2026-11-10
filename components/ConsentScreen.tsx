@@ -6,8 +6,9 @@ import { PaceControl } from "@/components/PaceControl";
 import { RecognitionCheck } from "@/components/RecognitionCheck";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
-import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
+import { describeSources } from "@/lib/commitment/sources";
 import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
+import { formatMoney } from "@/lib/money";
 
 export type CommitmentPayload = {
   shape: CommitmentShape;
@@ -233,6 +234,10 @@ export function ConsentScreen({
     return (
       <section className="consent" aria-busy="true">
         <p>Reading the terms for this purchase…</p>
+        <p className="field-hint">
+          This usually takes a second or two. Nothing is charged while the page fetches what the
+          seller publishes.
+        </p>
       </section>
     );
   }
@@ -250,6 +255,18 @@ export function ConsentScreen({
 
   const { payload } = state;
 
+  // The check shows one figure, so it says which one. Without that, a large
+  // "$12.00" under a panel whose largest figure is $144.00 reads as a
+  // contradiction instead of a different question.
+  const acrossTerm = payload.figures.find((figure) => figure.id === "acrossTerm") ?? null;
+  const sameMoney =
+    acrossTerm?.amount != null && acrossTerm.amount.minor === payload.translation.today.minor;
+  const checkNote = sameMoney
+    ? "This is also the whole cost — the same figure as “Across the term”, not a second charge."
+    : acrossTerm?.amount
+      ? `This is today's charge. Across the term the page says ${acrossTerm.floor ? "at least " : ""}${formatMoney(acrossTerm.amount)}.`
+      : "This is today's charge, not the total across the term.";
+
   return (
     <section className="consent">
       {payload.degraded ? (
@@ -257,7 +274,7 @@ export function ConsentScreen({
         // itself, so they are still the ones to show.
         <p className="notice">
           We could not write a plain-language summary for this purchase. The figures below are
-          still calculated from the order, but the item labels are the seller&apos;s own.
+          still calculated from the order; only that sentence is missing.
         </p>
       ) : null}
 
@@ -272,8 +289,11 @@ export function ConsentScreen({
         sourceNote={describeSources({
           paypal: payload.sources.paypal,
           published: payload.sources.published,
-          absent: payload.exitUnreadable ? null : absentFigureNote(payload.figures),
-          unreadable: payload.exitUnreadable ? "what it costs to leave" : null,
+          // No `absent` clause: the absent figure already carries the reason
+          // under it (`exitNote`), and "Nobody published…" was a claim this
+          // screen could not support for a retail listing — the catalogue has
+          // no such field, which is not the same as no one publishing it.
+          absent: null,
         })}
       />
 
@@ -284,6 +304,8 @@ export function ConsentScreen({
       {payload.degraded ? null : (
         <RecognitionCheck
           amount={payload.translation.today}
+          label="Today's charge"
+          note={checkNote}
           onResult={(matched) => {
             if (matched) {
               payButton.current?.focus();

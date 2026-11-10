@@ -69,6 +69,15 @@ export function marketProductId(slug: string): string | null {
 }
 
 /**
+ * What a retail listing can say about leaving. The catalogue carries no
+ * cancellation or return field, so this is a fact about the source rather than
+ * the seller's silence — and it is the sentence every screen shows for a
+ * listing, so it is written once.
+ */
+export const MARKET_EXIT_NOTE =
+  "Channel3 does not carry cancellation or return terms for this listing.";
+
+/**
  * The offer a purchase would use: the cheapest one the retailer says is in
  * stock. Out-of-stock and non-USD offers are not candidates — quoting one would
  * put a price on the screen that cannot be bought.
@@ -96,6 +105,27 @@ export function marketTerms(offer: MarketOffer): CommitmentTerms {
     tax: null,
     exit: { kind: "unknown" },
   };
+}
+
+/**
+ * How many results actually use the words the shopper typed.
+ *
+ * The catalogue matches on more than spelling — a query it cannot answer can
+ * still come back with a full page of products whose names merely start with
+ * the same letter. Counting the results that contain the words is the only way
+ * this screen can tell an answer from a near miss without guessing at either.
+ */
+export function matchingCount(products: MarketProduct[], query: string): number {
+  const words = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((word) => word.length > 2);
+  if (words.length === 0) return products.length;
+
+  return products.filter((product) => {
+    const haystack = `${product.title} ${product.brand ?? ""} ${product.description}`.toLowerCase();
+    return words.every((word) => haystack.includes(word));
+  }).length;
 }
 
 /** The spread between the cheapest and dearest in-stock offer, when there are two. */

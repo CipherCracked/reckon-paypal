@@ -66,8 +66,34 @@ describe("the shop is the live catalogue (IPD 22)", () => {
 
     render(await shop("lamps"));
 
-    expect(screen.getByText(/\$22\.50 between the lowest and the highest/)).toBeInTheDocument();
-    expect(screen.getByText(/2 retailers listing it/)).toBeInTheDocument();
+    expect(screen.getByText(/\$22\.50 apart/)).toBeInTheDocument();
+    expect(screen.getByText(/2 retailers in these results/)).toBeInTheDocument();
+  });
+
+  it("does not call a near miss a match when the results do not use the query", async () => {
+    // The catalogue matches on more than spelling: a query it cannot answer
+    // still comes back full. The count line must not present that as twelve
+    // products for the shopper's words.
+    vi.mocked(searchMarket).mockResolvedValue([
+      product("prd00022", { title: "Z Shape Bracket", brand: null }),
+      product("prd00023", { title: "Zipper Storage Bag", brand: null }),
+    ]);
+
+    render(await shop("zzzqqq"));
+
+    expect(screen.getByText(/nothing the catalogue returned uses/i)).toBeInTheDocument();
+    expect(screen.queryByText(/2 results for/i)).not.toBeInTheDocument();
+  });
+
+  it("counts the results that do use the query, and says what the rest are", async () => {
+    vi.mocked(searchMarket).mockResolvedValue([
+      product("prd00024", { title: "Desk Lamp", brand: null }),
+      product("prd00025", { title: "Z Shape Bracket", brand: null }),
+    ]);
+
+    render(await shop("lamp"));
+
+    expect(screen.getByText(/1 of the 2 results/i)).toBeInTheDocument();
   });
 
   it("passes the query through, and searches something by default", async () => {

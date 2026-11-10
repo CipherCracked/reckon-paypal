@@ -53,7 +53,7 @@ The agreed total for the work is $1,860.00, payable by 30 November 2026. This is
   {
     slug: "fee-schedule",
     label: "Try a page of fees",
-    note: "It states amounts and never says what is owed in total, so the reader refuses it and shows you the amounts it found.",
+    note: "It states amounts and never says what is owed in total, so this page refuses it and shows you the amounts it found.",
     refused: true,
     text: `Boathouse Club — schedule of fees, 10 November 2026
 

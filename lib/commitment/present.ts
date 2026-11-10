@@ -99,13 +99,17 @@ function acrossTermArithmetic(
   unstated: UnstatedPart[],
 ): string | null {
   switch (terms.shape) {
-    case "one_time":
+    case "one_time": {
       // A stated one-off charge needs no arithmetic — the figure is the charge.
       // Once a part is unstated the total is a floor, and the line has to show
-      // what it was summed from and what it left out.
-      return unstated.length === 0
-        ? "1 payment"
-        : withUnstated(sumOfParts(terms), unstated);
+      // what it was summed from and what it left out — starting with the fact
+      // that it is one payment, so two identical figures side by side are not
+      // read as two charges.
+      if (unstated.length === 0) return "1 payment";
+      const parts = sumOfParts(terms);
+      const missing = `${unstatedText(unstated)} not stated`;
+      return parts ? `1 payment of ${parts}, plus ${missing}` : `1 payment; ${missing}`;
+    }
 
     case "recurring": {
       if (!terms.recurrence) return null;

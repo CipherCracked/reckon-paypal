@@ -64,6 +64,10 @@ const SYSTEM_PROMPT = [
   "",
   "Do not write a monetary figure in the summary. The summary describes the commitment in words.",
   "",
+  "Write the summary to the person holding the document, as “you”. “You are agreeing to 24 months”,",
+  "not “The reader agrees to 24 months” — on this page “the reader” means the tool, and the person",
+  "it is helping should not have to work out which one a sentence is about.",
+  "",
   "Fields you may fill:",
   FIELD_GUIDE,
 ].join("\n");

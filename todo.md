@@ -161,18 +161,26 @@ findings below are from a live run, not a read.
 
 ### 7b. Demo-feel defects (the ones costing Design points)
 
-- [ ] **The consent screen is not cached.** `app/api/commitment/[orderId]/route.ts:33-36`
+- [x] **The consent screen is not cached.** `app/api/commitment/[orderId]/route.ts:33-36`
       calls the model for wording on every load; measured **6–12 s on repeat visits**,
       while the exit reading beside it is cached
       (`lib/commitment/published-exit.ts`). Cache `extractTerms` the same way. ~2–3 h.
-      This is the product's central moment.
-- [ ] **The product page shows no figures.** `components/ProductScreen.tsx` is a copy
+      **Fixed 2026-11-10, by deleting the call rather than caching it:** the model was
+      writing a summary to decorate figures the route had already computed, and the
+      derived schedule is the plain-language sentence. Measured **11.1 s → 0.23 s**
+      (demo) and **7.5 s → 1.78 s** (market, the live-catalogue fetch). The route now
+      names its own three parts, so the provenance table stops changing between loads.
+- [x] **The product page shows no figures.** `components/ProductScreen.tsx` is a copy
       block and a button, so a buyer must click before seeing anything the product is
       for. Render the triad on `app/product/[slug]/page.tsx`. ~3–4 h.
+      **Fixed 2026-11-10:** the page renders the full `CommitmentView` (three figures,
+      breakdown, schedule, exit note, source line) above the button.
 - [ ] **The headphones entry types a `$0.00` exit.** `lib/catalog/products.ts:24`
       hardcodes `exit: { kind: "none" }` while the copy says only "Free returns within
       30 days". Coffee was deliberately made `unknown` for exactly this reason
       (`:40-42`). Either read the sentence or make it `unknown`. ~30 min.
+      *Still open — and "Free returns within 30 days" is a returns window, not an exit
+      fee, so the fix is `unknown` plus a read, not a smaller number.*
 
 ### 7c. Claims that do not survive inspection
 
@@ -423,8 +431,9 @@ actually working.
       and invoice reads (2 s kept for reads that decorate a render), and the failure
       branch now offers "Try reading PayPal's copy again". Still open: keep the known
       due date / payer link on failure.
-- [ ] **Consent wording cache** — already §7b; this reviewer measured **7–20 s** and
-      said they would have hit Back.
+- [x] **Consent wording cache** — already §7b; this reviewer measured **7–20 s** and
+      said they would have hit Back. **Fixed 2026-11-10** by deleting the model call
+      from that route rather than caching it (see §7b).
 - [ ] **The dev "N" badge overlaps "Read this aloud" at 390 px.** Record the demo from
       `next build && next start`, not `npm run dev`.
 
@@ -456,3 +465,52 @@ and §8a.
 - [ ] One full day on the video and the Devpost page. Without it the engineering is
       not seen.
 - [ ] Deploy to a public URL so a judge can click without cloning or needing keys.
+
+## 11. The Playwright visual audit (2026-11-10)
+
+A context-free agent drove the running app with Playwright (installed Chrome, not the
+bundled browser) and reported what a stranger sees, screen by screen. Fixed the same
+day:
+
+- [x] **The consent screen waited 11–12 s** before showing figures. Fixed in §7b —
+      the model is gone from that route, not cached on it. Re-measured 0.23 s / 1.78 s.
+- [x] **The shop claimed matches it had not made.** The result line said "N results
+      for *query*" whatever the catalogue actually returned. It now counts the results
+      that use the reader's words and says what a near miss is ("Nothing the catalogue
+      returned uses "zzzqqq". It matches on more than spelling, so these are its
+      nearest results — not a promise that they match."). Cards say "N retailers in
+      these results" and the spread. Two tests added.
+- [x] **The recognition check showed a bare number under a bigger one.** It now names
+      its figure and states the term total: "Today's charge / $12.00 / This is today's
+      charge. Across the term the page says $144.00."
+- [x] **A one-time payment's two tiles were the same figure with no way to tell them
+      apart.** Now "1 payment of $179.95, plus shipping and sales tax not stated".
+- [x] **The home page repeated the seller's sentence** as a "summary" in the column
+      beside it, making the plain version identical to the version it explains.
+- [x] **"Nobody published what it costs to leave"** was printed beneath an absent exit
+      figure on the consent screen and the market product. Unsupportable for a
+      catalogue with no such field — the figure's own note already gives the reason.
+      `describeSources` is called with `absent: null` there.
+- [x] **The schedule sentence pointed at the wrong place** ("the figures above" on a
+      line that prints above them) and called every commitment "this listing", which
+      is false for a pasted document. Now position- and context-neutral, with a test.
+- [x] **The loading hint claimed the page was reading the seller's words** on the
+      market path, where nothing is read. Now says what happens and that nothing is
+      charged.
+- [x] **`/read` gave no feedback** on the long path: it now says how many quotations
+      were taken, and scrolls the answer into view before focusing it.
+- [x] **The phone header split the text-size chips across rows.** All three now share
+      one row; checkbox enlarged to 20 px; inline links given a 44 px touch target.
+
+Judged out of scope, stated rather than silently dropped:
+
+- [ ] **The unreachable `degraded` state.** `GET /api/commitment/{orderId}` returns
+      `degraded: false` unconditionally and `summary: ""`, so the "we could not write a
+      summary" notice and the check-hiding branch can never render. Removing the field
+      touches six files and deletes a test; it is dead code, not a false claim, so it
+      waits until after the video.
+- [ ] **`lib/ai/extract-terms.ts` is unused by the app.** Kept deliberately: two suites
+      import it to assert the model is **not** called on the consent path, which is the
+      regression guard against putting it back.
+- [ ] **The typed `$4.01` tax and `zeroMoney()` in the demo path** (§6) — untouched;
+      the demo catalogue is a demonstration seller and the figures still add up.

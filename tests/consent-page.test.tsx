@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { GET } from "@/app/api/commitment/[orderId]/route";
 import { extractTerms } from "@/lib/ai/extract-terms";
+import { resolveExitTerm } from "@/lib/commitment/published-exit";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { money } from "@/lib/money";
@@ -12,6 +13,13 @@ import type { CommitmentTerms } from "@/lib/commitment/types";
 vi.mock("@/lib/ai/extract-terms", () => ({
   extractTerms: vi.fn(),
 }));
+
+vi.mock("@/lib/commitment/published-exit", async () => {
+  const actual = await vi.importActual<typeof import("@/lib/commitment/published-exit")>(
+    "@/lib/commitment/published-exit",
+  );
+  return { ...actual, resolveExitTerm: vi.fn() };
+});
 
 const terms: CommitmentTerms = {
   shape: "recurring",
@@ -42,6 +50,13 @@ beforeEach(() => {
     vi.fn(async () => ({ ok: true, json: async () => payload })),
   );
   vi.mocked(extractTerms).mockReset();
+  // A stated term never reaches the model, which is the common case here.
+  vi.mocked(resolveExitTerm).mockResolvedValue({
+    kind: "stated",
+    exit: terms.exit,
+    note: null,
+    quoted: null,
+  });
 });
 
 afterEach(() => {
@@ -199,17 +214,7 @@ describe("GET /api/commitment/:orderId", () => {
   const request = (slug: string) =>
     new Request(`http://localhost/api/commitment/ORDER-1?slug=${slug}`);
 
-  it("returns the translation and the extracted summary", async () => {
-    vi.mocked(extractTerms).mockResolvedValueOnce({
-      shape: "recurring",
-      recurrenceCount: 12,
-      recurrencePeriod: "month",
-      cancellationWindowDays: null,
-      exitFeeKnown: true,
-      labels: payload.labels,
-      summary: payload.summary,
-    });
-
+  it("returns the figures and the schedule without asking a model", async () => {
     const response = await GET(request("coffee-subscription"), {
       params: Promise.resolve({ orderId: "ORDER-1" }),
     });
@@ -217,20 +222,42 @@ describe("GET /api/commitment/:orderId", () => {
 
     expect(body.degraded).toBe(false);
     expect(body.translation.today.minor).toBe(1200);
-    expect(body.summary).toBe("You pay monthly for one year.");
+    // The plain-language sentence is the schedule, derived from the terms. The
+    // model that used to write a second one took about eleven seconds to do it,
+    // on the screen immediately before the money, so it is not asked.
+    expect(body.schedule).toMatch(/12 payments of \$12\.00, one a month/);
+    expect(body.summary).toBe("");
+    expect(extractTerms).not.toHaveBeenCalled();
   });
 
-  it("degrades to the PayPal amount when the terms cannot be read", async () => {
-    vi.mocked(extractTerms).mockRejectedValueOnce(new Error("model unavailable"));
+  it("names the parts itself, so the labels cannot change between two loads", async () => {
+    const bodyOf = async () =>
+      (await GET(request("coffee-subscription"), {
+        params: Promise.resolve({ orderId: "ORDER-1" }),
+      })).json();
 
-    const response = await GET(request("coffee-subscription"), {
+    const first = await bodyOf();
+    const second = await bodyOf();
+
+    expect(first.labels).toEqual(second.labels);
+    expect(first.labels).toEqual({
+      item: "Coffee Subscription",
+      shipping: "Shipping",
+      tax: "Sales tax",
+    });
+  });
+
+  it("keeps the figures when the exit read fails", async () => {
+    vi.mocked(resolveExitTerm).mockRejectedValueOnce(new Error("model unavailable"));
+
+    const response = await GET(request("mattress-financed"), {
       params: Promise.resolve({ orderId: "ORDER-1" }),
     });
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.degraded).toBe(true);
-    expect(body.translation.today.minor).toBe(1200);
-    expect(body.labels.item).toBe("Coffee Subscription");
+    expect(body.exitUnreadable).toBe(true);
+    expect(body.degraded).toBe(false);
+    expect(body.labels.item).toBe("Mattress — 12 Months");
   });
 });

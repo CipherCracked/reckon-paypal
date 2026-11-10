@@ -5,6 +5,10 @@ import { formatMoney, type Money } from "@/lib/money";
 
 export type RecognitionCheckProps = {
   amount: Money;
+  /** What the figure is, in the same words the figures above use. */
+  label: string;
+  /** One sentence saying which figure this is, and what the other one is. */
+  note: string;
   onResult: (matched: boolean) => void;
 };
 
@@ -12,8 +16,13 @@ export type RecognitionCheckProps = {
  * An optional check, not a gate. It asks the shopper to recognise a figure
  * already on screen — never to recall or produce one — and skipping it leaves
  * the payment path exactly as it was.
+ *
+ * The figure is labelled rather than left bare. A large "$12.00" under a panel
+ * headed "Across the term $144.00" asked the shopper to confirm a number the
+ * page had never called by that name, so "no, that does not match" was the
+ * reasonable answer to a check that was right.
  */
-export function RecognitionCheck({ amount, onResult }: RecognitionCheckProps) {
+export function RecognitionCheck({ amount, label, note, onResult }: RecognitionCheckProps) {
   const [skipped, setSkipped] = useState(false);
   const [matched, setMatched] = useState(false);
 
@@ -23,7 +32,7 @@ export function RecognitionCheck({ amount, onResult }: RecognitionCheckProps) {
   if (matched) {
     return (
       <p className="recognition-skipped" role="status">
-        Confirmed: {formatMoney(amount)} is what this screen says you pay today.
+        Confirmed: {formatMoney(amount)} is the figure shown under &ldquo;{label}&rdquo;.
       </p>
     );
   }
@@ -39,8 +48,10 @@ export function RecognitionCheck({ amount, onResult }: RecognitionCheckProps) {
   return (
     <section className="recognition" aria-labelledby="recognition-heading">
       <h2 id="recognition-heading">Optional check</h2>
+      <p className="recognition-label">{label}</p>
       <p className="recognition-amount">{formatMoney(amount)}</p>
-      <p>Does this match what you expected?</p>
+      <p className="recognition-note">{note}</p>
+      <p>Does that match what you expected?</p>
       <div className="recognition-actions">
         <button
           type="button"
