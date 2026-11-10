@@ -147,7 +147,7 @@ export function readQuotations(quotations: Quotation[]): Reading | null {
         ? `${formatMoney(addMoney(perPeriod, extra ?? zeroMoney()))} is charged at a time. The document does not say how many payments there are, or how often they fall due.`
         : period
           ? describeSchedule(terms, { firstPaymentToday: false })
-          : `${count} payments of ${formatMoney(perPeriod)}. The document does not say how often they fall due. What happens if a payment is missed is not stated on this screen.`,
+          : `${count} payments of ${formatMoney(perPeriod)}. The document does not say how often they fall due, or what happens if a payment is missed.`,
       stated,
       countUnstated,
     };

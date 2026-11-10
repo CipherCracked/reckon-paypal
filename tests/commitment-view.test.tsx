@@ -35,7 +35,6 @@ describe("CommitmentView", () => {
 
   it("states the term, the exit and today's charge as three labelled figures", () => {
     const { container } = renderView(knownTerms, "You pay monthly for 12 months.");
-
     expect(screen.getByText("Charged today")).toBeInTheDocument();
     expect(figure(container, "today")).toHaveTextContent("$12.00");
 
@@ -117,5 +116,27 @@ describe("CommitmentView", () => {
     // one it is instead of the row disappearing.
     expect(screen.getAllByText("Not stated").length).toBe(3);
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+
+  it("renders a breakdown from an older server that has no fee key at all", () => {
+    // The reading cache lives on `globalThis` and outlives a recompile, so a
+    // payload built by this morning's build can still arrive this afternoon.
+    // It cost the reader page three of its four example documents; a page that
+    // cannot reload its way out of an error must not crash on a missing key.
+    const { breakdown, ...rest } = computeCommitment(knownTerms);
+    const { item, shipping, tax } = breakdown;
+
+    render(
+      <CommitmentView
+        figures={presentFigures(knownTerms, computeCommitment(knownTerms))}
+        breakdown={{ item, shipping, tax } as typeof breakdown}
+        labels={labels}
+        summary=""
+        sourceNote="Computed from the terms in this test."
+      />,
+    );
+
+    expect(screen.getByText("Charged today")).toBeInTheDocument();
+    expect(screen.queryByText("Fee taken once")).toBeNull();
   });
 });

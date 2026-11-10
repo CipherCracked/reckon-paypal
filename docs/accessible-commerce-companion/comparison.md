@@ -57,7 +57,7 @@ Schedule: Paid once. Nothing further is charged, so there is no term to run out.
 
 Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: not stated; Charged today: $12.00 ($12.00).
 
-Schedule: 12 payments of $12.00, one a month — today's is the first of the 12. What happens if a payment is missed is not stated on this screen.
+Schedule: 12 payments of $12.00, one a month — today's is the first of the 12. If a payment does not go through, PayPal suspends the plan after one failed payment.
 
 ## Mattress — 12 Months
 
@@ -80,7 +80,7 @@ Schedule: 12 payments of $12.00, one a month — today's is the first of the 12.
 
 Rendered as one line: Across the term: $1,320.00 (12 × $105.00 + $60.00 taken once); Cost to leave: not stated; Charged today: $165.00 (1 of 12 payments, plus $60.00 taken once).
 
-Schedule: 12 payments of $105.00, one a month — today's is the first of the 12, plus $60.00 taken once. What happens if a payment is missed is not stated on this screen.
+Schedule: 12 payments of $105.00, one a month — today's is the first of the 12, plus $60.00 taken once. If a payment does not go through, PayPal suspends the plan after one failed payment.
 
 ---
 

@@ -9,13 +9,20 @@ export type RecordNextCharge = { date: Date | null; amount: Money | null } | nul
  * Where the commitment stands, as PayPal states it (IPD 23).
  *
  * Only two of PayPal's states reach a settled record in a shape the product can
- * act on. `running` is a subscription still taking payments, and it is the only
- * case that offers the cancel; `cancelled` is one PayPal reports ended, which the
- * record states rather than hiding behind a "nothing has been taken".
+ * act on. `running` is a plan still taking payments, and it is the only case that
+ * offers the cancel; `cancelled` is one PayPal reports ended, which the record
+ * states rather than hiding behind a "nothing has been taken".
+ *
+ * `agreement` is what PayPal holds, in the shopper's words: a repeating
+ * subscription or a payment plan being paid off in instalments. Both are
+ * subscriptions to PayPal and both are ended the same way, so the record says
+ * which one it is instead of calling every arrangement a subscription.
  */
+export type AgreementKind = "subscription" | "payment plan";
+
 export type RecordStanding =
-  | { kind: "running"; subscriptionId: string }
-  | { kind: "cancelled"; at: Date | null };
+  | { kind: "running"; subscriptionId: string; agreement: AgreementKind }
+  | { kind: "cancelled"; at: Date | null; agreement: AgreementKind };
 
 export type CommitmentRecordData = {
   productName: string;
@@ -75,7 +82,7 @@ function spokenRecord(record: CommitmentRecordData): string {
     amount === null ? `${label}: not stated.` : `${label}: ${formatMoney(amount)}.`;
 
   const next = record.standing?.kind === "cancelled"
-    ? "Next charge: none. PayPal reports this subscription as cancelled."
+    ? `Next charge: none. PayPal reports this ${record.standing.agreement} as cancelled.`
     : record.nextCharge === null
       ? "Next charge: none. This was a single payment."
       : record.nextCharge.date
@@ -110,7 +117,7 @@ export function CommitmentRecord(record: CommitmentRecordData) {
         // Said separately from the figures, because the figures are what the
         // agreement was and this is what PayPal says about it now (IPD 23).
         <p className="notice" role="status" data-standing="cancelled">
-          PayPal reports this subscription as cancelled
+          PayPal reports this {cancelled.agreement} as cancelled
           {cancelled.at ? ` on ${formatDate(cancelled.at)}` : ""}. It will take no further payments
           for it.
         </p>
@@ -121,7 +128,7 @@ export function CommitmentRecord(record: CommitmentRecordData) {
           <dt>Next charge</dt>
           <dd>
             {cancelled
-              ? "None — PayPal reports this subscription as cancelled."
+              ? `None — PayPal reports this ${cancelled.agreement} as cancelled.`
               : record.nextCharge === null
                 ? "None — this was a single payment."
                 : `${record.nextCharge.date ? formatDate(record.nextCharge.date) : "Date not yet set"} — ${
@@ -170,6 +177,7 @@ export function CommitmentRecord(record: CommitmentRecordData) {
             {record.standing?.kind === "running" ? (
               <CancelSubscription
                 subscriptionId={record.standing.subscriptionId}
+                agreement={record.standing.agreement}
                 productName={record.productName}
                 reference={record.reference}
                 manageUrl={record.manageUrl}

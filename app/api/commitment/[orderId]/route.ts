@@ -55,12 +55,19 @@ export async function GET(request: Request, context: RouteContext) {
 
   const terms: CommitmentTerms = { ...resolved.terms, exit: exitOutcome.exit };
   const translation = computeCommitment(terms);
+  // A real listing's missing parts are added at a checkout, and saying so is a
+  // scope every shop states; a demo entry's terms are complete, so the flag
+  // never reaches a figure there.
+  const unstatedAt = slug && isMarketSlug(slug) ? ("checkout" as const) : null;
   // The ordering and the arithmetic are derived here, from the same terms the
   // totals came from, so the screen never decides either. The verified sentence
   // rides on the figure it produced (ITD 19), so there is no second field for a
   // screen to join back up — or to forget to.
-  const figures = presentFigures(terms, translation, { sources: { exit: exitOutcome.quoted } });
-  const schedule = describeSchedule(terms);
+  const figures = presentFigures(terms, translation, {
+    sources: { exit: exitOutcome.quoted },
+    unstatedAt,
+  });
+  const schedule = describeSchedule(terms, { unstatedAt });
 
   // The three parts have one name each, and the screen prints those names in
   // the provenance table a reader is told to rely on. A model is good at a
@@ -77,6 +84,9 @@ export async function GET(request: Request, context: RouteContext) {
     figures,
     schedule,
     labels,
+    // Where the parts this listing does not state are added, so the screen's
+    // rows say "At checkout" rather than "Not stated" for a shop.
+    unstatedAt,
     // No sequence of words is worth this screen's latency. The schedule above
     // is the plain-language sentence, and it is derived from the terms.
     summary: "",

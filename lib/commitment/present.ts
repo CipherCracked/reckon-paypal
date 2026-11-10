@@ -86,10 +86,19 @@ function unstatedText(unstated: UnstatedPart[]): string {
  * reader can see that the total above it is the sum of the stated parts rather
  * than the whole charge. Naming a missing part is not a number, so nothing here
  * can put a figure on the screen that the code did not derive.
+ *
+ * `at` is where those parts get charged when the screen knows: a shop adds them
+ * at checkout, and saying so is a scope rather than an apology. A document says
+ * nothing about any checkout, so there the parts stay "not stated".
  */
-function withUnstated(arithmetic: string | null, unstated: UnstatedPart[]): string | null {
+function withUnstated(
+  arithmetic: string | null,
+  unstated: UnstatedPart[],
+  at: "checkout" | null = null,
+): string | null {
   if (unstated.length === 0) return arithmetic;
-  const missing = `${unstatedText(unstated)} not stated`;
+  const missing =
+    at === "checkout" ? `${unstatedText(unstated)} at checkout` : `${unstatedText(unstated)} not stated`;
   return arithmetic ? `${arithmetic}, plus ${missing}` : missing;
 }
 
@@ -104,6 +113,7 @@ function acrossTermArithmetic(
   terms: CommitmentTerms,
   extra: string,
   unstated: UnstatedPart[],
+  at: "checkout" | null,
 ): string | null {
   const fee = openingFeeText(terms);
 
@@ -116,7 +126,10 @@ function acrossTermArithmetic(
       // read as two charges.
       if (unstated.length === 0) return "1 payment";
       const parts = sumOfParts(terms);
-      const missing = `${unstatedText(unstated)} not stated`;
+      const missing =
+        at === "checkout"
+          ? `${unstatedText(unstated)} at checkout`
+          : `${unstatedText(unstated)} not stated`;
       return parts ? `1 payment of ${parts}, plus ${missing}` : `1 payment; ${missing}`;
     }
 
@@ -132,13 +145,13 @@ function acrossTermArithmetic(
         shipping === null || isZero(shipping)
           ? repeated
           : `${repeated} + ${formatMoney(shipping)} ${extra}`;
-      return withUnstated(fee ? `${withShipping} + ${fee}` : withShipping, unstated);
+      return withUnstated(fee ? `${withShipping} + ${fee}` : withShipping, unstated, at);
     }
 
     case "financed": {
       if (!terms.installment) return null;
       const repeated = `${terms.installment.count} × ${formatMoney(terms.installment.amount)}`;
-      return withUnstated(fee ? `${repeated} + ${fee}` : repeated, unstated);
+      return withUnstated(fee ? `${repeated} + ${fee}` : repeated, unstated, at);
     }
 
     default:
@@ -146,7 +159,11 @@ function acrossTermArithmetic(
   }
 }
 
-function todayArithmetic(terms: CommitmentTerms, unstated: UnstatedPart[]): string | null {
+function todayArithmetic(
+  terms: CommitmentTerms,
+  unstated: UnstatedPart[],
+  at: "checkout" | null,
+): string | null {
   const fee = openingFeeText(terms);
 
   if (terms.shape === "financed") {
@@ -155,7 +172,7 @@ function todayArithmetic(terms: CommitmentTerms, unstated: UnstatedPart[]): stri
     return fee ? `${base}, plus ${fee}` : base;
   }
 
-  const base = withUnstated(sumOfParts(terms), unstated);
+  const base = withUnstated(sumOfParts(terms), unstated, at);
   return fee ? (base ? `${base}, plus ${fee}` : fee) : base;
 }
 
@@ -176,13 +193,14 @@ function todayArithmetic(terms: CommitmentTerms, unstated: UnstatedPart[]): stri
 export function presentFigures(
   terms: CommitmentTerms,
   translation: CommitmentTranslation,
-  labels: { extra?: string; sources?: FigureSources } = {},
+  labels: { extra?: string; sources?: FigureSources; unstatedAt?: "checkout" | null } = {},
 ): RenderedFigure[] {
   const unstated = translation.unstated;
+  const at = labels.unstatedAt ?? null;
   const arithmetic: Record<FigureId, string | null> = {
-    acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once", unstated),
+    acrossTerm: acrossTermArithmetic(terms, labels.extra ?? "shipping once", unstated, at),
     exit: null,
-    today: todayArithmetic(terms, unstated),
+    today: todayArithmetic(terms, unstated, at),
   };
 
   const amounts: Record<FigureId, Money | null> = {

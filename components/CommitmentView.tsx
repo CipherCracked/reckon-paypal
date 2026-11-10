@@ -25,6 +25,13 @@ export type CommitmentViewProps = {
   sourceNote: string;
   /** Reveal the figures one at a time, at the reader's pace. */
   progressive?: boolean;
+  /**
+   * Where a part the source did not state gets charged, when the screen knows.
+   * A shop adds shipping and tax at checkout, and that is the row a shopper
+   * expects; a document has no checkout to promise, so its row stays "Not
+   * stated". Optional so a caller that cannot know says nothing clever.
+   */
+  unstatedAt?: "checkout" | null;
 };
 
 export function CommitmentView({
@@ -36,7 +43,14 @@ export function CommitmentView({
   figureNotes,
   sourceNote,
   progressive = false,
+  unstatedAt = null,
 }: CommitmentViewProps) {
+  const unstated = unstatedAt === "checkout" ? "At checkout" : "Not stated";
+  // A payload built by an older version of this server can lack the fee row
+  // entirely. Reading that as "no fee" is right — it is how a page that has
+  // nothing to say about a fee behaves — and it is never worth crashing the
+  // reader over, on the one screen a shopper cannot reload their way past.
+  const fee = breakdown.fee ?? null;
   const [revealed, setRevealed] = useState(figures.length);
 
   useEffect(() => {
@@ -142,7 +156,7 @@ export function CommitmentView({
         {breakdown.shipping === null ? (
           <div>
             <dt>{labels.shipping}</dt>
-            <dd>Not stated</dd>
+            <dd>{unstated}</dd>
           </div>
         ) : breakdown.shipping.minor === 0 ? null : (
           <div>
@@ -153,7 +167,7 @@ export function CommitmentView({
         {breakdown.tax === null ? (
           <div>
             <dt>{labels.tax}</dt>
-            <dd>Not stated</dd>
+            <dd>{unstated}</dd>
           </div>
         ) : breakdown.tax.minor === 0 ? null : (
           <div>
@@ -165,10 +179,10 @@ export function CommitmentView({
             up to less than the figure they are under. Its name is not the
             seller's ("origination", "joining", "setup"), so it is described
             rather than quoted. */}
-        {breakdown.fee === null || breakdown.fee.minor === 0 ? null : (
+        {fee === null || fee.minor === 0 ? null : (
           <div>
             <dt>Fee taken once</dt>
-            <dd>{formatMoney(breakdown.fee)}</dd>
+            <dd>{formatMoney(fee)}</dd>
           </div>
         )}
       </dl>

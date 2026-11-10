@@ -76,6 +76,11 @@ function periodOf(unit: string | undefined): BillingPeriod | null {
  * the charge PayPal takes when the plan starts. A reader that skipped it would
  * report a term total $60.00 below the one the plan actually collects.
  *
+ * The same goes for `payment_failure_threshold`: it is a term of the plan, and a
+ * plan that is suspended after one failed payment says so on the screen before
+ * the shopper agrees. A plan that carries no threshold states no policy, and the
+ * schedule says that instead of guessing one.
+ *
  * The exit term is always `unknown`: PayPal has no field for what it costs to
  * leave (IPD 19), so a plan cannot answer the third figure.
  */
@@ -90,6 +95,7 @@ export function termsFromPlan(plan: PayPalPlan): CommitmentTerms | null {
   if (count === null) return null;
 
   const setupFee = priceOf(plan.payment_preferences?.setup_fee);
+  const suspendAfter = plan.payment_preferences?.payment_failure_threshold;
 
   return {
     shape: "recurring",
@@ -98,6 +104,9 @@ export function termsFromPlan(plan: PayPalPlan): CommitmentTerms | null {
     tax: money(0),
     recurrence: { count, period },
     ...(setupFee && setupFee.minor > 0 ? { openingFee: setupFee } : {}),
+    ...(typeof suspendAfter === "number" && Number.isInteger(suspendAfter) && suspendAfter > 0
+      ? { failure: { suspendAfter } }
+      : {}),
     exit: { kind: "unknown" },
   };
 }

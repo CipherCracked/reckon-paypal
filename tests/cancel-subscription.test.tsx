@@ -12,6 +12,7 @@ import { CancelSubscription } from "@/components/CancelSubscription";
 
 const props = {
   subscriptionId: "I-SUB-1",
+  agreement: "subscription" as const,
   productName: "Coffee Subscription",
   reference: "I-SUB-1",
   manageUrl: "https://www.sandbox.paypal.com/myaccount/autopay/",
@@ -110,5 +111,50 @@ describe("cancelling from the record", () => {
     const status = await screen.findByRole("status");
     expect(status).not.toHaveTextContent(/PayPal says this subscription is cancelled/i);
     expect(status).toHaveTextContent(/we cannot tell/i);
+  });
+});
+
+describe("cancelling a payment plan", () => {
+  const plan = {
+    ...props,
+    agreement: "payment plan" as const,
+    productName: "Mattress — 12 Months",
+    reference: "I-PLAN-1",
+    subscriptionId: "I-PLAN-1",
+  };
+
+  it("names the agreement the shopper actually agreed to", async () => {
+    stubFetch({ outcome: "cancelled" });
+    render(<CancelSubscription {...plan} />);
+
+    // Not "subscription": the record is for a plan paid off in instalments, and
+    // the shopper would not recognise the word for what they signed.
+    expect(screen.getByRole("button", { name: /cancel this payment plan/i })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /cancel this payment plan/i }));
+
+    expect(screen.getByText(/cancel mattress — 12 months \(I-PLAN-1\)\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/stop taking the remaining payments/i)).toBeInTheDocument();
+  });
+
+  it("says what the button cannot do, because stopping a schedule is not settling a debt", async () => {
+    stubFetch({ outcome: "cancelled" });
+    render(<CancelSubscription {...plan} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /cancel this payment plan/i }));
+
+    expect(screen.getByText(/does not settle what you owe the seller/i)).toBeInTheDocument();
+  });
+
+  it("reports PayPal's answer about the plan, not about a subscription", async () => {
+    stubFetch({ outcome: "cancelled" });
+    render(<CancelSubscription {...plan} />);
+
+    await userEvent.click(screen.getByRole("button", { name: /cancel this payment plan/i }));
+    await userEvent.click(screen.getByRole("button", { name: /yes, cancel it at paypal/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /PayPal says this payment plan is cancelled\./,
+    );
   });
 });

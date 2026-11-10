@@ -23,6 +23,8 @@ export type CommitmentPayload = {
   exitNote: string | null;
   /** True when that absence is a failed read rather than the seller's silence. */
   exitUnreadable: boolean;
+  /** Where the parts the listing does not state are added, when the route knows. */
+  unstatedAt?: "checkout" | null;
   degraded: boolean;
 };
 
@@ -294,6 +296,7 @@ export function ConsentScreen({
         summary={payload.summary}
         schedule={payload.schedule}
         progressive={progressive}
+        unstatedAt={payload.unstatedAt ?? null}
         figureNotes={payload.exitNote ? { exit: payload.exitNote } : undefined}
         sourceNote={describeSources({
           paypal: payload.sources.paypal,

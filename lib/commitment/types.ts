@@ -56,8 +56,23 @@ export interface CommitmentTerms {
    * whose terms state a term usually states a fee when there is one.
    */
   openingFee?: Money;
+  /**
+   * What the plan does when a payment does not go through, when the terms say.
+   *
+   * Absent means nobody said — not that nothing happens. A PayPal plan carries
+   * this as `payment_preferences.payment_failure_threshold`, and for a plan this
+   * product creates it is a stated term like any other: the shopper is entitled
+   * to know before agreeing, not to read a sentence saying we did not say.
+   */
+  failure?: FailureTerms;
   exit: ExitTerms;
 }
+
+/** What happens to a plan whose payment does not go through. */
+export type FailureTerms = {
+  /** Failed payments PayPal allows before it suspends the plan. */
+  suspendAfter: number;
+};
 
 /** A part of the charge the source did not state. */
 export type UnstatedPart = "shipping" | "tax";

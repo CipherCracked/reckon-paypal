@@ -1,4 +1,5 @@
 import { PayPalError, paypalRequest, toPayPalAmount } from "./client";
+import { SUSPEND_AFTER_FAILED_PAYMENTS } from "@/lib/commitment/plan-policy";
 import type { Money } from "@/lib/money";
 
 export type EnsurePlanInput = {
@@ -117,7 +118,9 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
         ],
         payment_preferences: {
           auto_bill_outstanding: true,
-          payment_failure_threshold: 1,
+          // The same number the catalogue states on the terms, so the sentence
+          // the shopper reads before agreeing is the policy PayPal will apply.
+          payment_failure_threshold: SUSPEND_AFTER_FAILED_PAYMENTS,
           // The opening fee, so PayPal collects the same figure the screen
           // showed as charged today. Omitted rather than sent as "0.00": a plan
           // with no setup fee says nothing, and a zero is a claim.

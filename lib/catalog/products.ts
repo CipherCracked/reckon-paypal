@@ -1,4 +1,5 @@
 import { money } from "../money.ts";
+import { SUSPEND_AFTER_FAILED_PAYMENTS } from "../commitment/plan-policy.ts";
 import type { CommitmentTerms } from "../commitment/types";
 
 export type Product = {
@@ -35,6 +36,11 @@ export const products: Product[] = [
       shipping: money(0),
       tax: money(0),
       recurrence: { count: 12, period: "month" },
+      // A plan this product creates, and this is how it is created: PayPal
+      // suspends on the first failed payment, so the schedule says so before the
+      // shopper agrees. The number is not written here — it is the one
+      // `ensurePlan` sends — so the screen and the plan cannot disagree.
+      failure: { suspendAfter: SUSPEND_AFTER_FAILED_PAYMENTS },
       // Unstated on purpose: the shop says "cancel any time, no fee" in its
       // description, and the entry's whole claim is that this figure is read out
       // of that sentence rather than written beside it (IPD 21). A structured
@@ -58,6 +64,9 @@ export const products: Product[] = [
       // `setup_fee`. So it is in today's charge ($105.00 + $60.00 = $165.00) and
       // in the term total exactly once ($1,320.00).
       openingFee: money(6000),
+      // The instalments are a PayPal plan like the subscription above, so the
+      // same policy applies and is stated in the same sentence.
+      failure: { suspendAfter: SUSPEND_AFTER_FAILED_PAYMENTS },
       exit: { kind: "unknown" },
     },
   },

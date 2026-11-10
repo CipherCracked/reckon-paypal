@@ -173,4 +173,31 @@ describe("when the source states only part of the charge", () => {
       expect(figures.acrossTerm.floor).toBe(false);
     }
   });
+
+  it("says a shop's missing parts are added at checkout rather than absent", () => {
+    // Same fact, stated as a scope. A shopper is told where the money goes; the
+    // sentence does not explain the catalogue to them.
+    const figures = Object.fromEntries(
+      presentFigures(likeAListing(), computeCommitment(likeAListing()), {
+        unstatedAt: "checkout",
+      }).map((figure) => [figure.id, figure]),
+    );
+
+    expect(figures.today.arithmetic).toBe("$179.95, plus shipping and sales tax at checkout");
+    expect(figures.acrossTerm.arithmetic).toBe(
+      "1 payment of $179.95, plus shipping and sales tax at checkout",
+    );
+    // Still a floor: "at checkout" says the number exists, not that it is zero.
+    expect(figures.today.floor).toBe(true);
+  });
 });
+
+function likeAListing(): CommitmentTerms {
+  return {
+    shape: "one_time",
+    itemPrice: money(17995),
+    shipping: null,
+    tax: null,
+    exit: { kind: "none" },
+  };
+}

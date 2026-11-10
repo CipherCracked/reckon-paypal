@@ -41,8 +41,10 @@ without trusting the page.
 
 Three more things sit on the same screen:
 
-- **A schedule line** — how many payments there are, what each one is, and *"what happens if a
-  payment is missed is not stated on this screen"* when the document or seller never says.
+- **A schedule line** — how many payments there are, what each one is, and what a missed payment
+  does: for a plan this product creates, *"if a payment does not go through, PayPal suspends the
+  plan after one failed payment"* — the same number the plan is created with — and otherwise
+  *"not stated in the terms"*.
 - **An optional recognition check** — shows the amount again and asks only whether it matches what
   the shopper expected. Never a gate; skipping it leaves the payment path untouched.
 - **Reader-owned controls** — text size, one figure at a time, and read-aloud using the browser's

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { ensurePlan, createSubscription } from "@/lib/paypal/subscriptions";
 import { resetTokenCache } from "@/lib/paypal/client";
 import { POST } from "@/app/api/paypal/subscriptions/route";
+import { SUSPEND_AFTER_FAILED_PAYMENTS } from "@/lib/commitment/plan-policy";
 import { money } from "@/lib/money";
 
 // The route resolves through PayPal first, the file second. These tests are
@@ -149,6 +150,25 @@ describe("ensurePlan", () => {
       currency_code: "USD",
       value: "60.00",
     });
+  });
+
+  it("suspends the plan on the number of failed payments the screen states", async () => {
+    // The screen tells the shopper this before they agree, so the plan must be
+    // created with it. Both read the same constant: a promise written twice is a
+    // promise that can drift.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan(planInput);
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.payment_preferences.payment_failure_threshold).toBe(
+      SUSPEND_AFTER_FAILED_PAYMENTS,
+    );
   });
 
   it("says nothing about a fee when there is none, rather than saying zero", async () => {

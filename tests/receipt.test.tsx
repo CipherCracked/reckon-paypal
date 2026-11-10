@@ -109,7 +109,7 @@ describe("CommitmentRecord", () => {
       <CommitmentRecord
         {...base}
         nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(1200) }}
-        standing={{ kind: "running", subscriptionId: "I-SUB-1" }}
+        standing={{ kind: "running", subscriptionId: "I-SUB-1", agreement: "subscription" }}
       />,
     );
 
@@ -123,7 +123,11 @@ describe("CommitmentRecord", () => {
       <CommitmentRecord
         {...base}
         nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(1200) }}
-        standing={{ kind: "cancelled", at: new Date("2026-11-10T00:00:00Z") }}
+        standing={{
+          kind: "cancelled",
+          at: new Date("2026-11-10T00:00:00Z"),
+          agreement: "subscription",
+        }}
       />,
     );
 
@@ -132,6 +136,39 @@ describe("CommitmentRecord", () => {
     expect(screen.getByText(/paypal reports this subscription as cancelled on 10 November 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/none — paypal reports this subscription as cancelled/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /cancel this subscription/i })).toBeNull();
+  });
+
+  it("offers the cancel on a payment plan too, and calls it what it is", () => {
+    // A twelve-month arrangement the shopper cannot find the way out of is a
+    // product that sold them something it will not let them leave.
+    render(
+      <CommitmentRecord
+        {...base}
+        nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(10500) }}
+        standing={{ kind: "running", subscriptionId: "I-PLAN-1", agreement: "payment plan" }}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /cancel this payment plan/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /cancel this subscription/i })).toBeNull();
+  });
+
+  it("says a plan was cancelled in the plan's own words", () => {
+    render(
+      <CommitmentRecord
+        {...base}
+        nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(10500) }}
+        standing={{
+          kind: "cancelled",
+          at: new Date("2026-11-10T00:00:00Z"),
+          agreement: "payment plan",
+        }}
+      />,
+    );
+
+    // Both the standing notice and the "Next charge" line say it, in the words
+    // of the agreement the shopper actually signed.
+    expect(screen.getAllByText(/paypal reports this payment plan as cancelled/i).length).toBeGreaterThan(0);
   });
 });
 

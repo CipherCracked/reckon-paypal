@@ -38,7 +38,10 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
 
   const terms = offer ? marketTerms(offer) : null;
   const translation = terms ? computeCommitment(terms) : null;
-  const figures = terms && translation ? presentFigures(terms, translation) : null;
+  const figures =
+    terms && translation
+      ? presentFigures(terms, translation, { unstatedAt: "checkout" })
+      : null;
 
   const offers = [...product.offers].sort(
     (a, b) =>
@@ -131,7 +134,8 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
             breakdown={translation.breakdown}
             labels={{ item: "The listed price", shipping: "Shipping", tax: "Sales tax" }}
             summary=""
-            schedule={describeSchedule(terms)}
+            schedule={describeSchedule(terms, { unstatedAt: "checkout" })}
+            unstatedAt="checkout"
             figureNotes={{ exit: MARKET_EXIT_NOTE }}
             sourceNote={describeSources({
               published: `the price Channel3 lists at ${offer.domain}`,

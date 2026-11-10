@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { AgreementKind } from "@/components/CommitmentRecord";
 
 /**
  * What PayPal said about the cancel, and nothing beyond it (ITD 21).
@@ -18,6 +19,12 @@ type Step = "idle" | "confirm" | "cancelling";
 
 export type CancelSubscriptionProps = {
   subscriptionId: string;
+  /**
+   * What PayPal holds: a repeating subscription or a payment plan. The request
+   * is the same one — PayPal calls both a subscription — but the shopper is
+   * ending an agreement they recognise by its name.
+   */
+  agreement: AgreementKind;
   /** Named in the confirmation, so the person knows which agreement ends. */
   productName: string;
   reference: string;
@@ -36,9 +43,15 @@ export type CancelSubscriptionProps = {
  * Only PayPal's own answer is reported. A success says the subscription is
  * cancelled because PayPal said so; anything else says what PayPal said, or that
  * we could not tell.
+ *
+ * A payment plan gets one sentence more, and it is the difference between the
+ * two agreements: stopping the schedule at PayPal is not the same as settling
+ * what is owed to the seller. The product can do the first and cannot speak to
+ * the second, so the confirmation says which one the button does.
  */
 export function CancelSubscription({
   subscriptionId,
+  agreement,
   productName,
   reference,
   manageUrl,
@@ -87,7 +100,7 @@ export function CancelSubscription({
   if (outcome) {
     return (
       <p ref={resultRef} tabIndex={-1} role="status" className="cancel-outcome">
-        {outcomeSentence(outcome, manageUrl)}
+        {outcomeSentence(outcome, agreement, manageUrl)}
       </p>
     );
   }
@@ -99,11 +112,18 @@ export function CancelSubscription({
         tabIndex={-1}
         className="cancel-warning"
         role="group"
-        aria-label="Confirm cancelling this subscription"
+        aria-label={`Confirm cancelling this ${agreement}`}
       >
         <p>
-          Cancel {productName} ({reference})? PayPal will stop taking payments for it. It cannot be
-          undone here — if you change your mind you would have to subscribe again.
+          Cancel {productName} ({reference})? PayPal will stop taking{" "}
+          {agreement === "payment plan" ? "the remaining payments" : "payments"} for it.{" "}
+          {agreement === "payment plan"
+            ? // The one thing this product cannot do. Saying it plainly is what
+              // makes the button safe to press.
+              "This stops the schedule at PayPal; it does not settle what you owe the seller, so ask them about that. "
+            : null}
+          It cannot be undone here — if you change your mind you would have to{" "}
+          {agreement === "payment plan" ? "agree a new plan" : "subscribe again"}.
         </p>
         <div className="cancel-buttons">
           <button
@@ -129,28 +149,28 @@ export function CancelSubscription({
 
   return (
     <button type="button" className="button-secondary cancel-open" onClick={() => setStep("confirm")}>
-      Cancel this subscription
+      Cancel this {agreement}
     </button>
   );
 }
 
-function outcomeSentence(outcome: CancelOutcome, manageUrl: string) {
+function outcomeSentence(outcome: CancelOutcome, agreement: AgreementKind, manageUrl: string) {
   switch (outcome.outcome) {
     case "cancelled":
       // PayPal said it, so this product may say it. Nothing further is claimed
       // about money than "PayPal will take no more".
-      return "PayPal says this subscription is cancelled. It will take no further payments for it.";
+      return `PayPal says this ${agreement} is cancelled. It will take no further payments for it.`;
     case "not-running":
       return (
         <>
-          PayPal says this subscription is not running, so there was nothing to cancel.
+          PayPal says this {agreement} is not running, so there was nothing to cancel.
           {outcome.issue ? ` (PayPal's words: ${outcome.issue}.)` : ""}
         </>
       );
     case "unconfirmed":
       return (
         <>
-          We cannot tell whether that went through. Check this subscription at PayPal before
+          We cannot tell whether that went through. Check this {agreement} at PayPal before
           assuming it is cancelled — <a href={manageUrl}>open PayPal&apos;s payment settings</a>.
         </>
       );

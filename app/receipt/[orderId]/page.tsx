@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CommitmentRecord, type RecordStanding } from "@/components/CommitmentRecord";
+import { CommitmentRecord, type AgreementKind, type RecordStanding } from "@/components/CommitmentRecord";
 import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import {
@@ -176,18 +176,24 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   const nextDate = nextBillingTime ? new Date(nextBillingTime) : null;
 
   // Only PayPal's own state decides whether the record offers to end the
-  // subscription: a button on a commitment it has already ended would be a lie
+  // agreement: a button on a commitment it has already ended would be a lie
   // about what pressing it does (IPD 23).
   //
-  // A financed plan gets no such button even when PayPal reports it active. It
-  // is a scheduled plan, so PayPal will stop the charges — but what ending an
-  // instalment agreement does to the money still owed is a fact nobody stated,
-  // and this screen does not offer an act whose consequence it cannot show.
+  // A financed purchase gets the button too. It is a PayPal plan like the
+  // subscription, so PayPal can stop it, and a shopper who cannot find the way
+  // out of a twelve-month arrangement has been failed by the screen that sold it
+  // to them. What the button cannot do is settle the debt: the confirmation says
+  // that in the same breath as what it can do.
+  const agreement: AgreementKind = financed ? "payment plan" : "subscription";
   const standing: RecordStanding | null =
-    recurring && status === "ACTIVE"
-      ? { kind: "running", subscriptionId: orderId }
-      : recurring && status === "CANCELLED"
-        ? { kind: "cancelled", at: statusChangeTime ? new Date(statusChangeTime) : null }
+    scheduled && status === "ACTIVE"
+      ? { kind: "running", subscriptionId: orderId, agreement }
+      : scheduled && status === "CANCELLED"
+        ? {
+            kind: "cancelled",
+            at: statusChangeTime ? new Date(statusChangeTime) : null,
+            agreement,
+          }
         : null;
 
   return (

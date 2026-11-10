@@ -88,6 +88,25 @@ describe("turning a billing plan into terms (ITD 17)", () => {
     expect(termsFromPlan(withPreferences)?.exit).toEqual({ kind: "unknown" });
   });
 
+  it("reads the plan's failure policy onto its terms, because the plan states it", () => {
+    const withThreshold = {
+      ...monthly,
+      payment_preferences: { auto_bill_outstanding: true, payment_failure_threshold: 2 },
+    };
+
+    expect(termsFromPlan(withThreshold)?.failure).toEqual({ suspendAfter: 2 });
+  });
+
+  it("states no failure policy when the plan carries no threshold", () => {
+    // Absent is not zero: a plan that does not say is not a plan that never
+    // suspends, so the terms say nothing and the schedule says that instead.
+    expect(termsFromPlan(monthly)?.failure).toBeUndefined();
+    expect(
+      termsFromPlan({ ...monthly, payment_preferences: { payment_failure_threshold: 0 } })
+        ?.failure,
+    ).toBeUndefined();
+  });
+
   it("returns nothing rather than a guess when the plan cannot be read", () => {
     expect(termsFromPlan({})).toBeNull();
     expect(termsFromPlan({ billing_cycles: [{ tenure_type: "REGULAR" }] })).toBeNull();
