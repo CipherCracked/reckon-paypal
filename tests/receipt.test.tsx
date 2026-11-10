@@ -11,6 +11,10 @@ vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   return { ...actual, retrieveSubscription: vi.fn() };
 });
 
+// A running record carries the cancel button, which re-reads the page after a
+// confirmed cancellation. Here the router only has to exist.
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
 // The calendar route resolves the product so a real subscription gets its
 // reminder. This suite is about the record and the file it produces, so the
 // resolution is fixed to a recurring listing.
@@ -165,6 +169,10 @@ describe("CommitmentRecord", () => {
     expect(screen.getByText(/paypal reports this subscription as cancelled on 10 November 2026/i)).toBeInTheDocument();
     expect(screen.getByText(/none — paypal reports this subscription as cancelled/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /cancel this subscription/i })).toBeNull();
+    // Found live on 2026-11-11: a cancelled record still offered a calendar
+    // entry for a charge PayPal will never take, and the route behind it answers
+    // 404 for that same reason.
+    expect(screen.queryByText(/add the next charge to your calendar/i)).toBeNull();
   });
 
   it("offers the cancel on a payment plan too, and calls it what it is", () => {

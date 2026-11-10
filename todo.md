@@ -18,18 +18,18 @@ been done yet, because that needs a PayPal sandbox **buyer** login.
       product description (cap 256; BARK six-month is 338, Detox Box 442). A listing
       now sends no description, and `ensurePlan` clamps with the cut marked. Covered
       by three tests in `tests/subscriptions.test.ts`.
-- [ ] **Blocked: the sandbox buyer supplied is an India account.** PayPal refuses it
-      with `UNSUPPORTED_PAYEE_CURRENCY` — "this seller doesn't accept payments in
-      your currency" — because the merchant is a US business charging USD. The same
-      account's own settings page shows `(GMT+05:30) Kolkata`. The subscription
-      checkout fails the same way, as `genericError?code=RETRY`.
-      **Needed:** a **US** sandbox Personal account (Testing Tools → Sandbox
-      Accounts), added to the README's Test credentials section.
-- [ ] With a US buyer: approve the subscription, confirm you land on `/receipt/I-...`
-      with the figures — **not** on PayPal's own confirmation page
-- [ ] With a live subscription: press **Cancel this subscription** and confirm
-      PayPal's answer comes back (`cancelled` / `not running` / the cannot-tell
-      wording), then that a cancelled subscription still produces its record
+- [x] **Blocked: the first sandbox buyer supplied is an India account.** PayPal
+      refused it with `UNSUPPORTED_PAYEE_CURRENCY` — "this seller doesn't accept
+      payments in your currency" — because the merchant charges USD. **Resolved
+      2026-11-11** with a US personal account (`sb-br9fh53843654@…`, in the README);
+      its settings page reads `(GMT-05:00) Eastern Time (New York)`.
+- [x] With a US buyer: approved on 2026-11-11 and landed on
+      `/receipt/I-GPD3KPT15D79` — this app's record, not PayPal's confirmation page.
+      *Next charge 11 December 2026 — $24.99 · Across the term $149.94 · Cost to
+      leave Not stated · Charged today $24.99*, which is 6 × $24.99 of arithmetic
+      the screen did over PayPal's plan.
+- [x] With a live subscription: **Cancel this subscription** pressed on two
+      sandbox subscriptions — see §4.
 
 If it fails, the first thing to check is the request body sent to
 `POST /v1/billing/subscriptions` — it must carry `application_context.return_url`.
@@ -86,10 +86,20 @@ The product tells you what leaving costs and then sends you to PayPal's website.
       with a confirmation step and a plain statement of what PayPal actually did
 - [x] Make `CANCELLED` a settled receipt state first (IPD 23 revision) — otherwise the
       act replaces the shopper's record with "nothing has been taken"
-- [ ] **Live-check the success path** once §1's buyer approval is done: open the
-      receipt for the approved subscription, press cancel twice, and confirm the
-      screen says PayPal cancelled it — then reload and confirm the record still
-      shows what was paid, with a dated cancelled statement
+- [x] **Live-check the success path** — done 2026-11-11 on `I-GPD3KPT15D79`: the
+      warning named the agreement, the second press cancelled it at PayPal, and the
+      screen said *"PayPal says this subscription is cancelled. It will take no
+      further payments for it."* A reload shows what was paid, the dated cancelled
+      statement, and *Next charge: None*.
+      **Two defects the live run found, both fixed the same day:** the record still
+      said *Next charge 11 December 2026* three lines under "no further payments",
+      because the figures had been read before the cancel (the component now asks
+      the server to read them again, on PayPal's answer only); and a cancelled
+      record still offered *Add the next charge to your calendar* for a date PayPal
+      will never charge (the link now follows the same rule as the figure).
+      Re-verified live on `I-FF7143BHYSD3`: after the cancel, without a reload, the
+      figure became *None — PayPal reports this subscription as cancelled* and the
+      calendar link disappeared.
 - [x] Done when: a subscription can be cancelled from this product, and the receipt
       says it was — the video's best beat is "it told me leaving was free, and then
       it let me leave" *(built and tested; the live success path is the line above)*

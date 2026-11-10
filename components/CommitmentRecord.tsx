@@ -209,7 +209,11 @@ export function CommitmentRecord(record: CommitmentRecordData) {
             ? "PayPal holds the agreement, not this site."
             : "change or cancel it there. PayPal holds the agreement, not this site."}
         </li>
-        {record.calendarHref ? (
+        {record.calendarHref && !cancelled ? (
+          // A cancelled agreement has no next charge to remind anyone about —
+          // the figure above already says so — and the route behind this link
+          // answers 404 for the same reason. An offer that cannot be honoured is
+          // worse than no offer.
           <li>
             <a href={record.calendarHref} download>
               Add the next charge to your calendar

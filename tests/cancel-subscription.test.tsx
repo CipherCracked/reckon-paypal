@@ -3,6 +3,12 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { CancelSubscription } from "@/components/CancelSubscription";
 
+// The record around this button is the server's reading of PayPal. After a
+// confirmed cancellation the component asks for that reading again; in these
+// tests the router is only observed, never rendered.
+const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
+
 /**
  * Two presses, and only PayPal's answer (IPD 23, ITD 21).
  *
@@ -29,6 +35,7 @@ const openWarning = () =>
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  refresh.mockClear();
 });
 
 describe("cancelling from the record", () => {
@@ -70,6 +77,34 @@ describe("cancelling from the record", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       /PayPal says this subscription is cancelled\./,
     );
+  });
+
+  it("re-reads the record, so a next charge cannot outlive the agreement", async () => {
+    // Found live on 2026-11-11: the record had been read while the subscription
+    // was still running, so after a successful cancel the page still said
+    // "Next charge 11 December 2026" three lines under "it will take no further
+    // payments". The figures are the server's, so the server is asked again.
+    stubFetch({ outcome: "cancelled" });
+    render(<CancelSubscription {...props} />);
+
+    await openWarning();
+    await userEvent.click(screen.getByRole("button", { name: /yes, cancel it at paypal/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/is cancelled/i);
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not re-read on a request whose outcome it cannot vouch for", async () => {
+    // "We cannot tell" is not evidence that nothing happened — and it is not
+    // evidence that something did, either, so the page is left as it was.
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network")));
+    render(<CancelSubscription {...props} />);
+
+    await openWarning();
+    await userEvent.click(screen.getByRole("button", { name: /yes, cancel it at paypal/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(/cannot tell/i);
+    expect(refresh).not.toHaveBeenCalled();
   });
 
   it("reports PayPal's own state when there was nothing running to end", async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import type { AgreementKind } from "@/components/CommitmentRecord";
 
 /**
@@ -60,6 +61,7 @@ export function CancelSubscription({
   const [outcome, setOutcome] = useState<CancelOutcome | null>(null);
   const warningRef = useRef<HTMLDivElement>(null);
   const resultRef = useRef<HTMLParagraphElement>(null);
+  const router = useRouter();
 
   // The warning replaces a button the person was on. Focus goes to the warning
   // itself, so it is read out rather than skipped — and not to the button that
@@ -90,6 +92,16 @@ export function CancelSubscription({
       }
 
       setOutcome(body as CancelOutcome);
+
+      // The record above this button is the server's reading of PayPal, and it
+      // was taken while the agreement was still running — so it still states a
+      // next charge for a commitment PayPal has just ended. Re-read it. Only on
+      // PayPal's own answer: "we cannot tell" must leave the page as it was,
+      // because refreshing on a guess would replace the figures with a read that
+      // might be wrong about what happened.
+      if (body.outcome === "cancelled" || body.outcome === "not-running") {
+        router.refresh();
+      }
     } catch {
       setOutcome({ outcome: "unconfirmed" });
     } finally {

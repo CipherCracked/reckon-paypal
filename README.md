@@ -91,8 +91,8 @@ cancelled still produces its record, with what was paid and a dated statement of
   origination fee as its `setup_fee`, so PayPal holds the schedule the screen promises rather than
   just today's instalment. The plan's price and term are read back from PayPal wherever a screen
   shows them; Invoicing v2 creates and sends the bill. All three have been exercised in the sandbox
-  on their create, read and capture/approve paths; the subscription **cancel** request has been
-  checked on its error path only, because its success path needs a buyer-approved subscription.
+  on their create, read and capture/approve paths, and a subscription has been approved **and
+  cancelled** live — the cancel reported from PayPal's own answer, not from the request succeeding.
 - **Deterministic code** does the arithmetic and the projection to the screen.
 - **The language model** reads merchant copy and documents and returns labels, one plain summary,
   or quotations. `lib/ai/guard.ts` rejects any figure-shaped string it writes.
@@ -170,24 +170,27 @@ test accounts.
 
 | | |
 | --- | --- |
-| Email | `sb-ohjjo53751299@personal.example.com` |
-| Password | `pN6(GV)j` |
+| Email | `sb-br9fh53843654@personal.example.com` |
+| Password | `cUSzw0?F` |
 
-The buyer must be a **US** account. PayPal's sandbox refuses a payment from a buyer registered
-elsewhere with `UNSUPPORTED_PAYEE_CURRENCY` ("this seller doesn't accept payments in your currency"),
-because the merchant here is a US business charging USD. The account above is registered in **India**
-and is refused for that reason — replace it with a US personal account from
-**Testing Tools → Sandbox Accounts**.
+The buyer must be a **US** account. A personal sandbox account takes its currency from the country it
+was created in, and PayPal refuses a buyer whose currency the merchant does not accept with
+`UNSUPPORTED_PAYEE_CURRENCY`. This one is a US account and has approved and cancelled a subscription
+here. To make your own: **Testing Tools → Sandbox Accounts → Create account → Personal, United
+States**.
 
 The buyer is a *personal* account. The merchant keys in `.env.local` cannot approve anything: approval
 is a person signing in on PayPal's own page, which is why this login exists.
 
 To reach the approval step: open `/shop`, choose a listing whose term is stated (for example
 `/product/ch3-YyLUjLT`), press **Check this commitment**, then **Approve subscription with PayPal**.
+Approving returns you to this app, never to PayPal's own confirmation page — that return is the
+whole point of the flow, and the receipt it lands on is what a judge should see.
 
-**To look at the receipt or the cancel button without approving anything**, open an existing sandbox
-subscription directly: `/receipt/<subscription id>`. Any id from the PayPal sandbox dashboard's
-**Subscriptions** list works once the app's merchant account owns it.
+**To look at the record without approving anything**, open an existing sandbox subscription
+directly: `/receipt/I-GPD3KPT15D79?slug=ch3-YyLUjLT`. That one is cancelled, so it shows the record
+with *Next charge: None* and no cancel button; an id from the sandbox dashboard's **Subscriptions**
+list that is still active shows the **Cancel this subscription** button instead.
 
 ## Commands
 
