@@ -45,7 +45,7 @@ afterEach(() => {
 
 describe("consent screen accessibility", () => {
   it("reaches every control by keyboard alone, in reading order", async () => {
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Charged today");
 
     const controls = Array.from(
@@ -64,7 +64,7 @@ describe("consent screen accessibility", () => {
   });
 
   it("gives every button a unique accessible name", async () => {
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Charged today");
 
     const names = Array.from(document.querySelectorAll("button")).map((button) =>
@@ -76,7 +76,7 @@ describe("consent screen accessibility", () => {
   });
 
   it("never makes a clickable element that the keyboard cannot reach", async () => {
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Charged today");
 
     const clickHandlers = Array.from(document.querySelectorAll<HTMLElement>("*")).filter((element) =>

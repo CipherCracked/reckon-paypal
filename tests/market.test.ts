@@ -100,7 +100,7 @@ describe("a real product's slug", () => {
   });
 
   it("does not mistake a demo entry for a real product", () => {
-    for (const slug of ["coffee-subscription", "noise-cancelling-headphones", "ch3-", "ch3-ab", "sub-ch3-abcd"]) {
+    for (const slug of ["not-a-product", "noise-cancelling-headphones", "ch3-", "ch3-ab", "sub-ch3-abcd"]) {
       expect(isMarketSlug(slug)).toBe(false);
       expect(marketProductId(slug)).toBeNull();
     }
@@ -250,7 +250,7 @@ describe("reading a product back", () => {
   });
 
   it("answers null for a slug that names no product, without asking", async () => {
-    await expect(readMarketProduct("coffee-subscription")).resolves.toBeNull();
+    await expect(readMarketProduct("not-a-product")).resolves.toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 

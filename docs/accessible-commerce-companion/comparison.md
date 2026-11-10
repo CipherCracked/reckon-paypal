@@ -36,58 +36,12 @@ Rendered as one line: Across the term: $58.95 (1 payment); Cost to leave: $0.00;
 
 Schedule: Paid once. Nothing further is charged, so there is no term to run out.
 
-## Coffee Subscription
-
-**The seller says**
-
-> Freshly roasted, $12.00 a bag, delivered every month. A 12-month term — cancel any time, no fee.
-
-**The shopper reads**
-
-- Across the term: $144.00 — 12 × $12.00
-- Cost to leave: Not stated
-- Charged today: $12.00 — $12.00
-
-| Measure | Seller's copy | This screen |
-|---|---|---|
-| Words | 17 | 12 |
-| Money amounts written out | 1 | 2 |
-| Times the cost across the term appears | 0 | 1 |
-| Reading level (Flesch–Kincaid) | 1.2 | 0 |
-
-Rendered as one line: Across the term: $144.00 (12 × $12.00); Cost to leave: not stated; Charged today: $12.00 ($12.00).
-
-Schedule: 12 payments of $12.00, one a month — today's is the first of the 12. If a payment does not go through, PayPal suspends the plan after one failed payment.
-
-## Mattress — 12 Months
-
-**The seller says**
-
-> 0% APR over 12 months: 12 payments of $105.00, plus a $60.00 origination fee. 100-night trial. Cancellation terms not shown on this page.
-
-**The shopper reads**
-
-- Across the term: $1,320.00 — 12 × $105.00 + $60.00 taken once
-- Cost to leave: Not stated
-- Charged today: $165.00 — 1 of 12 payments, plus $60.00 taken once
-
-| Measure | Seller's copy | This screen |
-|---|---|---|
-| Words | 23 | 12 |
-| Money amounts written out | 2 | 2 |
-| Times the cost across the term appears | 0 | 1 |
-| Reading level (Flesch–Kincaid) | 0.1 | 0 |
-
-Rendered as one line: Across the term: $1,320.00 (12 × $105.00 + $60.00 taken once); Cost to leave: not stated; Charged today: $165.00 (1 of 12 payments, plus $60.00 taken once).
-
-Schedule: 12 payments of $105.00, one a month — today's is the first of the 12, plus $60.00 taken once. If a payment does not go through, PayPal suspends the plan after one failed payment.
-
 ---
 
 ## What this comparison does and does not show
 
-- **Shows:** every product's commitment restated as three figures, in a fixed order, each with
-  the parts it was built from — including the total across the term, which is the figure no
-  seller's copy states and no shopper can work out without doing the multiplication.
+- **Shows:** each written-down product's commitment restated as three figures, in a fixed order,
+  each with the parts it was built from — including the total across the term, which is the
+  figure no seller's copy states and no shopper can work out without doing the multiplication.
 - **Does not show:** that a reader understood it better. That needs participants, and the
   product collects nothing about anyone, so the claim is not made.

@@ -1,7 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { recordedProduct } from "./fixtures/channel3-listings";
 
 const push = vi.fn();
 
@@ -9,9 +11,18 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push }),
 }));
 
-// The entry reads the seller's exit sentence with a model, and no model is
-// configured in the suite. The reading itself is tested where it lives; here it
-// is fixed so the screen's own behaviour is what is under test.
+// The entry reads a real listing. This suite is about the screen's own
+// behaviour, so the live read is fixed to the record captured from the
+// catalogue; what `readMarketProduct` does with the wire is tested where it
+// lives.
+vi.mock("@/lib/market/channel3", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/market/channel3")>();
+  return { ...actual, readMarketProduct: vi.fn() };
+});
+
+// The BARK description states the term but says nothing about leaving. The
+// reading is fixed so this suite tests how the entry renders that silence; the
+// reader itself is tested where it lives.
 vi.mock("@/lib/commitment/published-exit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/commitment/published-exit")>(
     "@/lib/commitment/published-exit",
@@ -19,15 +30,17 @@ vi.mock("@/lib/commitment/published-exit", async () => {
   return {
     ...actual,
     resolveExitTerm: vi.fn(async () => ({
-      kind: "stated" as const,
-      exit: { kind: "none" as const },
-      note: null,
-      quoted: {
-        label: "the description shown on this page",
-        span: "cancel any time, no fee.",
-      },
+      kind: "silent" as const,
+      exit: { kind: "unknown" as const },
+      note: "The seller's published terms do not say what it costs to leave.",
+      quoted: null,
     })),
   };
+});
+
+beforeEach(() => {
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
 });
 
 describe("the front door", () => {
@@ -37,7 +50,7 @@ describe("the front door", () => {
     expect(
       screen.getByRole("heading", { name: /what it costs, before you agree to it/i }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/what it costs to leave/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/what it costs to leave/i).length).toBeGreaterThan(0);
     // IPD 21: the audience is named in words, not left to be inferred from the
     // scope of the vocabulary.
     expect(screen.getByText(/dyscalculia, ADHD and dyslexia/i)).toBeInTheDocument();
@@ -49,35 +62,37 @@ describe("the front door", () => {
     expect(
       screen.getByRole("heading", { name: /what the seller wrote/i }),
     ).toBeInTheDocument();
-    // The shop's own copy, printed rather than summarised — once as the
-    // description, once as the span the exit figure was read out of.
-    expect(screen.getAllByText(/cancel any time, no fee/i).length).toBeGreaterThan(0);
-    // The figure and its sentence are on the screen together (IPD 21, ITD 19).
-    expect(document.querySelector("[data-figure='exit'] .commitment-quote")).not.toBeNull();
+    // The listing's own copy, printed rather than summarised.
+    expect(screen.getAllByText(/6 month BarkBox plan/i).length).toBeGreaterThan(0);
+    // The merchant said nothing about leaving, so the figure says so rather
+    // than filling in a zero.
+    const exit = document.querySelector("[data-figure='exit']");
+    expect(exit).not.toBeNull();
+    expect(exit).toHaveTextContent(/not stated/i);
   });
 
   it("works one commitment in full before anything is clicked", async () => {
     render(await Home());
 
     expect(screen.getByText("Across the term")).toBeInTheDocument();
-    expect(screen.getByText("$144.00")).toBeInTheDocument();
+    expect(screen.getByText("At least $149.94")).toBeInTheDocument();
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
     expect(screen.getByText("Charged today")).toBeInTheDocument();
-    expect(screen.getAllByText("$12.00").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/At least \$24\.99/).length).toBeGreaterThan(0);
   });
 
   it("says where the worked example's figures came from, and that nothing was created", async () => {
     render(await Home());
 
     expect(
-      screen.getByText(/computed from the terms shown on this page\./i),
+      screen.getByText(/computed from the price Channel3 lists at bark\.co/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(/nothing has been charged and nothing has been created at paypal/i),
     ).toBeInTheDocument();
   });
 
-  it("performs no request and creates nothing when it renders", async () => {
+  it("performs no further request and creates nothing when it renders", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
@@ -92,7 +107,7 @@ describe("the front door", () => {
     render(await Home());
 
     const primary = screen.getByRole("link", { name: /check this commitment/i });
-    expect(primary).toHaveAttribute("href", "/product/coffee-subscription");
+    expect(primary).toHaveAttribute("href", "/product/ch3-YyLUjLT");
   });
 
   it("keeps the other ways in at a second rank, not as four equal cards", async () => {

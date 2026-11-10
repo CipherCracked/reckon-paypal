@@ -23,8 +23,13 @@ function moneyAmounts(currency: Currency, text: string): Money[] {
 
 /**
  * The evidence IPD 9 asks for: the seller's own words beside the rendering, for
- * every product the app handles, produced by the same functions the screen runs.
- * A hand-written version of this would drift; this one cannot.
+ * every product this repository writes its own terms for, produced by the same
+ * functions the screen runs. A hand-written version of this would drift; this
+ * one cannot.
+ *
+ * Real catalogue listings are not here: their copy and their figures change
+ * with the live offer, so a generated document about them would be a snapshot
+ * of a price rather than a description of what the app does.
  */
 export function buildComparison(): string {
   const lines: string[] = [
@@ -106,9 +111,9 @@ export function buildComparison(): string {
     "",
     "## What this comparison does and does not show",
     "",
-    "- **Shows:** every product's commitment restated as three figures, in a fixed order, each with",
-    "  the parts it was built from — including the total across the term, which is the figure no",
-    "  seller's copy states and no shopper can work out without doing the multiplication.",
+    "- **Shows:** each written-down product's commitment restated as three figures, in a fixed order,",
+    "  each with the parts it was built from — including the total across the term, which is the",
+    "  figure no seller's copy states and no shopper can work out without doing the multiplication.",
     "- **Does not show:** that a reader understood it better. That needs participants, and the",
     "  product collects nothing about anyone, so the claim is not made.",
     "",

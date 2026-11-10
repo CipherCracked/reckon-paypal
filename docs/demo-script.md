@@ -30,21 +30,24 @@ retailer names, each price, and the spread between lowest and highest. Note that
 reads *Not stated*, with the reason printed under it: the catalogue carries no cancellation terms,
 and this screen does not invent them.
 
-### 2. A subscription, end to end (≈45s) — `/product/coffee-subscription` → consent
+### 2. A subscription, end to end (≈45s) — `/product/ch3-YyLUjLT` → consent
 
-Read the seller's copy as a shopper meets it: *"Freshly roasted, $12.00 a bag, delivered every month.
-A 12-month term — cancel any time, no fee."*
+Open the BARK listing the home page's worked example already names. The seller's copy is the
+catalogue's own text, including the sentence the term is read from: *"This listing is for a 6 month
+BarkBox plan…"* Nothing on this screen is written by us.
 
-Press continue. On the consent screen, top to bottom:
+Press **Check this commitment**. On the consent screen, top to bottom:
 
-- **Across the term — $144.00**, arithmetic `12 × $12.00`
-- **Cost to leave — $0.00** (the seller did publish one)
-- **Charged today — $12.00**
+- **Across the term — At least $149.94**, arithmetic `6 × $24.99, plus shipping and sales tax at checkout`
+- **Cost to leave — Not stated** (the merchant published no cancellation term, so none is invented)
+- **Charged today — At least $24.99**
 
 > "The figure a shopper cannot compute comes first. Today's charge is last because the seller has
-> already made it unmissable."
+> already made it unmissable. And 'at least' is not hedging — the listing states neither shipping nor
+> tax, so both totals are floors rather than a number nobody published."
 
-Then press "Pay now" and show PayPal's own approval page. Do not complete it yet.
+Then press **Approve subscription** and show PayPal's own approval page, with the plan PayPal will
+charge: six monthly payments of $24.99. Do not complete it yet.
 
 ### 3. A bill that PayPal itself issues (≈35s) — back to `/` → "Open this bill"
 

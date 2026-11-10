@@ -8,7 +8,9 @@ import ConsentPage from "@/app/consent/[orderId]/page";
 import BillPage from "@/app/bill/[invoiceId]/page";
 import ReceiptPage from "@/app/receipt/[orderId]/page";
 import { retrieveInvoice, retrieveOrder } from "@/lib/paypal/retrieve";
+import { readMarketProduct } from "@/lib/market/channel3";
 import { money } from "@/lib/money";
+import { recordedProduct } from "./fixtures/channel3-listings";
 
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -22,6 +24,26 @@ vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   return { ...actual, retrieveInvoice: vi.fn(), retrieveOrder: vi.fn() };
 });
 
+// The product page reads the live catalogue. These tests are about the frame
+// around each screen, so the read is fixed to the recorded listing; what the
+// catalogue client does with the wire is tested where it lives.
+vi.mock("@/lib/market/channel3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/market/channel3")>()),
+  readMarketProduct: vi.fn(),
+}));
+
+// The BARK description states the term and says nothing about leaving, so the
+// exit stays absent with the seller's silence as its reason.
+vi.mock("@/lib/commitment/published-exit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/commitment/published-exit")>()),
+  resolveExitTerm: vi.fn(async () => ({
+    kind: "silent" as const,
+    exit: { kind: "unknown" as const },
+    note: "The seller's published terms do not say what it costs to leave.",
+    quoted: null,
+  })),
+}));
+
 beforeEach(() => {
   vi.mocked(retrieveInvoice).mockReset();
   vi.mocked(retrieveInvoice).mockResolvedValue({
@@ -33,6 +55,8 @@ beforeEach(() => {
   });
   vi.mocked(retrieveOrder).mockReset();
   vi.mocked(retrieveOrder).mockResolvedValue({ status: "COMPLETED" } as never);
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
 });
 
 describe("the frame", () => {
@@ -99,21 +123,26 @@ describe("the journey", () => {
     render(
       await ConsentPage({
         params: Promise.resolve({ orderId: "pending" }),
-        searchParams: Promise.resolve({ slug: "coffee-subscription" }),
+        searchParams: Promise.resolve({ slug: "ch3-YyLUjLT" }),
       }),
     );
 
     expect(
-      screen.getByRole("link", { name: /back to coffee subscription/i }),
-    ).toHaveAttribute("href", "/product/coffee-subscription");
+      screen.getByRole("link", { name: /back to this product/i }),
+    ).toHaveAttribute("href", "/product/ch3-YyLUjLT");
   });
 
   it("gives the product screen a way out", async () => {
     render(
-      await ProductPage({ params: Promise.resolve({ slug: "coffee-subscription" }) }),
+      await ProductPage({ params: Promise.resolve({ slug: "ch3-YyLUjLT" }) }),
     );
 
-    expect(screen.getByRole("link", { name: /back to the ways in/i })).toBeInTheDocument();
+    // A listing came from the shop, so its way out goes back to the search
+    // rather than to the front door's four ways in.
+    expect(screen.getByRole("link", { name: /back to the search/i })).toHaveAttribute(
+      "href",
+      "/shop",
+    );
   });
 
   it("gives the bill screen a way out", async () => {
@@ -131,7 +160,7 @@ describe("the journey", () => {
     render(
       await ReceiptPage({
         params: Promise.resolve({ orderId: "I-SUB-1" }),
-        searchParams: Promise.resolve({ slug: "coffee-subscription" }),
+        searchParams: Promise.resolve({ slug: "ch3-YyLUjLT" }),
       }),
     );
 

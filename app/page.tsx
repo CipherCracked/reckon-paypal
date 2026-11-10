@@ -52,16 +52,19 @@ function relationshipSentence(outcome: ExitOutcome): string {
  * product exists for is visible without a click.
  */
 export default async function Home() {
+  // The worked subscription is a real listing, read live like every other real
+  // product. Its price moves, and a hardcoded one would be the invented figure
+  // this entry exists to replace.
   const [subscription, purchase] = await Promise.all([
-    resolveProduct("coffee-subscription"),
+    resolveProduct("ch3-YyLUjLT"),
     resolveProduct("noise-cancelling-headphones"),
   ]);
   const bill = findBill("clinic-visit");
 
-  if (!subscription || !purchase) {
+  if (!purchase) {
     // The file is a constant in this repository, so this cannot happen in a
     // working build; failing loudly beats a blank front door.
-    throw new Error("The entry needs the subscription and the purchase in the catalogue.");
+    throw new Error("The entry needs the purchase in the catalogue.");
   }
 
   // The third figure is the seller's, so it is read from the seller's words
@@ -72,26 +75,37 @@ export default async function Home() {
   // door gives the reading the same budget the bill does rather than holding a
   // visitor for most of a minute — a front door that takes 47 seconds is not a
   // front door (IPD 21).
-  const exitOutcome = await withBudget(
-    resolveExitTerm(subscription.terms.exit, subscription.description, subscription.descriptionLabel, {
-      retries: 0,
-    }),
-    MODEL_READ_DEADLINE_MS,
-    {
-      kind: "unreadable",
-      exit: { kind: "unknown" },
-      note: EXIT_UNREADABLE_NOTE,
-      quoted: null,
-    } satisfies ExitOutcome,
-  );
-  const terms = { ...subscription.terms, exit: exitOutcome.exit };
+  // A listing that has gone from the catalogue leaves the entry with nothing
+  // honest to work through. It says so below rather than falling back to a
+  // figure from the file, which would be about a different product.
+  const exitOutcome = subscription
+    ? await withBudget(
+        resolveExitTerm(
+          subscription.terms.exit,
+          subscription.description,
+          subscription.descriptionLabel,
+          { retries: 0 },
+        ),
+        MODEL_READ_DEADLINE_MS,
+        {
+          kind: "unreadable",
+          exit: { kind: "unknown" },
+          note: EXIT_UNREADABLE_NOTE,
+          quoted: null,
+        } satisfies ExitOutcome,
+      )
+    : null;
+  const terms = subscription && exitOutcome
+    ? { ...subscription.terms, exit: exitOutcome.exit }
+    : null;
 
-  const translation = computeCommitment(terms);
+  const translation = terms ? computeCommitment(terms) : null;
   // The seller's sentence and the figure it produced travel together, so the
   // entry can put them side by side without joining anything up itself (ITD 19).
-  const figures = presentFigures(terms, translation, {
-    sources: { exit: exitOutcome.quoted },
-  });
+  const figures =
+    terms && translation
+      ? presentFigures(terms, translation, { sources: { exit: exitOutcome?.quoted ?? null } })
+      : null;
 
   return (
     <div className="page">
@@ -105,59 +119,64 @@ export default async function Home() {
         </p>
       </header>
 
-      <section className="entry-worked" aria-labelledby="worked-heading">
-        <h2 id="worked-heading" className="eyebrow">
-          {subscription.name} — one commitment, worked through
-        </h2>
+      {subscription && exitOutcome && terms && translation && figures ? (
+        <section className="entry-worked" aria-labelledby="worked-heading">
+          <h2 id="worked-heading" className="eyebrow">
+            {subscription.name} — one commitment, worked through
+          </h2>
 
-        <div className="entry-pair">
-          <section className="entry-said" aria-labelledby="said-heading">
-            <h2 id="said-heading">What the seller wrote</h2>
-            {subscription.description ? (
-              // The shop's own copy, unedited and attributed. Never restyled into
-              // our voice, because it is evidence, not a summary (IPD 21).
-              <blockquote className="entry-words">{subscription.description}</blockquote>
-            ) : (
-              <p className="entry-words entry-words-absent">
-                This product is listed at PayPal with no description, so this screen has no words
-                of the seller&apos;s to quote. The figures beside it come from the price and term
-                PayPal holds.
-              </p>
-            )}
-          </section>
+          <div className="entry-pair">
+            <section className="entry-said" aria-labelledby="said-heading">
+              <h2 id="said-heading">What the seller wrote</h2>
+              {subscription.description ? (
+                // The shop's own copy, unedited and attributed. Never restyled into
+                // our voice, because it is evidence, not a summary (IPD 21).
+                <blockquote className="entry-words">{subscription.description}</blockquote>
+              ) : (
+                <p className="entry-words entry-words-absent">
+                  This listing has no description, so this screen has no words of the
+                  seller&apos;s to quote. The figures beside it come from the price and term the
+                  listing states.
+                </p>
+              )}
+            </section>
 
-          <CommitmentView
-            figures={figures}
-            breakdown={translation.breakdown}
-            labels={{ item: "Coffee, one bag", shipping: "Shipping", tax: "Sales tax" }}
-            // No summary here: the seller's sentence is already in the column
-            // beside this one, and repeating it word for word made the plain
-            // version look identical to the version it exists to explain.
-            summary=""
-            schedule={describeSchedule(terms)}
-            figureNotes={exitOutcome.note ? { exit: exitOutcome.note } : undefined}
-            sourceNote={`${describeSources({
-              paypal: subscription.sources.paypal,
-              published: subscription.sources.published,
-              // Only a seller's silence is theirs to report; a read that failed is
-              // ours, and the line says which (IPD 19).
-              absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
-              unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
-            })} Nothing has been charged and nothing has been created at PayPal.`}
-          />
-        </div>
+            <CommitmentView
+              figures={figures}
+              breakdown={translation.breakdown}
+              labels={{ item: "Each delivery", shipping: "Shipping", tax: "Sales tax" }}
+              // No summary here: the seller's sentence is already in the column
+              // beside this one, and repeating it word for word made the plain
+              // version look identical to the version it exists to explain.
+              summary=""
+              schedule={describeSchedule(terms)}
+              figureNotes={exitOutcome.note ? { exit: exitOutcome.note } : undefined}
+              sourceNote={`${describeSources({
+                paypal: subscription.sources.paypal,
+                published: subscription.sources.published,
+                // Only a seller's silence is theirs to report; a read that failed
+                // is ours, and the line says which (IPD 19).
+                absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
+                unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
+              })} Nothing has been charged and nothing has been created at PayPal.`}
+            />
+          </div>
 
-        <p className="entry-relationship" data-entry-relationship={exitOutcome.kind}>
-          {relationshipSentence(exitOutcome)}
+          <p className="entry-relationship" data-entry-relationship={exitOutcome.kind}>
+            {relationshipSentence(exitOutcome)}
+          </p>
+
+          <Link className="button-primary entry-action" href={`/product/${subscription.slug}`}>
+            Check this commitment
+          </Link>
+        </section>
+      ) : (
+        <p className="notice" role="status">
+          The live subscription listing this screen works through could not be read just now, so
+          there is no commitment to show. Nothing is invented to fill the gap — search the shop for
+          a real listing in the meantime.
         </p>
-
-        <Link
-          className="button-primary entry-action"
-          href={`/product/${subscription.slug}`}
-        >
-          Check this commitment
-        </Link>
-      </section>
+      )}
 
       <p className="entry-contrast">
         Not every seller says. Where the words say nothing about leaving, the cost to leave reads{" "}

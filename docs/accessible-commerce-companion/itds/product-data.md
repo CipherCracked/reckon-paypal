@@ -45,3 +45,23 @@ per commitment, not one:
 Any substitute for the catalogue that cannot express (3) reintroduces the failure the product exists
 to catch: a seller's silence rendering as a zero.
 
+---
+
+**Revision — 2026-11-10: the shop's listings are real; the file keeps only a one-time product.**
+
+Channel3 is integrated after all, as the shop's source rather than the catalogue's replacement. A
+`ch3-<id>` slug is answered by the live catalogue and by nothing else (`lib/catalog/resolve.ts`), so a
+real product id can never be priced from a constant. The three hand-written products are down to one
+(the headphones), and the invented recurring entries are deleted.
+
+The addendum above predicted the gap correctly: a real feed carries the merchant's words but not the
+structured term. `lib/market/subscriptions.ts` is the bridge. It is keyed by catalogue id and holds
+only what a listing *states in its own text* — `{ count, period, quote }` — where `quote` must be a
+verbatim substring of that listing's title or description. Resolution checks the quote against the
+record it just read and returns nothing when the merchant has rewritten the sentence, so last week's
+term cannot be printed as today's.
+
+Absence is still a first-class value: a listing states neither shipping nor tax, so both are `null`
+and both totals render as floors ("At least $24.99", "plus shipping and sales tax at checkout"), and
+an exit the merchant never mentions is `unknown`, which the page prints as **Not stated**.
+

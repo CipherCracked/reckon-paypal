@@ -165,7 +165,7 @@ describe("the pacing control", () => {
   });
 
   it("holds the figures back one at a time without removing them from the page", async () => {
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Across the term");
 
     await userEvent.click(screen.getByRole("checkbox", { name: /show one figure at a time/i }));
@@ -191,7 +191,7 @@ describe("the pacing control", () => {
     // stored rather than write a whole object from its own stale copy (IPD 24).
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ textScale: "larger", progressive: false }));
 
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Across the term");
     await userEvent.click(screen.getByRole("checkbox", { name: /show one figure at a time/i }));
 
@@ -217,7 +217,7 @@ describe("read-aloud", () => {
       },
     );
 
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Across the term");
 
     await userEvent.click(await screen.findByRole("button", { name: /read this aloud/i }));
@@ -246,7 +246,7 @@ describe("read-aloud", () => {
       },
     );
 
-    render(<ConsentScreen orderId="ORDER-1" slug="coffee-subscription" />);
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
     await screen.findByText("Across the term");
     await userEvent.click(screen.getByRole("checkbox", { name: /show one figure at a time/i }));
     await userEvent.click(await screen.findByRole("button", { name: /read this aloud/i }));

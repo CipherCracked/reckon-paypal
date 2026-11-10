@@ -438,6 +438,50 @@ Actionables:
 - [ ] **Shipping and tax for a market purchase** are zero in the terms because the offer does not
       state them. The screen omits the rows (a zero row would claim the seller charges nothing).
       The nullable-tax model is the honest fix and is still open (§9).
+- [ ] **Add a shape for a commitment paid once and delivered over time.** Deferred
+      2026-11-11 by the user ("we will get back to this"). This is the single biggest
+      gap in the subscription path, and it blocks the shop rather than the code.
+
+      **The gap.** `CommitmentTerms` has three shapes — `one_time`, `recurring`,
+      `financed` — and none of them means *"one charge, then N deliveries"*.
+      `subscriptionTerms` can only build `recurring`, and `computeCommitment`
+      multiplies the amount by the count, so every prepaid listing is read as N
+      separate charges at the lump-sum price.
+
+      **Why it matters.** Prepaid is the common shape, not the odd one. BARK's own
+      6- and 12-month plans are charged upfront in reality — the current map is
+      already leaning on the merchant not saying so. Four proposed listings failed
+      on exactly this: `6zX4gv1` says *"billed once … for three months"* ($137.85
+      read as 3 × $137.85), `GvSGZw5` offers *"prepaid 6-month and 12-month
+      options"*, `JbTNXi4` says *"pre-paid 12-month commitment"* (while its title
+      says 6 Month), and Bosch's 12-month software plan is $1,260 as one annual
+      charge. Without this shape those products can only be skipped.
+
+      **The related data defect.** An offer's `price` carries no unit: it is
+      per-delivery for BARK ($19.99–$50 a box) and a term total for prepaid and
+      software plans, and no Channel3 field says which. So adding the shape is
+      necessary but not sufficient — a listing still needs `{ charges: 1, covers:
+      { count, period } }` curated by hand, the same way `LISTED_TERMS` works now.
+
+      **What it would touch.** `lib/commitment/types.ts` (a fourth shape, or a
+      `chargeOnce` term on `recurring`); `compute.ts` (`today` = the whole amount,
+      `acrossTerm` = the same amount, `perPeriod` = null, not a division);
+      `schedule.ts` and `present.ts` (a sentence that does not say "N payments");
+      `lib/paypal/plan-policy.ts` / `ensurePlan` (PayPal has no plan for this — it
+      is one Orders capture, and the *delivery* schedule is not something PayPal
+      holds, so the page must not imply it does); `lib/market/subscriptions.ts`
+      (the curated entry needs the new field); the consent screen's shape branch;
+      `README.md`, `env.example` and the IPD/ITD that carry the shape list.
+
+      **Done when:** a prepaid listing renders "Charged today $137.85 · Across the
+      term $137.85 · one charge covers 3 months", the schedule says three deliveries
+      and one payment, the order path charges the lump sum once, and `6zX4gv1` and
+      `GvSGZw5` can be curated without a false figure.
+- [ ] **Say on a shop card when a result opens the subscription screen.** Only four
+      ids resolve as subscriptions (`lib/market/subscriptions.ts`); every other
+      result is a one-time purchase, and `/shop` gives no sign which is which, so a
+      visitor finds the subscription path only by guessing a product or using the
+      home page's worked example.
 
 The "what this means" panel (unchanged in principle):
 
@@ -475,13 +519,59 @@ asserted. Only new findings are listed here.
       timed-out attempt is not cached, and the fallback states what it could not
       interpret. Re-measured during the §7e audit at **156 s → the budget**, though see
       the outage note below.
-- [ ] **The model endpoint was unreachable on 2026-11-10.** Two consecutive reads of a
+- [x] **The model endpoint was unreachable on 2026-11-10.** Two consecutive reads of a
       live document returned `ModelError: The model endpoint could not be reached.` and
       fell back to candidate mode after 137–156 s. Nothing in the product is wrong —
       this is the `AI_*` credentials or the provider's quota, owned by the user. The
       reader still works without it (it shows the amounts and says it did not interpret
       them), but the flagship AI claim is not demonstrated until this is restored.
       **Check before recording the video.**
+      **Diagnosed and fixed 2026-11-10.** The credentials were never the problem: the key
+      is valid with $4.99 of its $5 weekly allowance left, and it answers a plain request
+      in 0.8 s. The model itself was the problem — `nvidia/nemotron-3.5-lightning:free`
+      takes **123.6 s** to answer a real reading (six spans, all correct) versus the
+      route's 60 s budget, so the page gave up every time and reported the timeout. The
+      same reading measured through three models on the same key: gpt-4o-mini **2.6 s**,
+      gemini-2.5-flash **3.6 s**, the free Nemotron **123.6 s**. `AI_MODEL` now names
+      `openai/gpt-4o-mini`, and a live `/api/read` returns `mode: read`, `rejected: 0`,
+      figures $783.00 / $180.00 / $47.00 in 7 s. Restarting the server is not enough on
+      its own — `TaskStop` leaves the `next-server` child holding port 3001, so a second
+      start exits with `EADDRINUSE` while the old process keeps serving the old env.
+      **Open:** `MODEL_READ_DEADLINE_MS` is 60 s while the client allows 45 s × 3
+      attempts; with a slow model the page gives up before the client does. One attempt
+      and no retry for a page that is waiting would make the failure honest.
+      **Root cause, measured 2026-11-10:** the free model is a *reasoning* model. On the
+      app's real request it streams its first token in 1.7 s (so the provider's "<500 ms
+      latency" claim is about TTFT and is not false) but spends **4,941 thinking tokens**
+      to produce a 122-token answer — **68.6 s** total, 95% of its output invisible.
+      gpt-4o-mini on the identical request: 1.2 s first token, **3.1 s** total, **0**
+      reasoning tokens. Thinking scales with the prompt (short prompt → 1,821 tokens;
+      trivial question → 977), so the eight-field system prompt is the worst case, and
+      the task is copying ("never compute anything"), so reasoning cannot help it. The
+      app does not stream, so a fast first token is invisible to it. **Vision is
+      irrelevant** — pasted text only, every tool-schema field is a string, nothing in
+      `lib/ai/` builds an image part. Rule for any future model swap: measure
+      `usage.completion_tokens_details.reasoning_tokens` and *total* time, never TTFT;
+      on a paid reasoning model this one reading would bill ~5,000 output tokens.
+- [x] **Reasoning is now a setting, and off unless asked for** (2026-11-10, user's call).
+      `AI_REASONING_EFFORT` = `default | none | minimal | low | medium | high`.
+      **Unset means `none`** → `{"enabled": false}`; a graded value sends `{"effort": …}`;
+      `default` sends no field at all. Sending `reasoning` by default means the ordinary
+      request is no longer literally the plain format — accepted deliberately (the failure
+      it prevents happened twice; the failure it risks is one env var away via `default`).
+      `.env.local` sets nothing and relies on the default; `.env.example` documents it.
+      A value it does not recognise **throws**, naming the accepted ones, so a typo
+      cannot masquerade as a slow model. Verified live through `npm run check-model`
+      **with the variable absent**: the free model answers in **1.60 s** (was 123.6 s on a
+      real reading); `AI_REASONING_EFFORT=very-high` fails with *"It must be one of:
+      default, none, minimal, low, medium, high."* **Caveat measured, not assumed:**
+      `effort: "low"` is accepted and **silently ignored** by that model (still 1,183
+      thinking tokens, 20 s), so only `none` is a claim that holds. `check-model` now
+      prints the thinking setting and the answer time. Recorded as Revision (6) of
+      `itds/ai-approach.md`.
+- [x] **`env.example` still listed two dead product ids** (`PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION`,
+      `PAYPAL_PRODUCT_MATTRESS`) after the Channel3 switch left only the headphones in
+      `paypalProductIdFor`. Fixed 2026-11-10.
 - [x] **README:103 says "six required" env vars.** Wrong — `PAYPAL_BASE_URL` has a
       default (`lib/paypal/client.ts:17`) and `AI_API_KEY` is optional; four are
       required, the rest optional. **Fixed 2026-11-10:** "nine variables — four

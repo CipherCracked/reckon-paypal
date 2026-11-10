@@ -26,3 +26,10 @@ date. One-time orders: no next charge, and the record says so rather than showin
 Financed-as-one-time (the catalogue's mattress): the record repeats the consent screen's caveat that
 the payments were not set up at PayPal — a receipt that implies a schedule the payment did not create
 would be the exact failure this product exists to prevent.
+
+**Update — 2026-11-10.** That last case no longer exists. The mattress entry is deleted with the
+other invented products, and a financed commitment now goes through a billing plan (paypal-integration
+ITD 2), so a schedule the payment did not create is not a state the app can reach. A real listing's
+record reads its next charge from PayPal's subscription, the same as any other repeating commitment;
+the calendar route resolves the product through the same resolver as the screens, so a live
+subscription is not refused a reminder for having come from the shop rather than the file.

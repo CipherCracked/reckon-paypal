@@ -38,9 +38,7 @@ export type PayPalPlan = {
 /** The PayPal product id for a slug, if one has been created deliberately. */
 export function paypalProductIdFor(slug: string): string | null {
   const ids: Record<string, string | undefined> = {
-    "coffee-subscription": process.env.PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION,
     "noise-cancelling-headphones": process.env.PAYPAL_PRODUCT_HEADPHONES,
-    "mattress-financed": process.env.PAYPAL_PRODUCT_MATTRESS,
   };
   return ids[slug]?.trim() || null;
 }

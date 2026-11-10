@@ -55,6 +55,7 @@ beforeEach(() => {
   vi.stubEnv("AI_MODEL", "a-model");
   vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
   vi.stubEnv("AI_API_KEY", "a-key");
+  vi.stubEnv("AI_REASONING_EFFORT", "");
 });
 
 afterEach(() => {
@@ -82,6 +83,72 @@ describe("configuration", () => {
   it("needs no key, so a model running on this machine still works", () => {
     vi.stubEnv("AI_API_KEY", "");
     expect(isModelConfigured()).toBe(true);
+  });
+});
+
+describe("reasoning effort", () => {
+  function sent(): Record<string, unknown> {
+    return createMock.mock.calls[0][0] as Record<string, unknown>;
+  }
+
+  it("turns thinking off when the setting is unset, because reading is copying", async () => {
+    createMock.mockResolvedValueOnce(answer({}));
+
+    await callTool(request);
+
+    expect(sent().reasoning).toEqual({ enabled: false });
+  });
+
+  it("turns thinking off when the setting is none", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "none");
+    createMock.mockResolvedValueOnce(answer({}));
+
+    await callTool(request);
+
+    expect(sent().reasoning).toEqual({ enabled: false });
+  });
+
+  it("sends no reasoning field at all when the setting is default", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "default");
+    createMock.mockResolvedValueOnce(answer({}));
+
+    await callTool(request);
+
+    // Not "false", not null — the key is absent, so an endpoint that has never
+    // heard of the field still receives the request it understands.
+    expect("reasoning" in sent()).toBe(false);
+  });
+
+  it("asks for a graded effort when given one", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "low");
+    createMock.mockResolvedValueOnce(answer({}));
+
+    await callTool(request);
+
+    expect(sent().reasoning).toEqual({ effort: "low" });
+  });
+
+  it("accepts the value in any case, with surrounding space", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "  MEDIUM  ");
+    createMock.mockResolvedValueOnce(answer({}));
+
+    await callTool(request);
+
+    expect(sent().reasoning).toEqual({ effort: "medium" });
+  });
+
+  it("refuses a value it does not understand, naming the ones it does", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "highest");
+
+    await expect(callTool(request)).rejects.toThrow(/AI_REASONING_EFFORT is "highest"/);
+    await expect(callTool(request)).rejects.toThrow(/default, none, minimal, low, medium, high/);
+  });
+
+  it("does not reach the endpoint when the setting is not understood", async () => {
+    vi.stubEnv("AI_REASONING_EFFORT", "fast");
+
+    await expect(callTool(request)).rejects.toBeInstanceOf(ModelError);
+    expect(createMock).not.toHaveBeenCalled();
   });
 });
 

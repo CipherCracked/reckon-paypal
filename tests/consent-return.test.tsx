@@ -22,8 +22,8 @@ describe("coming back from PayPal", () => {
     // failure for a payment that succeeded, at the moment the shopper is
     // looking for reassurance.
     await expect(
-      visit({ slug: "coffee-subscription", approved: "1", subscription_id: "I-SUB-1" }),
-    ).rejects.toThrow("REDIRECT:/receipt/I-SUB-1?slug=coffee-subscription");
+      visit({ slug: "ch3-YyLUjLT", approved: "1", subscription_id: "I-SUB-1" }),
+    ).rejects.toThrow("REDIRECT:/receipt/I-SUB-1?slug=ch3-YyLUjLT");
   });
 
   it("leaves an approved order on the consent screen so it can be captured", async () => {

@@ -16,6 +16,8 @@ export type ProductScreenProps = {
   /** Why the exit figure has no amount, when it has none. */
   exitNote: string | null;
   sourceNote: string;
+  /** Where a part the listing did not state is charged, when the screen knows. */
+  unstatedAt?: "checkout" | null;
 };
 
 export function ProductScreen({
@@ -27,6 +29,7 @@ export function ProductScreen({
   schedule,
   exitNote,
   sourceNote,
+  unstatedAt = null,
 }: ProductScreenProps) {
   const router = useRouter();
 
@@ -56,6 +59,7 @@ export function ProductScreen({
         schedule={schedule}
         figureNotes={exitNote ? { exit: exitNote } : undefined}
         sourceNote={sourceNote}
+        unstatedAt={unstatedAt}
       />
 
       <div className="consent-actions">

@@ -7,7 +7,7 @@ import {
   resolveExitTerm,
   type ExitOutcome,
 } from "@/lib/commitment/published-exit";
-import { isMarketSlug, MARKET_EXIT_NOTE } from "@/lib/market/channel3";
+import { MARKET_EXIT_NOTE } from "@/lib/market/channel3";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 
 type RouteContext = { params: Promise<{ orderId: string }> };
@@ -43,13 +43,13 @@ export async function GET(request: Request, context: RouteContext) {
 
   const { name, description, descriptionLabel, sources } = resolved;
 
-  // A retail listing's description is the manufacturer's marketing copy, not
-  // terms. Reading it with a model spends ten seconds to usually hear silence,
-  // and the answer is already in the shape: a listing is paid once, so there is
-  // no continuing agreement to leave. The note says that, rather than naming the
-  // data vendor that does not carry a column for it.
+  // A one-time retail listing has no continuing agreement to leave: once it is
+  // paid there is nothing to cancel, and that follows from the shape rather
+  // than from a model reading the manufacturer's marketing copy. A recurring
+  // listing is the other case — its exit is unknown on purpose, so the
+  // merchant's own description gets the chance to answer it.
   const exitOutcome: ExitOutcome =
-    slug && isMarketSlug(slug)
+    resolved.listed && resolved.terms.shape === "one_time"
       ? { kind: "silent", exit: resolved.terms.exit, note: MARKET_EXIT_NOTE, quoted: null }
       : await readExit(resolved.terms.exit, description, descriptionLabel);
 
@@ -58,7 +58,7 @@ export async function GET(request: Request, context: RouteContext) {
   // A real listing's missing parts are added at a checkout, and saying so is a
   // scope every shop states; a demo entry's terms are complete, so the flag
   // never reaches a figure there.
-  const unstatedAt = slug && isMarketSlug(slug) ? ("checkout" as const) : null;
+  const unstatedAt = resolved.listed ? ("checkout" as const) : null;
   // The ordering and the arithmetic are derived here, from the same terms the
   // totals came from, so the screen never decides either. The verified sentence
   // rides on the figure it produced (ITD 19), so there is no second field for a

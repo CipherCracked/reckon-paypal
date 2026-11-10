@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/paypal/orders/route";
 import { createPayPalOrder } from "@/lib/paypal/orders";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { recordedProduct } from "./fixtures/channel3-listings";
 
 vi.mock("@/lib/paypal/orders", () => ({
   createPayPalOrder: vi.fn(async () => ({
@@ -8,6 +10,11 @@ vi.mock("@/lib/paypal/orders", () => ({
     amount: { currency: "USD", minor: 5895 },
     approveUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1",
   })),
+}));
+
+vi.mock("@/lib/market/channel3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/market/channel3")>()),
+  readMarketProduct: vi.fn(),
 }));
 
 const post = (body: unknown) =>
@@ -21,6 +28,8 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   vi.mocked(createPayPalOrder).mockClear();
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
 });
 
 describe("POST /api/paypal/orders", () => {
@@ -55,7 +64,7 @@ describe("POST /api/paypal/orders", () => {
   });
 
   it("refuses a repeating product, which needs a subscription instead of an order", async () => {
-    const response = await post({ slug: "coffee-subscription" });
+    const response = await post({ slug: "ch3-YyLUjLT" });
 
     expect(response.status).toBe(400);
     expect(createPayPalOrder).not.toHaveBeenCalled();

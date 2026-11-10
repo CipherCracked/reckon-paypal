@@ -50,6 +50,16 @@ The shipped catalogue supplies all of this by hand — `{ kind: "unknown" }` for
 human having decided the page says nothing — which is exactly the judgement a real deployment cannot
 make in advance.
 
+**Revision — 2026-11-10: the hand is now a curated map with a verified quote.** The mattress entry is
+deleted, and recurring products come from live Channel3 listings. The facts a listing does not carry
+(a cadence and a term length) live in `lib/market/subscriptions.ts` as `{ count, period, quote }`,
+where the quote must appear verbatim in that listing's title or description. The quote is checked
+against the record on every resolution: a merchant who rewrites the sentence removes the term rather
+than being quoted from memory. That is narrower than a model reading prose, and deliberately so — it
+is the smallest honest bridge between a feed of words and terms the arithmetic can consume. The exit
+figure is still read from the merchant's description at request time, and its silence is still
+reported as **Not stated**.
+
 **The risk this introduces, stated plainly.** A model that reads a fee out of prose can read it
 wrongly, and unlike a label, a wrong term produces a wrong figure downstream — the guard cannot catch
 it, because the guard only inspects output, and the number was computed afterwards by code that
@@ -178,3 +188,74 @@ those and the AI SDK or a gateway starts paying for itself. The trigger is writt
 decision can be revisited on evidence rather than re-argued.
 
 
+---
+
+**Revision — 2026-11-10 (6): thinking is a setting, and off unless asked for.**
+
+A reading was taking **123.6 s** and timing out a 60 s budget. The diagnosis was not the endpoint,
+the key or the schema. Measured on the app's own request: the model streamed its first token in
+**1.7 s** and then spent **4,941 reasoning tokens** producing a **122-token** answer — 95% of its
+output was private thinking, and the total was **68.6 s**. A non-reasoning model on the identical
+request: first token 1.2 s, **3.1 s** total, **zero** reasoning tokens.
+
+**The latency figure in a provider's marketing is time to first token.** It was not a lie; it was
+not the number that decides whether a page renders. And a reasoning model's thinking gives a
+non-streaming caller nothing until it is finished — this app does not stream, so a fast first token
+is invisible to it. That is the whole failure: an answer that began immediately arrived too late.
+
+**The decision.** `AI_REASONING_EFFORT` names how much the model may think. **Unset means `none`** —
+thinking is off unless someone asks for it. `none` sends `{ "enabled": false }`; a graded value
+sends `{ "effort": "<value>" }`; `default` sends no such field at all, which is the neutral request
+the format defines.
+
+**Why the default is `none` and not silence.** The failure this setting exists to prevent is not
+hypothetical: a reading took 123.6 s against a 60 s budget and every page fell back, while the
+error on screen said the endpoint could not be reached. A default that leaves the decision to the
+provider leaves that failure available to every deployment that never heard of the variable. Since
+the job is copying, `none` costs nothing this product claims — so the safe state is the default one
+and the escalated one is opt-in.
+
+**The price of that default, named rather than hidden.** `reasoning` is *not* part of the
+chat-completions schema — it is a gateway extension, the same class of thing revision (4) removed
+when it dropped a gateway's session header. Sending it by default means the ordinary request is no
+longer the one the format defines, and an endpoint that **rejects** unknown body fields, rather
+than ignoring them, would now fail where it previously worked. That is a real trade and it was
+taken deliberately: the failure it prevents is one that actually happened here, twice, and the one
+it risks is hypothetical and **one environment variable away** — `AI_REASONING_EFFORT=default`
+omits the field entirely and restores the neutral request. The escape hatch is the reason the trade
+is acceptable; without it, this default would have been wrong.
+
+**The hazard, measured rather than assumed.** A graded effort is a *request*, not an instruction.
+Against one free model, `effort: "low"` was accepted, charged, and **silently ignored** — the model
+still spent 1,183 reasoning tokens and took 20 s. `none` was honoured (0 tokens, 2.5 s). So the
+only value this setting can be *claimed* to deliver is `none`; the graded ones are best effort of a
+third party, and a deployment that needs a guarantee should choose a model that does not reason
+rather than one whose reasoning it hopes to dial down.
+
+**An unrecognised value is an error, not silence.** A typo in a setting that only makes things
+faster would otherwise be indistinguishable from a slow model: full-length thinking, a page timeout,
+and nothing on screen connecting the two. `aiReasoningEffort()` therefore throws, naming the values
+it accepts, before any request is sent.
+
+**Why this is acceptable here and would not be for everyone.** Reading a document is *copying*: the
+system prompt says never to compute, the schema has no monetary field, and the answer is six
+verbatim spans. Thinking cannot improve copying, so turning it off costs nothing this product
+claims. On a task that needed inference the trade would be the other way round, and the setting
+would be a way to spend less, not to be right.
+
+**What does not change.** The model still never emits a figure. The schema still has no numeric
+field. The guard still runs on whatever comes back, and every span is still re-verified as a literal
+substring of the user's own text.
+
+**Verified, 2026-11-10, with nothing set.** `npm run check-model` against the model whose real
+reading took 123.6 s, with `AI_REASONING_EFFORT` absent from the environment entirely:
+
+```
+model:    nvidia/nemotron-3.5-lightning:free
+thinking: none (the default)
+answered in 1597 ms with 1 span(s)
+```
+
+1.6 s where the same code path took over two minutes. `AI_REASONING_EFFORT=very-high` fails before
+any request is sent, naming the accepted values; `AI_REASONING_EFFORT=default` restores the field-
+free request for a stricter provider.

@@ -1,6 +1,7 @@
 import { findProduct, products, type Product } from "./products";
 import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
 import { cheapestInStock, isMarketSlug, marketTerms, readMarketProduct } from "@/lib/market/channel3";
+import { curatedTerm, subscriptionTerms, termIsStated } from "@/lib/market/subscriptions";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 
 /**
@@ -34,6 +35,13 @@ export type ResolvedProduct = ResolvedCard & {
   terms: CommitmentTerms;
   /** How to name the description when the exit figure is read out of it (IPD 19). */
   descriptionLabel: string;
+  /**
+   * True when the terms came from a live retail listing rather than PayPal or
+   * the file. A listing's missing parts belong to a checkout, and a listing
+   * paid once has no term to leave, so the callers that say those things need
+   * to know which source answered without re-parsing the slug.
+   */
+  listed?: boolean;
 };
 
 const FILE_TERMS = "the terms shown on this page";
@@ -85,6 +93,28 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
     const offer = listed ? cheapestInStock(listed.offers) : null;
     if (!listed || !offer) return null;
 
+    // A curated listing is a subscription only while it still contains the
+    // sentence the term was read from. If the merchant has rewritten it, no
+    // price or one-time reading can stand in: the page says the term is no
+    // longer stated rather than giving the listing a shape it does not have.
+    const term = curatedTerm(listed.id);
+    if (term) {
+      if (!termIsStated(listed, term)) return null;
+
+      return {
+        slug,
+        name: listed.title,
+        description: listed.description,
+        terms: subscriptionTerms(offer, term),
+        sources: {
+          paypal: null,
+          published: `the price Channel3 lists at ${offer.domain} and the term the listing states (“${term.quote}”)`,
+        },
+        descriptionLabel: "the description Channel3 lists for this product",
+        listed: true,
+      };
+    }
+
     return {
       slug,
       name: listed.title,
@@ -92,6 +122,7 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
       terms: marketTerms(offer),
       sources: { paypal: null, published: `the price Channel3 lists at ${offer.domain}` },
       descriptionLabel: "the description Channel3 lists for this product",
+      listed: true,
     };
   }
 

@@ -11,8 +11,37 @@ vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   return { ...actual, retrieveSubscription: vi.fn() };
 });
 
+// The calendar route resolves the product so a real subscription gets its
+// reminder. This suite is about the record and the file it produces, so the
+// resolution is fixed to a recurring listing.
+vi.mock("@/lib/catalog/resolve", async () => {
+  const { money: amount } = await import("@/lib/money");
+  return {
+    resolveProduct: vi.fn(async (slug: string) =>
+      slug === "ch3-YyLUjLT"
+        ? {
+            slug,
+            name: "BARK 6 Month Subscription",
+            description: "A subscription box for dogs.",
+            terms: {
+              shape: "recurring" as const,
+              itemPrice: amount(2499),
+              shipping: null,
+              tax: null,
+              recurrence: { count: 6, period: "month" as const },
+              exit: { kind: "unknown" as const },
+            },
+            sources: { paypal: null, published: "the price Channel3 lists at bark.co" },
+            descriptionLabel: "the description Channel3 lists for this product",
+            listed: true,
+          }
+        : null,
+    ),
+  };
+});
+
 const base = {
-  productName: "Coffee Subscription",
+  productName: "BARK 6 Month Subscription",
   reference: "I-SUB-1",
   paidToday: money(1200),
   acrossTerm: money(14400),
@@ -21,7 +50,7 @@ const base = {
   exitSource: null,
   standing: null,
   manageUrl: "https://www.sandbox.paypal.com/myaccount/autopay/",
-  calendarHref: "/api/receipt/I-SUB-1/calendar?slug=coffee-subscription",
+  calendarHref: "/api/receipt/I-SUB-1/calendar?slug=ch3-YyLUjLT",
   sourceNote: "Read from the PayPal plan for this subscription.",
 };
 
@@ -175,33 +204,33 @@ describe("CommitmentRecord", () => {
 describe("buildCalendar", () => {
   it("writes one event, dated in UTC, with a one-day reminder", () => {
     const calendar = buildCalendar({
-      title: "Coffee Subscription — payment due",
+      title: "BARK 6 Month Subscription — payment due",
       description: "$12.00 will be charged by PayPal.",
       start: new Date("2026-12-07T00:00:00Z"),
     });
 
     expect(calendar).toContain("BEGIN:VCALENDAR");
     expect(calendar).toContain("DTSTART:20261207T000000Z");
-    expect(calendar).toContain("SUMMARY:Coffee Subscription — payment due");
+    expect(calendar).toContain("SUMMARY:BARK 6 Month Subscription — payment due");
     expect(calendar).toContain("TRIGGER:-P1D");
     expect(calendar).toContain("END:VEVENT");
   });
 
   it("escapes the text characters the format reserves", () => {
     const calendar = buildCalendar({
-      title: "Coffee; a bag, monthly",
+      title: "BARK; a box, monthly",
       description: "line one\nline two",
       start: new Date("2026-12-07T00:00:00Z"),
     });
 
-    expect(calendar).toContain("SUMMARY:Coffee\\; a bag\\, monthly");
+    expect(calendar).toContain("SUMMARY:BARK\\; a box\\, monthly");
     expect(calendar).toContain("line one\\nline two");
   });
 });
 
 describe("GET /api/receipt/:id/calendar", () => {
   const request = () =>
-    new Request("http://localhost/api/receipt/I-SUB-1/calendar?slug=coffee-subscription");
+    new Request("http://localhost/api/receipt/I-SUB-1/calendar?slug=ch3-YyLUjLT");
 
   beforeEach(() => {
     vi.mocked(retrieveSubscription).mockReset();

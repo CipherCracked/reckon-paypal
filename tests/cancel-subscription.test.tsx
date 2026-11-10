@@ -13,7 +13,7 @@ import { CancelSubscription } from "@/components/CancelSubscription";
 const props = {
   subscriptionId: "I-SUB-1",
   agreement: "subscription" as const,
-  productName: "Coffee Subscription",
+  productName: "BARK 6 Month Subscription",
   reference: "I-SUB-1",
   manageUrl: "https://www.sandbox.paypal.com/myaccount/autopay/",
 };
@@ -40,7 +40,7 @@ describe("cancelling from the record", () => {
 
     expect(fetchMock).not.toHaveBeenCalled();
     // The warning names the agreement, so the person can see which one ends.
-    expect(screen.getByText(/cancel coffee subscription \(I-SUB-1\)\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/cancel bark 6 month subscription \(I-SUB-1\)\?/i)).toBeInTheDocument();
     expect(screen.getByText(/cannot be undone here/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /yes, cancel it at paypal/i })).toBeInTheDocument();
   });
@@ -118,7 +118,7 @@ describe("cancelling a payment plan", () => {
   const plan = {
     ...props,
     agreement: "payment plan" as const,
-    productName: "Mattress — 12 Months",
+    productName: "A financed purchase",
     reference: "I-PLAN-1",
     subscriptionId: "I-PLAN-1",
   };
@@ -133,7 +133,7 @@ describe("cancelling a payment plan", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /cancel this payment plan/i }));
 
-    expect(screen.getByText(/cancel mattress — 12 months \(I-PLAN-1\)\?/i)).toBeInTheDocument();
+    expect(screen.getByText(/cancel a financed purchase \(I-PLAN-1\)\?/i)).toBeInTheDocument();
     expect(screen.getByText(/stop taking the remaining payments/i)).toBeInTheDocument();
   });
 

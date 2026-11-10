@@ -8,6 +8,9 @@ import { findProduct } from "@/lib/catalog/products";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { curatedTerm, subscriptionTerms } from "@/lib/market/subscriptions";
+import { recordedProduct } from "./fixtures/channel3-listings";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
@@ -15,9 +18,14 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
-// The front door reads the seller's exit sentence with a model; no model runs in
-// the suite, so the reading is fixed here. What the reading does is tested where
-// it lives â€” this test is about the journey between screens.
+// The front door reads a real listing, and the exit sentence with a model. No
+// model runs in the suite, so both are fixed here. What each does is tested
+// where it lives — this test is about the journey between screens.
+vi.mock("@/lib/market/channel3", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/market/channel3")>();
+  return { ...actual, readMarketProduct: vi.fn() };
+});
+
 vi.mock("@/lib/commitment/published-exit", async () => {
   const actual = await vi.importActual<typeof import("@/lib/commitment/published-exit")>(
     "@/lib/commitment/published-exit",
@@ -25,22 +33,25 @@ vi.mock("@/lib/commitment/published-exit", async () => {
   return {
     ...actual,
     resolveExitTerm: vi.fn(async () => ({
-      kind: "stated" as const,
-      exit: { kind: "none" as const },
-      note: null,
-      quoted: {
-        label: "the description shown on this page",
-        span: "cancel any time, no fee.",
-      },
+      kind: "silent" as const,
+      exit: { kind: "unknown" as const },
+      note: "The seller's published terms do not say what it costs to leave.",
+      quoted: null,
     })),
   };
 });
 
 const headphones = findProduct("noise-cancelling-headphones");
-const subscription = findProduct("coffee-subscription");
+const subscription = recordedProduct("YyLUjLT");
+const subscriptionTermsForScreen = subscriptionTerms(
+  subscription.offers[0],
+  curatedTerm("YyLUjLT")!,
+);
 
 beforeEach(() => {
   pushMock.mockReset();
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(subscription);
 });
 
 afterEach(() => {
@@ -75,7 +86,7 @@ describe("demo flow", () => {
     );
 
     // The product page states the figures too, so it is taken down before the
-    // consent screen is rendered â€” otherwise both screens answer to the same
+    // consent screen is rendered — otherwise both screens answer to the same
     // label and the test cannot tell which one it is looking at.
     expect(screen.getByText("Across the term")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /check this commitment/i }));
@@ -118,21 +129,24 @@ describe("demo flow", () => {
 
     render(
       <ProductScreen
-        slug="coffee-subscription"
-        name="Coffee Subscription"
-        description="Delivered every month."
-        figures={presentFigures(subscription!.terms, computeCommitment(subscription!.terms))}
-        breakdown={computeCommitment(subscription!.terms).breakdown}
-        schedule={describeSchedule(subscription!.terms)}
+        slug="ch3-YyLUjLT"
+        name={subscription.title}
+        description={subscription.description}
+        figures={presentFigures(
+          subscriptionTermsForScreen,
+          computeCommitment(subscriptionTermsForScreen),
+        )}
+        breakdown={computeCommitment(subscriptionTermsForScreen).breakdown}
+        schedule={describeSchedule(subscriptionTermsForScreen)}
         exitNote={null}
-        sourceNote="Computed from the terms shown on this page."
+        sourceNote="Computed from the price Channel3 lists at bark.co."
       />,
     );
 
     await userEvent.click(screen.getByRole("button", { name: /check this commitment/i }));
 
     await waitFor(() =>
-      expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=coffee-subscription"),
+      expect(pushMock).toHaveBeenCalledWith("/consent/pending?slug=ch3-YyLUjLT"),
     );
     expect(fetchMock).not.toHaveBeenCalled();
   });

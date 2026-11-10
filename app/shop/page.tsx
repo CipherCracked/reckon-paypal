@@ -14,7 +14,7 @@ import { formatMoney } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_QUERY = "headphones";
-const SUGGESTIONS = ["headphones", "coffee maker", "running shoes", "desk lamp"];
+const SUGGESTIONS = ["headphones", "subscription box", "coffee maker", "running shoes", "desk lamp"];
 /** How many results one search can return — the catalogue's own limit. */
 const SEARCH_LIMIT = 12;
 

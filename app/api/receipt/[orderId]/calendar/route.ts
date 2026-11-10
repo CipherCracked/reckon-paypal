@@ -1,4 +1,4 @@
-import { findProduct } from "@/lib/catalog/products";
+import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { formatMoney } from "@/lib/money";
 import { buildCalendar } from "@/lib/receipt/calendar";
@@ -11,7 +11,11 @@ type RouteContext = {
 export async function GET(request: Request, context: RouteContext) {
   const { orderId } = await context.params;
   const slug = new URL(request.url).searchParams.get("slug");
-  const product = slug ? findProduct(slug) : undefined;
+  // The same resolver the screens use: a subscription may have come from PayPal
+  // or from a live catalogue listing, and the calendar has no business knowing
+  // which. Reading only the file would refuse to remind anyone about a real
+  // subscription.
+  const product = slug ? await resolveProduct(slug) : null;
 
   // A financed purchase is scheduled monthly too, so it has a next charge.
   // Anything paid once has none.

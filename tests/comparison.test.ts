@@ -13,24 +13,25 @@ describe("the comparison document", () => {
     expect(committed).toBe(buildComparison());
   });
 
-  it("carries every product, with the seller's words quoted before ours", () => {
+  it("carries the written-down product, with the seller's words quoted before ours", () => {
     const document = buildComparison();
 
     expect(document).toContain("## Noise-Cancelling Headphones");
-    expect(document).toContain("## Coffee Subscription");
-    expect(document).toContain("## Mattress — 12 Months");
     expect(document).toContain(
-      "> 0% APR over 12 months: 12 payments of $105.00, plus a $60.00 origination fee.",
+      "> Was $79.99 — now 40% off. Ships in two working days. Free returns within 30 days.",
     );
-    expect(document).toContain("Across the term: $1,320.00 — 12 × $105.00 + $60.00 taken once");
+    expect(document).toContain("Across the term: $58.95 — 1 payment");
+    // The live catalogue's prices move, so the document states what this
+    // repository writes down and does not pretend to be a snapshot of a shop.
+    expect(document).not.toContain("## Coffee Subscription");
+    expect(document).not.toContain("## Mattress");
   });
 
   it("counts what the seller wrote rather than calling it nothing", () => {
     const document = buildComparison();
-    const mattress = document.slice(document.indexOf("## Mattress"));
 
-    expect(mattress).toContain("| Money amounts written out | 2 | 2 |");
-    expect(mattress).toContain("| Times the cost across the term appears | 0 | 1 |");
+    expect(document).toContain("| Money amounts written out | 1 | 3 |");
+    expect(document).toContain("| Times the cost across the term appears | 0 | 1 |");
   });
 
   it("says the reading-level numbers are not evidence of understanding", () => {
