@@ -250,10 +250,10 @@ findings below are from a live run, not a read.
       open-source licence detectable in the repo's About section.
 - [ ] **Publish the repo and set a remote.** `git remote -v` is empty here — no
       public repo exists yet, so the licence has nowhere to be detected.
-- [ ] **Put sandbox test credentials in `README.md`** — a buyer email/password that
-      can complete an approval, or exact steps to obtain one.
-      `docs/judge-brief.html:126` claims they are there; they are not. Without a buyer
-      login a judge cannot reach the settled receipt or the cancel button at all.
+- [x] **Put sandbox test credentials in `README.md`** — **done 2026-11-11**: the
+      README carries a US buyer login that has itself approved and cancelled a
+      subscription, why the account must be US, and a record URL a judge can open
+      without approving anything. `docs/judge-brief.html:126` is now true.
 - [ ] **Screenshots.** `public/` holds only Next's default SVGs — there is no image
       of the product anywhere. Capture: the entry, the receipt with cancel, the
       `/read` result, and "Largest" text. ~1 h.
@@ -458,9 +458,13 @@ Actionables:
 - [x] **`resolveProduct` reads a market slug from the live catalogue only** (2026-11-10) — it never
       falls through to the demo file, and both the consent screen and the order route resolve the
       same slug the same way, so the figure shown and the amount charged come from one read.
-- [ ] **Unverified:** the subscription/cancel demo still uses the invented coffee entry; the
-      financed mattress is untouched. Channel3 carries neither terms nor a schedule, so these stay
-      repository entries until the demo says so plainly.
+- [x] **The subscription path no longer uses the invented coffee entry** — as of
+      2026-11-11 it runs on a real BARK listing, approved and cancelled live against
+      the sandbox (§1, §4). Channel3 carries no terms, so the four curated listings are
+      the source, and the screens name it.
+- [ ] **The financed mattress is untouched** and still a repository entry. No live
+      listing states instalments and a fee, so it stays until one does — or until the
+      demo says so plainly.
 - [ ] **Shipping and tax for a market purchase** are zero in the terms because the offer does not
       state them. The screen omits the rows (a zero row would claim the seller charges nothing).
       The nullable-tax model is the honest fix and is still open (§9).
