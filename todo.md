@@ -837,13 +837,44 @@ the store's own records live. Decomposition and four decisions:
       bounded to 5 pages / 5 concurrent reads / 8 s, and the bound is *stated* when hit.
 - [x] "Looked and found none" vs "could not look" kept apart — the page never says
       "none" on a failure.
-- [ ] **BLOCKED, and only the user can clear it:** enable *Log in with PayPal* on the
-      sandbox app (Developer Dashboard → Apps & Credentials → app → Log in with
-      PayPal → Enable) with return URL `http://localhost:3001/auth/paypal/callback`.
-      Probe today: the connect endpoint answers *"invalid client_id or redirect_uri"*.
-- [ ] Once enabled: sign in live and confirm `user_id` from userinfo equals
-      `subscriber.payer_id` (`D5CKAUQ8V7ADL` for the sandbox buyer). If they differ,
-      matching falls back to the verified email and the page says which key it used.
+- [x] *Log in with PayPal* enabled on the sandbox app, return URL
+      `http://127.0.0.1:3001/auth/paypal/callback`. `localhost` was the address the
+      dashboard refused to save; PayPal also treats the two as different apps.
+- [x] **Sign-in driven end to end in a real browser (Playwright), 2026-11-11** —
+      `/account` → PayPal → buyer → consent → back on `/account` with a live session.
+      It found two defects, both fixed: **(1)** Next rewrites `127.0.0.1` to
+      `localhost` when it builds a redirect, and a cookie set on one host is never
+      sent to the other, so the sign-in landed *signed out* — `lib/origin.ts` now
+      takes the Host header (`APP_ORIGIN` overrides); **(2)** `openid` alone returns
+      an **opaque subject URL**, not the payer id, so the scan found both sandbox
+      subscriptions, matched neither, and the page said "you have none" — a false
+      statement. `readProfile` now refuses a subject URL, and the page says it
+      cannot tell which account instead (IPD 26's rule applied to identity).
+- [x] Privacy/user-agreement URLs and the **Email** + **PayPal account ID (payer
+      ID)** ticks are on — the app now accepts both scopes at authorize (before:
+      *invalid scope*), and the token reports them granted.
+- [x] Removed the buyer's old grant so PayPal would ask again: the consent screen
+      did appear and was approved (*Agree and Connect*).
+- [ ] **BLOCKED on PayPal, not on configuration:** even after a fresh approval,
+      `userinfo` returns only `user_id`/`sub` (`…/identity/user/M3Pa4…`) — no email,
+      no payer id — from `openidconnect?schema=openid`, `oauth2?schema=paypalv1.1`,
+      `oauth2?schema=openid` and bare `oauth2`, and with `scope=email` alone. PayPal's
+      own API reference lists **no `payer_id` field** on the OIDC schema. `/account`
+      therefore says it cannot tell which account, which is true.
+- [x] **App settings confirmed correct from the dashboard itself** (user's screenshots,
+      2026-11-11): return URL `http://127.0.0.1:3001/auth/paypal/callback`, **Email**
+      ticked, **PayPal account ID (payer ID)** ticked, privacy + user-agreement URLs
+      `https://example.com`. Nothing is missing on our side of the configuration.
+- [ ] **WAIT, then retry — PayPal's own panel says "allow up to three hours for the
+      change to take effect".** Every test so far ran minutes after saving (still
+      `signin=unreadable`). Re-run the Playwright sign-in after that window; the probe
+      lives at `C:/Users/USER/AppData/Local/Temp/signin-probe.mjs` (headless Chrome,
+      `channel: "chrome"`, buyer sign-in, consent click, reports the returned page).
+      Success looks like: `/account` lists subscriptions instead of `?signin=unreadable`.
+- [ ] If it still fails after three hours: a **new** sandbox Personal (US) buyer with
+      no history (Testing Tools → Sandbox Accounts → Create → Personal, United States).
+      If that also returns only a subject, this is PayPal's limit and the page ships as
+      it is.
 - [ ] Approve one **active** subscription before the video: both records in the
       sandbox are `CANCELLED`, so the page currently demonstrates only that state.
 - [ ] Entry point: the home page links to it; the receipt does not yet ("Lost this

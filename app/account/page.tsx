@@ -28,7 +28,8 @@ const ROW_DEADLINE_MS = 6_000;
 const SIGN_IN_REASONS: Record<string, string> = {
   denied: "That sign-in was not completed. Nothing was read.",
   failed: "PayPal did not complete the sign-in. Nothing was read.",
-  unreadable: "PayPal signed you in but did not say which account, so nothing was read.",
+  unreadable:
+    "PayPal signed you in but did not share the PayPal account id this store looks subscriptions up by, so nothing was read. That id has to be ticked in the app's Log in with PayPal settings.",
   unavailable: "Signing in is not switched on for this deployment.",
 };
 

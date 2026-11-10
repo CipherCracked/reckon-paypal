@@ -67,9 +67,18 @@ look them up without an id), and when the check cannot run the page says *"we co
 rather than *"you have none"*.
 
 Signing in needs **Log in with PayPal** enabled on the REST app — a dashboard setting, not a code
-one: *Apps & Credentials → your app → Log in with PayPal → Enable*, with
-`http://localhost:3000/auth/paypal/callback` as a return URL (add your deployed origin too), and
-`SESSION_SECRET` set. Without them the page says it cannot check.
+one. *Apps & Credentials → your app → Log in with PayPal → Advanced Settings*, then:
+
+- **Return URL** — the origin you browse the app on plus `/auth/paypal/callback`. The app builds
+  this from the address in the browser, so it has to match character for character:
+  `http://localhost:3000/auth/paypal/callback` and `http://127.0.0.1:3000/auth/paypal/callback` are
+  two different registrations, because they are two different cookie domains.
+- **Tick Email and PayPal account ID (payer ID).** Without the payer id, PayPal will sign a person
+  in and then withhold the one value a subscription is filed under: `openid` alone answers with an
+  opaque subject URL, the page says it cannot tell which account, and nothing is read.
+- **Privacy policy URL and User agreement URL** — `https://example.com` is accepted for testing.
+
+`SESSION_SECRET` must also be set (16+ characters). Without it the page says it cannot check.
 
 On a subscription PayPal still reports as active, the cost-to-leave figure carries a verb: **Cancel
 this subscription**. It asks once — naming the agreement and saying it cannot be undone here — and
@@ -128,7 +137,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists eleven variables — four required, seven optional:
+`env.example` lists twelve variables — four required, eight optional:
 
 | Variable | Purpose |
 |---|---|
@@ -143,6 +152,7 @@ npm run dev
 | `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
 | `CHANNEL3_API_KEY` | Optional. Server-side key for the live product catalogue behind `/shop` |
 | `SESSION_SECRET` | Optional. Signs the `/account` sign-in cookie (16+ characters). Absent, that page says it cannot check |
+| `APP_ORIGIN` | Optional. The public origin, for a deployment behind a rewriting proxy. `/account` otherwise uses the address the browser is on |
 
 The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
 price and term from the plan and says so; with them empty it computes from the published terms in

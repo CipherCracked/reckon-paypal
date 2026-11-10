@@ -1,3 +1,4 @@
+import { publicOrigin } from "../origin";
 import { paypalBaseUrl } from "./client";
 
 /**
@@ -8,17 +9,39 @@ import { paypalBaseUrl } from "./client";
  * person authenticates on PayPal's page, and what comes back is an authorization
  * code we exchange for a token we use once.
  *
- * `userinfo` returns `user_id` (documented as the payer id) and a **verified**
- * email. The email is shown to the person; the payer id is what records are
- * matched on, because an email is not an identity — two accounts can share one,
- * and a person can change theirs.
+ * What `userinfo` returns depends on what the app was granted. The payer id is
+ * what records are matched on, because an email is not an identity — two
+ * accounts can share one, and a person can change theirs. Measured against the
+ * sandbox app, 2026-11-11: with only `openid` granted, PayPal answers with an
+ * opaque subject URL and nothing else, so a sign-in that looks complete can
+ * identify a person without naming their account.
  */
 
-export const SIGN_IN_SCOPES = "openid profile email";
+/**
+ * `openid` alone identifies a person to PayPal but does not say *which PayPal
+ * account* they are: it returns an opaque subject URL, and the payer id — the
+ * thing a subscription's `subscriber.payer_id` is — is behind the attributes
+ * scope. Requesting it is therefore not optional, and PayPal refuses the whole
+ * sign-in with "invalid scope" until the app's Log in with PayPal settings tick
+ * **Email** and **PayPal account ID (payer ID)**.
+ */
+export const SIGN_IN_SCOPES =
+  "openid email https://uri.paypal.com/services/paypalattributes";
 
 /** Whether the two credentials a sign-in needs are present at all. */
 export function identityConfigured(): boolean {
   return Boolean(process.env.PAYPAL_CLIENT_ID?.trim() && process.env.PAYPAL_CLIENT_SECRET?.trim());
+}
+
+/**
+ * The address PayPal must send the person back to.
+ *
+ * It has to be character-for-character the return URL registered on the app,
+ * and PayPal treats `localhost` and `127.0.0.1` as two different addresses — the
+ * dashboard took one and refused the other (see `publicOrigin`).
+ */
+export function callbackUri(request: Request): string {
+  return `${publicOrigin(request)}/auth/paypal/callback`;
 }
 
 /**
@@ -89,10 +112,30 @@ export async function exchangeCode(code: string, redirectUri: string): Promise<s
 export type IdentityProfile = { payerId: string; email: string };
 
 /**
- * The one call the token is for. `user_id` is the payer id PayPal uses on a
- * subscription's `subscriber` block; `payer_id` is accepted too because the
- * field's spelling has moved between API versions and a sign-in must not fail on
- * which one answered.
+ * The payer id, or nothing.
+ *
+ * `payer_id` is the field the attributes scope fills in. `user_id` is the older
+ * spelling of the same thing and is still the payer id on some accounts — but
+ * without the attributes scope PayPal puts an **opaque subject URL** there
+ * (`https://www.paypal.com/webapps/auth/identity/user/…`), which is a stable
+ * name for a person and not the id any subscription is filed under. Reading
+ * that as a payer id would sign someone in and then tell them, wrongly, that the
+ * store holds nothing for them.
+ */
+function payerIdFrom(body: { user_id?: unknown; payer_id?: unknown; sub?: unknown }): string {
+  const candidates = [body.payer_id, body.user_id, body.sub];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string") continue;
+    const value = candidate.trim();
+    if (value && !value.includes("://")) return value;
+  }
+  return "";
+}
+
+/**
+ * The one call the token is for. The email is shown to the person and is a
+ * courtesy; the payer id is what records are matched on, so a sign-in that does
+ * not carry one is not a sign-in (see `payerIdFrom`).
  */
 export async function readProfile(accessToken: string): Promise<IdentityProfile | null> {
   const response = await fetch(
@@ -102,14 +145,8 @@ export async function readProfile(accessToken: string): Promise<IdentityProfile 
 
   if (!response.ok) throw new IdentityError("PayPal would not say who this is.", response.status);
 
-  const body = (await response.json()) as {
-    user_id?: unknown;
-    payer_id?: unknown;
-    email?: unknown;
-  };
-
-  const payerId =
-    typeof body.user_id === "string" ? body.user_id : typeof body.payer_id === "string" ? body.payer_id : "";
+  const body = (await response.json()) as { user_id?: unknown; payer_id?: unknown; email?: unknown };
+  const payerId = payerIdFrom(body);
   if (!payerId) return null;
 
   return { payerId, email: typeof body.email === "string" ? body.email : "" };

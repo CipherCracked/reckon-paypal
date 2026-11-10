@@ -1,3 +1,4 @@
+import { publicOrigin } from "@/lib/origin";
 import { clearedSessionCookie } from "@/lib/session";
 
 /**
@@ -5,7 +6,7 @@ import { clearedSessionCookie } from "@/lib/session";
  * which is the point: the person's browser is the only place the sign-in exists.
  */
 export async function POST(request: Request) {
-  const origin = new URL(request.url).origin;
+  const origin = publicOrigin(request);
   return new Response(null, {
     status: 303,
     headers: {

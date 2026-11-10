@@ -1,4 +1,5 @@
-import { exchangeCode, readProfile } from "@/lib/paypal/identity";
+import { publicOrigin } from "@/lib/origin";
+import { callbackUri, exchangeCode, readProfile } from "@/lib/paypal/identity";
 import {
   STATE_COOKIE,
   clearedStateCookie,
@@ -16,7 +17,10 @@ import {
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const origin = url.origin;
+  // The address the browser is on, not the one Next normalised it to: the
+  // session cookie is about to be set for this host and must be read back from
+  // the same one.
+  const origin = publicOrigin(request);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
@@ -39,7 +43,9 @@ export async function GET(request: Request) {
   if (!code || !state || !expected || state !== expected) return back("denied");
 
   try {
-    const token = await exchangeCode(code, `${origin}/auth/paypal/callback`);
+    // The exchange repeats the redirect URI, and PayPal compares it to the one
+    // the code was issued for — the same source, or a working sign-in fails here.
+    const token = await exchangeCode(code, callbackUri(request));
     const profile = await readProfile(token);
     if (!profile) return back("unreadable");
 
