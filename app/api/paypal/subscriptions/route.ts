@@ -1,7 +1,44 @@
 import { resolveProduct } from "@/lib/catalog/resolve";
-import { addMoney, zeroMoney } from "@/lib/money";
+import type { CommitmentTerms } from "@/lib/commitment/types";
+import { addMoney, zeroMoney, type Money } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
 import { createSubscription, ensurePlan } from "@/lib/paypal/subscriptions";
+
+/**
+ * The plan PayPal has to hold for these terms, or nothing.
+ *
+ * Two shapes are paid over time, and both are a billing plan: a repeating term
+ * (a subscription) and a financed purchase (instalments). The second used to
+ * skip this route entirely and become a single captured order — the screen
+ * promised twelve payments and PayPal was asked for one, which is a figure with
+ * nothing behind it. Creating the plan is what makes "across the term" a number
+ * PayPal will actually collect.
+ */
+function planFor(
+  terms: CommitmentTerms,
+): { amount: Money; interval: "MONTH" | "YEAR"; totalCycles: number } | null {
+  if (terms.shape === "recurring" && terms.recurrence) {
+    return {
+      // One period's charge: the item plus its tax, the same figure the
+      // commitment view multiplies by the term. A tax the source never stated
+      // is not part of a plan PayPal will charge for, so it adds nothing here.
+      amount: addMoney(terms.itemPrice, terms.tax ?? zeroMoney()),
+      interval: terms.recurrence.period === "month" ? "MONTH" : "YEAR",
+      totalCycles: terms.recurrence.count,
+    };
+  }
+
+  if (terms.shape === "financed" && terms.installment) {
+    return {
+      amount: terms.installment.amount,
+      // The seller's page and the schedule both say "one a month".
+      interval: "MONTH",
+      totalCycles: terms.installment.count,
+    };
+  }
+
+  return null;
+}
 
 export async function POST(request: Request) {
   let slug: string | null = null;
@@ -21,7 +58,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unknown product." }, { status: 404 });
   }
 
-  if (product.terms.shape !== "recurring" || !product.terms.recurrence) {
+  const plan = planFor(product.terms);
+  if (!plan) {
     return Response.json(
       { error: "This product is not paid over a repeating term." },
       { status: 400 },
@@ -40,14 +78,15 @@ export async function POST(request: Request) {
       planId: `P-DEMO-${product.slug.toUpperCase()}`,
       // The seller's copy, so the product PayPal stores can be quoted from.
       description: product.description,
-      // One period's charge: the item plus its tax, the same figure the
-      // commitment view multiplies by the term. A tax the source never stated
-      // is not part of a plan PayPal will charge for, so it adds nothing here.
-      amount: addMoney(product.terms.itemPrice, product.terms.tax ?? zeroMoney()),
-      interval: product.terms.recurrence.period === "month" ? "MONTH" : "YEAR",
+      amount: plan.amount,
+      interval: plan.interval,
       // The same count the screen prints. A plan that never ends would outlive
       // the term the shopper agreed to.
-      totalCycles: product.terms.recurrence.count,
+      totalCycles: plan.totalCycles,
+      // The same fee the screen says is charged today: PayPal takes it when the
+      // plan starts, so leaving it off here would charge a different amount from
+      // the one the figures above the button state.
+      setupFee: product.terms.openingFee ?? null,
     });
 
     const subscription = await createSubscription(planId, {

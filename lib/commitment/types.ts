@@ -16,11 +16,10 @@ export type Recurrence = {
   period: BillingPeriod;
 };
 
-/** A financed purchase: `count` instalments plus any financing fee. */
+/** A financed purchase: `count` instalments of the same amount. */
 export type Installment = {
   count: number;
   amount: Money;
-  fee: Money;
 };
 
 /**
@@ -45,6 +44,18 @@ export interface CommitmentTerms {
   tax: Money | null;
   recurrence?: Recurrence;
   installment?: Installment;
+  /**
+   * A charge taken once when the commitment starts, on top of the first period:
+   * an origination fee, a joining fee, a setup fee. It belongs to the shape's
+   * terms either way, which is why it lives here rather than inside
+   * `Installment` — PayPal holds it as one `setup_fee` on a plan, and a plan and
+   * an instalment schedule can both have one.
+   *
+   * Absent means none was charged. It is deliberately *not* part of `unstated`:
+   * the parts a checkout adds silently are shipping and tax, and a commitment
+   * whose terms state a term usually states a fee when there is one.
+   */
+  openingFee?: Money;
   exit: ExitTerms;
 }
 
@@ -55,6 +66,12 @@ export interface CommitmentBreakdown {
   item: Money;
   shipping: Money | null;
   tax: Money | null;
+  /**
+   * The opening fee, when there is one, so the three rows still add up to
+   * today's charge. `null` here means no fee was charged — not that one is
+   * unstated, which is why it does not share `shipping` and `tax`'s meaning.
+   */
+  fee: Money | null;
 }
 
 export interface CommitmentTranslation {
@@ -62,6 +79,13 @@ export interface CommitmentTranslation {
   today: Money;
   /** Every charge the commitment adds up to. */
   acrossTerm: Money;
+  /**
+   * What each repeat after today costs — the same as `today` when nothing is
+   * charged once up front. It is the figure a "next charge" is, and the reason
+   * it is computed here rather than at a render site is that two callers had
+   * already written the same arithmetic twice.
+   */
+  perPeriod: Money;
   /** `null` means the seller has not published this. Never zero. */
   exit: Money | null;
   breakdown: CommitmentBreakdown;

@@ -171,13 +171,23 @@ describe("GET /api/receipt/:id/calendar", () => {
   });
 
   it("returns a calendar entry for the next charge", async () => {
+    // The reminder is for one period, so the amount comes from the plan's terms
+    // rather than from what the first charge happened to be — a plan with a
+    // setup fee takes more on day one than on every month after it.
     vi.mocked(retrieveSubscription).mockResolvedValueOnce({
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
       statusChangeTime: null,
       amount: money(1200),
-      terms: null,
+      terms: {
+        shape: "recurring",
+        itemPrice: money(1200),
+        shipping: money(0),
+        tax: money(0),
+        recurrence: { count: 12, period: "month" },
+        exit: { kind: "unknown" },
+      },
     });
 
     const response = await calendarGET(request(), {
@@ -187,6 +197,35 @@ describe("GET /api/receipt/:id/calendar", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toContain("text/calendar");
     expect(await response.text()).toContain("DTSTART:20261207T000000Z");
+  });
+
+  it("reminds the shopper of one period, not of the fee taken once", async () => {
+    // A plan with a setup fee charges $165.00 on day one and $105.00 thereafter.
+    // Repeating what was charged today would overstate every month after it.
+    vi.mocked(retrieveSubscription).mockResolvedValueOnce({
+      id: "I-SUB-1",
+      status: "ACTIVE",
+      nextBillingTime: "2026-12-07T00:00:00Z",
+      statusChangeTime: null,
+      amount: money(16500),
+      terms: {
+        shape: "recurring",
+        itemPrice: money(10500),
+        shipping: money(0),
+        tax: money(0),
+        recurrence: { count: 12, period: "month" },
+        openingFee: money(6000),
+        exit: { kind: "unknown" },
+      },
+    });
+
+    const response = await calendarGET(request(), {
+      params: Promise.resolve({ orderId: "I-SUB-1" }),
+    });
+
+    const calendar = await response.text();
+    expect(calendar).toContain("$105.00");
+    expect(calendar).not.toContain("$165.00");
   });
 
   it("refuses when PayPal has not set a date", async () => {

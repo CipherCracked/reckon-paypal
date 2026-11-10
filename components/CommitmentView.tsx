@@ -161,6 +161,16 @@ export function CommitmentView({
             <dd>{formatMoney(breakdown.tax)}</dd>
           </div>
         )}
+        {/* The opening fee gets a row, because without one the rows above add
+            up to less than the figure they are under. Its name is not the
+            seller's ("origination", "joining", "setup"), so it is described
+            rather than quoted. */}
+        {breakdown.fee === null || breakdown.fee.minor === 0 ? null : (
+          <div>
+            <dt>Fee taken once</dt>
+            <dd>{formatMoney(breakdown.fee)}</dd>
+          </div>
+        )}
       </dl>
 
       <p className="commitment-source">

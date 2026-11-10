@@ -22,7 +22,7 @@ describe("the comparison document", () => {
     expect(document).toContain(
       "> 0% APR over 12 months: 12 payments of $105.00, plus a $60.00 origination fee.",
     );
-    expect(document).toContain("Across the term: $1,320.00 — 12 × $105.00 + $60.00 fee");
+    expect(document).toContain("Across the term: $1,320.00 — 12 × $105.00 + $60.00 taken once");
   });
 
   it("counts what the seller wrote rather than calling it nothing", () => {

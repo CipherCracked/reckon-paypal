@@ -67,9 +67,9 @@ Schedule: 12 payments of $12.00, one a month — today's is the first of the 12.
 
 **The shopper reads**
 
-- Across the term: $1,320.00 — 12 × $105.00 + $60.00 fee
+- Across the term: $1,320.00 — 12 × $105.00 + $60.00 taken once
 - Cost to leave: Not stated
-- Charged today: $105.00 — 1 of 12 payments
+- Charged today: $165.00 — 1 of 12 payments, plus $60.00 taken once
 
 | Measure | Seller's copy | This screen |
 |---|---|---|
@@ -78,9 +78,9 @@ Schedule: 12 payments of $12.00, one a month — today's is the first of the 12.
 | Times the cost across the term appears | 0 | 1 |
 | Reading level (Flesch–Kincaid) | 0.1 | 0 |
 
-Rendered as one line: Across the term: $1,320.00 (12 × $105.00 + $60.00 fee); Cost to leave: not stated; Charged today: $105.00 (1 of 12 payments).
+Rendered as one line: Across the term: $1,320.00 (12 × $105.00 + $60.00 taken once); Cost to leave: not stated; Charged today: $165.00 (1 of 12 payments, plus $60.00 taken once).
 
-Schedule: 12 payments of $105.00, one a month — today's is the first of the 12. What happens if a payment is missed is not stated on this screen.
+Schedule: 12 payments of $105.00, one a month — today's is the first of the 12, plus $60.00 taken once. What happens if a payment is missed is not stated on this screen.
 
 ---
 

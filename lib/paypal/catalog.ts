@@ -72,6 +72,10 @@ function periodOf(unit: string | undefined): BillingPeriod | null {
  * price, no readable interval, or a cadence this product cannot show — an
  * approximation here would be a figure nobody published.
  *
+ * The opening fee is read from `payment_preferences.setup_fee`, because that is
+ * the charge PayPal takes when the plan starts. A reader that skipped it would
+ * report a term total $60.00 below the one the plan actually collects.
+ *
  * The exit term is always `unknown`: PayPal has no field for what it costs to
  * leave (IPD 19), so a plan cannot answer the third figure.
  */
@@ -85,12 +89,15 @@ export function termsFromPlan(plan: PayPalPlan): CommitmentTerms | null {
   const count = cycle.total_cycles && cycle.total_cycles > 0 ? cycle.total_cycles : null;
   if (count === null) return null;
 
+  const setupFee = priceOf(plan.payment_preferences?.setup_fee);
+
   return {
     shape: "recurring",
     itemPrice: price,
     shipping: money(0),
     tax: money(0),
     recurrence: { count, period },
+    ...(setupFee && setupFee.minor > 0 ? { openingFee: setupFee } : {}),
     exit: { kind: "unknown" },
   };
 }

@@ -30,17 +30,19 @@ describe("describeSchedule", () => {
     expect(schedule).toContain("first of the 12");
   });
 
-  it("states what it does not know about a missed payment", () => {
+  it("states what it does not know about a missed payment, and names the opening fee", () => {
     const schedule = describeSchedule({
       shape: "financed",
       itemPrice: money(120000),
       shipping: money(0),
       tax: money(0),
-      installment: { count: 12, amount: money(10500), fee: money(6000) },
+      installment: { count: 12, amount: money(10500) },
+      openingFee: money(6000),
       exit: { kind: "unknown" },
     });
 
     expect(schedule).toContain("12 payments of $105.00");
+    expect(schedule).toContain("plus $60.00 taken once");
     expect(schedule).toContain("not stated");
   });
 

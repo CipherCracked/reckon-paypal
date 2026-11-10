@@ -1,4 +1,5 @@
 import { findProduct } from "@/lib/catalog/products";
+import { computeCommitment } from "@/lib/commitment/compute";
 import { formatMoney } from "@/lib/money";
 import { buildCalendar } from "@/lib/receipt/calendar";
 import { isSettled, retrieveSubscription } from "@/lib/paypal/retrieve";
@@ -12,7 +13,9 @@ export async function GET(request: Request, context: RouteContext) {
   const slug = new URL(request.url).searchParams.get("slug");
   const product = slug ? findProduct(slug) : undefined;
 
-  if (!product || product.terms.shape !== "recurring") {
+  // A financed purchase is scheduled monthly too, so it has a next charge.
+  // Anything paid once has none.
+  if (!product || product.terms.shape === "one_time") {
     return new Response("This purchase has no next charge to remind you about.", { status: 404 });
   }
 
@@ -23,14 +26,17 @@ export async function GET(request: Request, context: RouteContext) {
       return new Response("PayPal has not set a date for the next charge yet.", { status: 404 });
     }
 
-    // A calendar entry is a reminder about a date, not a licence to supply an
-    // amount PayPal never stated. The catalogue's figure is the one being
-    // replaced here, so filling it back in would be the same lie in a file.
-    if (!subscription.amount) {
+    // One period, not what was charged at the start: the opening fee is taken
+    // once, and a reminder that added it again would overstate every later
+    // charge. A plan PayPal would not state leaves the amount unstated rather
+    // than filled in from the catalogue.
+    const amount = subscription.terms
+      ? computeCommitment(subscription.terms).perPeriod
+      : null;
+
+    if (!amount) {
       return new Response("PayPal has not stated the amount of the next charge.", { status: 404 });
     }
-
-    const amount = subscription.amount;
 
     const calendar = buildCalendar({
       title: `${product.name} — payment due`,

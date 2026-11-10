@@ -25,6 +25,7 @@ describe("computeCommitment — one time", () => {
       item: money(4799),
       shipping: money(695),
       tax: money(401),
+      fee: null,
     });
   });
 });
@@ -43,7 +44,8 @@ const financed: CommitmentTerms = {
   itemPrice: money(120000),
   shipping: money(0),
   tax: money(0),
-  installment: { count: 12, amount: money(10500), fee: money(6000) },
+  installment: { count: 12, amount: money(10500) },
+  openingFee: money(6000),
   exit: { kind: "unknown" },
 };
 
@@ -54,22 +56,33 @@ describe("computeCommitment — recurring and financed", () => {
     expect(t.acrossTerm.minor).toBe(14400);
   });
 
-  it("sums instalments and the financing fee", () => {
+  it("sums instalments and the opening fee, and takes the fee on the first day", () => {
+    // The seller's word is "plus a $60.00 origination fee", and PayPal collects
+    // it with the first instalment — so it is in today's charge, not only in the
+    // term total. A screen that said $105.00 charged today would be $60.00 short
+    // of what leaves the account.
     const t = computeCommitment(financed);
-    expect(t.today.minor).toBe(10500);
+    expect(t.today.minor).toBe(16500);
     expect(t.acrossTerm.minor).toBe(132000);
+    expect(t.perPeriod.minor).toBe(10500);
+  });
+
+  it("counts the opening fee once, never once per period", () => {
+    const t = computeCommitment(financed);
+    expect(t.acrossTerm.minor).toBe(12 * 10500 + 6000);
   });
 
   it("shows what makes up today's charge, not the cash price", () => {
-    // The three rows are read as the parts of the charge. On a financed
-    // purchase today is one instalment, so the cash price does not belong
-    // there — it produced $1,200.00 under a $1,320.00 total and a $105.00
-    // charge, three numbers no reader could reconcile.
+    // The rows are read as the parts of the charge. On a financed purchase today
+    // is one instalment plus the fee, so the cash price does not belong there —
+    // it produced $1,200.00 under a $1,320.00 total and a $105.00 charge, three
+    // numbers no reader could reconcile.
     const t = computeCommitment(financed);
     expect(t.breakdown).toEqual({
       item: money(10500),
       shipping: money(0),
       tax: money(0),
+      fee: money(6000),
     });
   });
 
@@ -80,9 +93,31 @@ describe("computeCommitment — recurring and financed", () => {
     for (const terms of [oneTime, recurring, financed]) {
       const t = computeCommitment(terms);
       const sum =
-        t.breakdown.item.minor + (t.breakdown.shipping?.minor ?? 0) + (t.breakdown.tax?.minor ?? 0);
+        t.breakdown.item.minor +
+        (t.breakdown.shipping?.minor ?? 0) +
+        (t.breakdown.tax?.minor ?? 0) +
+        (t.breakdown.fee?.minor ?? 0);
       expect(sum).toBe(t.today.minor);
     }
+  });
+
+  it("gives a plan's opening fee the same arithmetic as an instalment's", () => {
+    // PayPal holds the fee as a plan's `setup_fee`, so the shape it comes back
+    // as is a recurring one. Same two figures, arrived at from the other side.
+    const planned: CommitmentTerms = {
+      shape: "recurring",
+      itemPrice: money(10500),
+      shipping: money(0),
+      tax: money(0),
+      recurrence: { count: 12, period: "month" },
+      openingFee: money(6000),
+      exit: { kind: "unknown" },
+    };
+
+    const t = computeCommitment(planned);
+    expect(t.today.minor).toBe(16500);
+    expect(t.acrossTerm.minor).toBe(132000);
+    expect(t.perPeriod.minor).toBe(10500);
   });
 
   it("returns null exit when terms are unknown", () => {

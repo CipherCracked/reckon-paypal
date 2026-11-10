@@ -39,7 +39,7 @@ export function describeSchedule(
         minor: terms.itemPrice.minor + (terms.tax?.minor ?? 0),
       });
       const first = firstPaymentToday ? ` — today's is the first of the ${count}` : "";
-      return `${count} payments of ${perPeriod}, ${cadence(terms)}${first}. ${notStatedIfMissed()}`;
+      return `${count} payments of ${perPeriod}, ${cadence(terms)}${first}${openingFee(terms)}. ${notStatedIfMissed()}`;
     }
 
     case "financed": {
@@ -48,12 +48,23 @@ export function describeSchedule(
         ? formatMoney(terms.installment.amount)
         : "an unstated amount";
       const first = firstPaymentToday ? ` — today's is the first of the ${count}` : "";
-      return `${count} payments of ${amount}, one a month${first}. ${notStatedIfMissed()}`;
+      return `${count} payments of ${amount}, one a month${first}${openingFee(terms)}. ${notStatedIfMissed()}`;
     }
 
     default:
       return notStated();
   }
+}
+
+/**
+ * ", plus $60.00 taken once" — the opening fee, when the terms state one, so a
+ * schedule that says how many payments there are also says what is charged
+ * before them. A fee nobody mentioned adds nothing.
+ */
+function openingFee(terms: CommitmentTerms): string {
+  const fee = terms.openingFee;
+  if (!fee || fee.minor === 0) return "";
+  return `, plus ${formatMoney(fee)} taken once`;
 }
 
 function notStatedIfMissed(): string {

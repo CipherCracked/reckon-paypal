@@ -36,7 +36,8 @@ const financed: CommitmentTerms = {
   itemPrice: money(120000),
   shipping: money(0),
   tax: money(0),
-  installment: { count: 12, amount: money(10500), fee: money(6000) },
+  installment: { count: 12, amount: money(10500) },
+  openingFee: money(6000),
   exit: { kind: "unknown" },
 };
 
@@ -74,11 +75,28 @@ describe("presentFigures", () => {
     expect(figures.acrossTerm.arithmetic).toBe("12 × $11.00 + $5.00 shipping once");
   });
 
-  it("shows a financed commitment as instalments plus the fee", () => {
+  it("shows a financed commitment as instalments plus the fee, and puts the fee in today", () => {
     const figures = byId(financed);
 
-    expect(figures.acrossTerm.arithmetic).toBe("12 × $105.00 + $60.00 fee");
-    expect(figures.today.arithmetic).toBe("1 of 12 payments");
+    expect(figures.acrossTerm.arithmetic).toBe("12 × $105.00 + $60.00 taken once");
+    // The fee is charged with the first instalment, so today's line has to
+    // account for it — otherwise $165.00 sits over a line that adds to $105.00.
+    expect(figures.today.arithmetic).toBe("1 of 12 payments, plus $60.00 taken once");
+  });
+
+  it("puts a plan's opening fee in today's line as well", () => {
+    const figures = byId({
+      shape: "recurring",
+      itemPrice: money(10500),
+      shipping: money(0),
+      tax: money(0),
+      recurrence: { count: 12, period: "month" },
+      openingFee: money(6000),
+      exit: { kind: "unknown" },
+    });
+
+    expect(figures.acrossTerm.arithmetic).toBe("12 × $105.00 + $60.00 taken once");
+    expect(figures.today.arithmetic).toBe("$105.00, plus $60.00 taken once");
   });
 
   it("never restates a figure — every amount is the computed one", () => {

@@ -84,13 +84,13 @@ cancelled still produces its record, with what was paid and a dated statement of
 ## How it is built
 
 - **PayPal** is where the money moves, and the only place it moves. Orders API v2 creates and
-  captures the one-time purchase and the first payment of the financed example — the remaining
-  eleven payments are not scheduled at PayPal, and the checkout charges only what is due today.
-  Subscriptions v1 with Billing Plans carries the recurring product and, where a product id is
-  configured, holds the price and term the screen reads; Invoicing v2 creates and sends the bill.
-  All three have been exercised in the sandbox on their create, read and capture/approve paths; the
-  subscription **cancel** request has been checked on its error path only, because its success path
-  needs a buyer-approved subscription.
+  captures the one-time purchase. Subscriptions v1 with Billing Plans carries the recurring product
+  **and the financed one**: a financed purchase becomes a plan of twelve monthly charges with the
+  origination fee as its `setup_fee`, so PayPal holds the schedule the screen promises rather than
+  just today's instalment. The plan's price and term are read back from PayPal wherever a screen
+  shows them; Invoicing v2 creates and sends the bill. All three have been exercised in the sandbox
+  on their create, read and capture/approve paths; the subscription **cancel** request has been
+  checked on its error path only, because its success path needs a buyer-approved subscription.
 - **Deterministic code** does the arithmetic and the projection to the screen.
 - **The language model** reads merchant copy and documents and returns labels, one plain summary,
   or quotations. `lib/ai/guard.ts` rejects any figure-shaped string it writes.

@@ -10,18 +10,27 @@ export type EnsurePlanInput = {
   interval: "MONTH" | "YEAR";
   /** How many charges the term has. The plan must end when the screen says it does. */
   totalCycles: number;
+  /**
+   * A charge taken once when the plan starts, on top of the first period. PayPal
+   * calls it `setup_fee` and collects it at activation, which is exactly what a
+   * screen showing "charged today" must be able to say.
+   */
+  setupFee?: Money | null;
 };
 
 export type Subscription = { id: string; status: string; approveUrl: string | null };
 
 /**
- * The plan's name carries its cycle count. A PayPal plan is immutable once
- * created, and a repeat run resolves to the plan it made last time by name —
- * so a name that did not state the term would keep handing back an open-ended
- * plan after the screen had learned to promise an end.
+ * The plan's name carries its cycle count and its opening fee. A PayPal plan is
+ * immutable once created, and a repeat run resolves to the plan it made last
+ * time by name — so a name that did not state the term would keep handing back
+ * an open-ended plan after the screen had learned to promise an end, and one
+ * that did not state the fee would hand back a plan that charges $60.00 less
+ * than the screen says it will.
  */
-function planName(planId: string, totalCycles: number): string {
-  return `Commitment demo plan ${planId} ${totalCycles}x`;
+function planName(planId: string, totalCycles: number, setupFee: Money | null | undefined): string {
+  const fee = setupFee && setupFee.minor > 0 ? ` +${toPayPalAmount(setupFee).value}` : "";
+  return `Commitment demo plan ${planId} ${totalCycles}x${fee}`;
 }
 
 function isDuplicate(error: unknown): boolean {
@@ -41,13 +50,16 @@ async function findExistingPlan(
   productId: string,
   planId: string,
   totalCycles: number,
+  setupFee: Money | null | undefined,
 ): Promise<string> {
   const list = await paypalRequest<{ plans?: Array<{ id: string; name?: string }> }>(
     `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20&page=1`,
     { method: "GET" },
   );
 
-  const match = list.plans?.find((plan) => plan.name === planName(planId, totalCycles));
+  const match = list.plans?.find(
+    (plan) => plan.name === planName(planId, totalCycles, setupFee),
+  );
   if (!match) {
     throw new Error("PayPal reports the plan exists, but it could not be found.");
   }
@@ -92,7 +104,7 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
       method: "POST",
       body: JSON.stringify({
         product_id: product.id,
-        name: planName(input.planId, input.totalCycles),
+        name: planName(input.planId, input.totalCycles, input.setupFee),
         status: "ACTIVE",
         billing_cycles: [
           {
@@ -106,6 +118,12 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
         payment_preferences: {
           auto_bill_outstanding: true,
           payment_failure_threshold: 1,
+          // The opening fee, so PayPal collects the same figure the screen
+          // showed as charged today. Omitted rather than sent as "0.00": a plan
+          // with no setup fee says nothing, and a zero is a claim.
+          ...(input.setupFee && input.setupFee.minor > 0
+            ? { setup_fee: toPayPalAmount(input.setupFee) }
+            : {}),
         },
       }),
     });
@@ -113,7 +131,7 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     return plan.id;
   } catch (error) {
     if (isDuplicate(error)) {
-      return findExistingPlan(product.id, input.planId, input.totalCycles);
+      return findExistingPlan(product.id, input.planId, input.totalCycles, input.setupFee);
     }
     throw error;
   }

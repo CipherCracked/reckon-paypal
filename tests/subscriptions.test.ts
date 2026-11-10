@@ -133,6 +133,54 @@ describe("ensurePlan", () => {
     expect(planRequest).not.toHaveProperty("id");
     expect(planRequest.product_id).toBe("PROD-1");
   });
+
+  it("takes an opening fee through PayPal's setup fee, which it charges at activation", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan({ ...planInput, setupFee: money(6000) });
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.payment_preferences.setup_fee).toEqual({
+      currency_code: "USD",
+      value: "60.00",
+    });
+  });
+
+  it("says nothing about a fee when there is none, rather than saying zero", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan({ ...planInput, setupFee: money(0) });
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.payment_preferences).not.toHaveProperty("setup_fee");
+  });
+
+  it("names the plan after its term and its fee, in the plan's own language", async () => {
+    // A repeated run finds the plan it made last time by this exact name. One
+    // that spelled the fee as a raw object would never match — and would show
+    // "[object Object]" to anyone reading the plan in PayPal's dashboard.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await ensurePlan({ ...planInput, setupFee: money(6000) });
+
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.name).toBe("Commitment demo plan P-DEMO-COFFEE-MONTHLY 12x +60.00");
+  });
 });
 
 describe("createSubscription", () => {
@@ -296,5 +344,40 @@ describe("POST /api/paypal/subscriptions", () => {
 
     const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
     expect(planRequest.billing_cycles[0].total_cycles).toBe(12);
+  });
+
+  it("schedules a financed purchase as twelve instalments plus the fee, not one charge", async () => {
+    // The screen promises 12 × $105.00 and a $60.00 fee taken once. This is the
+    // only thing that makes that promise true: PayPal's own schedule of charges.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }))
+      .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "mattress-financed" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.billing_cycles[0].total_cycles).toBe(12);
+    expect(planRequest.billing_cycles[0].frequency).toEqual({
+      interval_unit: "MONTH",
+      interval_count: 1,
+    });
+    expect(planRequest.billing_cycles[0].pricing_scheme.fixed_price).toEqual({
+      currency_code: "USD",
+      value: "105.00",
+    });
+    expect(planRequest.payment_preferences.setup_fee).toEqual({
+      currency_code: "USD",
+      value: "60.00",
+    });
   });
 });

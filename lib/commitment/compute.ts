@@ -45,19 +45,24 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
     item: terms.itemPrice,
     shipping: terms.shipping,
     tax: terms.tax,
+    fee: terms.openingFee ?? null,
   };
   const unstated = unstatedParts(terms);
   const exit = translateExit(terms.exit);
+  // Charged once, whenever the commitment starts — so it is in today's charge
+  // and in the term total exactly once, whatever the shape.
+  const fee = stated(terms.openingFee ?? null);
 
   switch (terms.shape) {
     case "one_time": {
       const today = addMoney(
-        addMoney(terms.itemPrice, stated(terms.shipping)),
-        stated(terms.tax),
+        addMoney(addMoney(terms.itemPrice, stated(terms.shipping)), stated(terms.tax)),
+        fee,
       );
       return {
         today,
         acrossTerm: today,
+        perPeriod: today,
         exit,
         breakdown,
         unstated,
@@ -71,15 +76,12 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
       }
       assertRepeats(recurrence.count, "Recurrence count");
 
-      const today = addMoney(
-        addMoney(terms.itemPrice, stated(terms.shipping)),
-        stated(terms.tax),
-      );
       // Shipping is charged once; the item and its tax repeat every period.
       const perPeriod = addMoney(terms.itemPrice, stated(terms.tax));
+      const today = addMoney(addMoney(perPeriod, stated(terms.shipping)), fee);
       const acrossTerm = addMoney(today, multiplyMoney(perPeriod, recurrence.count - 1));
 
-      return { today, acrossTerm, exit, breakdown, unstated };
+      return { today, acrossTerm, perPeriod, exit, breakdown, unstated };
     }
 
     case "financed": {
@@ -89,26 +91,35 @@ export function computeCommitment(terms: CommitmentTerms): CommitmentTranslation
       }
       assertRepeats(installment.count, "Instalment count");
 
-      const today = installment.amount;
+      // An opening fee is taken with the first instalment, not spread across
+      // the term: that is what "plus a $60.00 origination fee" means, and it is
+      // how PayPal collects a plan's `setup_fee`. So it is in today's charge.
+      const today = addMoney(installment.amount, fee);
       const acrossTerm = addMoney(
         multiplyMoney(installment.amount, installment.count),
-        installment.fee,
+        fee,
       );
 
-      // The three rows explain *today's* charge on every other shape, so they
-      // have to here too: today is one instalment and nothing else. The cash
-      // price is not a part of it, and the origination fee is in the term total
-      // rather than in what leaves the account now. Showing the cash price here
-      // put $1,200.00 under a $1,320.00 total and a $105.00 charge — three
-      // numbers a reader could not reconcile, on a screen that exists to let
-      // them be reconciled.
-      const breakdown = {
+      // The rows explain *today's* charge on every other shape, so they do
+      // here too: one instalment plus the opening fee, and the cash price is
+      // not a part of it. Showing the cash price here put $1,200.00 under a
+      // $1,320.00 total and a $105.00 charge — three numbers a reader could not
+      // reconcile, on a screen that exists to let them be reconciled.
+      const financedBreakdown = {
         item: installment.amount,
         shipping: zeroMoney(),
         tax: zeroMoney(),
+        fee: terms.openingFee ?? null,
       };
 
-      return { today, acrossTerm, exit, breakdown, unstated };
+      return {
+        today,
+        acrossTerm,
+        perPeriod: installment.amount,
+        exit,
+        breakdown: financedBreakdown,
+        unstated,
+      };
     }
 
     default:

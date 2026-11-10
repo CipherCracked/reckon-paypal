@@ -52,7 +52,12 @@ export const products: Product[] = [
       itemPrice: money(120000),
       shipping: money(0),
       tax: money(0),
-      installment: { count: 12, amount: money(10500), fee: money(6000) },
+      installment: { count: 12, amount: money(10500) },
+      // The seller's word is "plus": the fee is taken once, on top of the twelve
+      // instalments — which is how PayPal will collect it, as the plan's
+      // `setup_fee`. So it is in today's charge ($105.00 + $60.00 = $165.00) and
+      // in the term total exactly once ($1,320.00).
+      openingFee: money(6000),
       exit: { kind: "unknown" },
     },
   },

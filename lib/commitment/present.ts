@@ -93,11 +93,20 @@ function withUnstated(arithmetic: string | null, unstated: UnstatedPart[]): stri
   return arithmetic ? `${arithmetic}, plus ${missing}` : missing;
 }
 
+/** ", plus $60.00 taken once" — the opening fee, when the terms state one. */
+function openingFeeText(terms: CommitmentTerms): string | null {
+  const fee = terms.openingFee;
+  if (!fee || isZero(fee)) return null;
+  return `${formatMoney(fee)} taken once`;
+}
+
 function acrossTermArithmetic(
   terms: CommitmentTerms,
   extra: string,
   unstated: UnstatedPart[],
 ): string | null {
+  const fee = openingFeeText(terms);
+
   switch (terms.shape) {
     case "one_time": {
       // A stated one-off charge needs no arithmetic — the figure is the charge.
@@ -119,20 +128,17 @@ function acrossTermArithmetic(
       });
       const repeated = `${terms.recurrence.count} × ${perPeriod}`;
       const shipping = terms.shipping;
-      const line =
+      const withShipping =
         shipping === null || isZero(shipping)
           ? repeated
           : `${repeated} + ${formatMoney(shipping)} ${extra}`;
-      return withUnstated(line, unstated);
+      return withUnstated(fee ? `${withShipping} + ${fee}` : withShipping, unstated);
     }
 
     case "financed": {
       if (!terms.installment) return null;
       const repeated = `${terms.installment.count} × ${formatMoney(terms.installment.amount)}`;
-      const line = isZero(terms.installment.fee)
-        ? repeated
-        : `${repeated} + ${formatMoney(terms.installment.fee)} fee`;
-      return withUnstated(line, unstated);
+      return withUnstated(fee ? `${repeated} + ${fee}` : repeated, unstated);
     }
 
     default:
@@ -141,11 +147,16 @@ function acrossTermArithmetic(
 }
 
 function todayArithmetic(terms: CommitmentTerms, unstated: UnstatedPart[]): string | null {
+  const fee = openingFeeText(terms);
+
   if (terms.shape === "financed") {
     if (!terms.installment) return null;
-    return `1 of ${terms.installment.count} payments`;
+    const base = `1 of ${terms.installment.count} payments`;
+    return fee ? `${base}, plus ${fee}` : base;
   }
-  return withUnstated(sumOfParts(terms), unstated);
+
+  const base = withUnstated(sumOfParts(terms), unstated);
+  return fee ? (base ? `${base}, plus ${fee}` : fee) : base;
 }
 
 /**

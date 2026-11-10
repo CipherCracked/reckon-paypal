@@ -27,11 +27,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unknown product." }, { status: 404 });
   }
 
-  // A repeating commitment is a subscription, not an order: capturing it as a
-  // one-time payment would charge one period and call it the whole term.
-  if (product.terms.shape === "recurring") {
+  // A commitment paid over time is a subscription, not an order: capturing it
+  // as a one-time payment would charge one period and call it the whole term.
+  // A financed purchase is the case that used to slip through here — the screen
+  // said twelve payments and PayPal was asked for the first one only.
+  if (product.terms.shape !== "one_time") {
     return Response.json(
-      { error: "This product is paid over a repeating term and needs a subscription." },
+      {
+        error:
+          product.terms.shape === "financed"
+            ? "This product is paid in instalments and needs a payment plan."
+            : "This product is paid over a repeating term and needs a subscription.",
+      },
       { status: 400 },
     );
   }

@@ -110,29 +110,27 @@ claiming a category while shipping a feature.
 Questions raised during review and deliberately not answered, because changing a
 figure without deciding what it means is how a screen starts lying.
 
-- [ ] **Is the mattress origination fee inside the twelve payments or beside
+- [x] **Is the mattress origination fee inside the twelve payments or beside
       them?** The seller writes: *"12 payments of $105.00, plus a $60.00
-      origination fee."* The screen shows **across the term $1,320.00** and
-      **charged today $105.00**, which reconcile one way: 12 × $105.00 =
-      $1,260.00, plus the $60.00 fee = $1,320.00. But $1,260.00 is also exactly
-      $1,200.00 (the cash price, `itemPrice`) + $60.00, so there is a second
-      reading in which the fee is *already inside* the instalments and
-      `acrossTerm` counts it twice. The seller's "plus" supports the first
-      reading and the numbers support the second; nothing on the page settles it.
-      **Deciding it needs** a decision doc, not an edit: which reading the
-      catalogue encodes (`installment.fee` semantics), and what `acrossTerm`
-      means for a financed plan in general. Until then the screen shows the
-      arithmetic it can defend — the instalments it was given, plus the fee it
-      was told about — and `lib/commitment/compute.ts` is unchanged.
+      origination fee."* The screen showed **across the term $1,320.00** and
+      **charged today $105.00**. **Settled 2026-11-10 by deciding what PayPal
+      charges**: the fee is the plan's `setup_fee`, taken once at activation on
+      top of the first instalment, so it is beside the twelve payments — in
+      today's charge ($165.00) and in the term total exactly once ($1,320.00).
+      The catalogue encodes it as `terms.openingFee`; the itemisation has a
+      "Fee taken once" row so the parts still sum to the figure above them.
+      Reasoning and rejection of the alternatives: ITD 2 in
+      `docs/accessible-commerce-companion/itds/paypal-integration.md`.
 
-- [ ] **Does the financed purchase actually finance anything?** The screen promises
-      twelve payments, but the order path sends one `CAPTURE` order for today's
-      instalment (`app/api/paypal/orders/route.ts:32` only rejects `recurring`). So
-      PayPal collects payment one and nothing schedules payments two to twelve. A
-      judge who notices will read the twelve-payment figure as staging. Decide whether
-      that is an honestly-labelled demonstration, or whether the plan should be created
-      at PayPal as a subscription with twelve cycles. This is a decision doc, not an
-      edit — it changes what "across the term" is backed by.
+- [x] **Does the financed purchase actually finance anything?** It did not: the
+      order path sent one `CAPTURE` order for today's instalment, so nothing
+      scheduled payments two to twelve. **Fixed 2026-11-10** — a financed
+      purchase is now a PayPal billing plan (twelve `REGULAR` cycles at the
+      instalment amount plus a `setup_fee`), the order route refuses anything
+      that is not paid once, and the receipt reads the schedule back from
+      PayPal. Verified live in the sandbox: plan `P-3E837483AP118242UNLZRRNQ`,
+      12 × $105.00 monthly, `setup_fee` $60.00. Decision: ITD 2,
+      `docs/accessible-commerce-companion/itds/paypal-integration.md`.
 
 ## 7. Review findings — judge pass (2026-11-10)
 
@@ -231,7 +229,9 @@ Four layers, worst first:
 4. **The commitment.** The mattress claims twelve payments, but
    `app/api/paypal/orders/route.ts:32` sends a single `CAPTURE` order for today's
    instalment and nothing schedules the other eleven. The commitment being explained
-   is not the commitment PayPal holds.
+   is not the commitment PayPal holds. **Fixed 2026-11-10** — the order route now
+   refuses any shape that is not paid once, and a financed purchase is created as a
+   billing plan of twelve cycles (ITD 2, `todo.md` §6).
 
 - [ ] **Strip the self-explanation from the entry.** One sentence naming the product
       and its readers; provenance belongs in the line under the figures, where it
@@ -449,16 +449,20 @@ actually working.
 - [x] `README.md` overclaims in three more places: "Every figure names the source it
       was read from"; "The model may only quote" (the summary is free prose); "Orders
       API v2 creates and captures … financed purchases." **Fixed 2026-11-10** — the
-      README now says each figure carries its sentence *or* its arithmetic, that the
-      model's one prose output is a guarded summary, and that only the first payment of
-      the financed example is charged.
+      README now says each figure carries its sentence *or* its arithmetic, and that the
+      model's one prose output is a guarded summary. **Superseded 2026-11-10:** the
+      README also said only the first payment of the financed example is charged, which
+      is no longer true — a financed purchase is a twelve-cycle PayPal plan now (ITD 2).
 
 ### 10d. The reviewer's one cut
 
 **The financed mattress.** It promises 12 payments, shows $1,320.00, and sends a
 single $105.00 order with no schedule for the other eleven. "The one flow I cannot
 make honest in two days, and shipping it is worse than not having it." Cross-ref §6
-and §8a.
+and §8a. **Answered 2026-11-10, by making it honest rather than cutting it:** a
+financed purchase is now a PayPal billing plan — twelve monthly cycles at $105.00
+with the $60.00 fee as its `setup_fee` — so the twelve-payment figure is a schedule
+PayPal holds, and the receipt reads it back from there. See §6 and ITD 2.
 
 ## After these
 

@@ -172,9 +172,12 @@ export function ConsentScreen({
     setPayment({ status: "paying" });
 
     try {
-      // A repeating commitment is approved at PayPal, not captured: capturing
-      // it as an order would charge one period and call it the whole term.
-      if (shape === "recurring") {
+      // A commitment paid over time is approved at PayPal, not captured: it is
+      // a plan, and capturing it as an order would charge one period and call it
+      // the whole term. That covers a repeating term and a financed purchase
+      // alike — both are twelve charges the screen promises and PayPal must
+      // schedule.
+      if (shape === "recurring" || shape === "financed") {
         const response = await fetch("/api/paypal/subscriptions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -193,8 +196,14 @@ export function ConsentScreen({
         setPayment({
           status: "approve",
           url: body.approveUrl,
-          message: "PayPal needs you to approve this repeating payment.",
-          linkLabel: "Approve the subscription with PayPal",
+          message:
+            shape === "financed"
+              ? "PayPal needs you to approve this payment plan."
+              : "PayPal needs you to approve this repeating payment.",
+          linkLabel:
+            shape === "financed"
+              ? "Approve the payment plan with PayPal"
+              : "Approve the subscription with PayPal",
         });
         return;
       }
@@ -347,7 +356,9 @@ export function ConsentScreen({
             ? "Paying…"
             : payload.shape === "recurring"
               ? "Approve subscription with PayPal"
-              : "Pay now"}
+              : payload.shape === "financed"
+                ? "Approve payment plan with PayPal"
+                : "Pay now"}
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 import { fromDecimalString, type Currency, type Money } from "@/lib/money";
+import { computeCommitment } from "@/lib/commitment/compute";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 import { DETAIL_READ_DEADLINE_MS, paypalRequest, withinDeadline } from "./client";
 import { termsFromPlan, type PayPalPlan } from "./catalog";
@@ -30,7 +31,12 @@ export type SubscriptionRecord = {
    * (IPD 23).
    */
   statusChangeTime: string | null;
-  /** The per-period price PayPal holds on the plan, when it holds a usable one. */
+  /**
+   * What PayPal takes when the plan starts: the first period's price plus any
+   * `setup_fee`, which PayPal collects at activation. Not the per-cycle price
+   * alone — the receipt reconciles "charged today" against this, and a plan with
+   * an opening fee would otherwise look like it charged $60.00 less than it did.
+   */
   amount: Money | null;
   /**
    * The plan's terms as PayPal states them — price, cadence and how many cycles.
@@ -94,7 +100,9 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
     status: subscription.status,
     nextBillingTime: subscription.billing_info?.next_billing_time ?? null,
     statusChangeTime: subscription.status_change_time ?? null,
-    amount: terms?.itemPrice ?? null,
+    // Today's charge as the plan states it, so `setup_fee` is included and the
+    // receipt's agreement check compares like with like.
+    amount: terms ? computeCommitment(terms).today : null,
     terms,
   };
 }
