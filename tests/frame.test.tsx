@@ -78,7 +78,7 @@ describe("the frame", () => {
 
 describe("the journey", () => {
   it("names where the shop's back link goes", async () => {
-    render(await Shop());
+    render(await Shop({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByRole("link", { name: /back to the ways in/i })).toHaveAttribute(
       "href",

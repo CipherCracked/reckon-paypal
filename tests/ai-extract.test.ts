@@ -64,4 +64,28 @@ describe("extractTerms", () => {
       extractTerms({ productText: "Freshly roasted, delivered every month." }),
     ).rejects.toThrow(MoneyInModelOutputError);
   });
+
+  it("keeps one sentence of a summary, which is what it asked for", async () => {
+    callToolMock.mockResolvedValueOnce({
+      ...goodInput,
+      summary:
+        "You pay monthly for one year, and you can cancel any time. Labels are provided as generic placeholders for the three parts of the charge.",
+    });
+
+    const terms = await extractTerms({ productText: "Freshly roasted, delivered every month." });
+
+    expect(terms.summary).toBe("You pay monthly for one year, and you can cancel any time.");
+  });
+
+  it("leaves a blank label blank, so the caller can use its own", async () => {
+    callToolMock.mockResolvedValueOnce({
+      ...goodInput,
+      labels: { item: "  ", shipping: "Shipping", tax: "Sales tax" },
+    });
+
+    const terms = await extractTerms({ productText: "Freshly roasted, delivered every month." });
+
+    expect(terms.labels.item).toBe("");
+    expect(terms.labels.shipping).toBe("Shipping");
+  });
 });

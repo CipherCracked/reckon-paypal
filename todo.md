@@ -268,27 +268,45 @@ Screens:
   the catalogue path. The subscription/cancel demo keeps **one test plan** at PayPal,
   labelled as a test seller.
 
-Integrity question to settle before building the checkout:
+Integrity question — **settled** (was: what does the buy button do on a real listing?):
 
-- [ ] **What does the buy button do on a real listing?** A merchant buy link (honest:
-      we promise nothing), or a labelled PayPal sandbox checkout at the listed price
-      (shows the full payment flow, but must never look like our sale).
+- A labelled PayPal **sandbox** checkout at the listed price. The button says "Check this
+  purchase", the screen says the demo neither sells nor ships the product and that payments run
+  in PayPal's sandbox, and the retailer links open the shop's own page. The offer being checked is
+  named on the screen ("the cheapest in-stock offer: $179.95 at bhphotovideo.com"), so nothing
+  implies we are the seller.
 
 Actionables:
 
-- [ ] **BLOCKER — the user creates the key** at trychannel3.com/developers and puts it
-      in `.env.local` as `CHANNEL3_API_KEY=…`. Free, no card, 20k credits.
-- [ ] **`lib/market/`** — `search(query)`, `offerSummary(product)`, a 10-minute cache,
-      a timeout matching the PayPal reads, and no vendor SDK.
-- [ ] **`/shop` and `/product/[id]`** built from real data, server-rendered.
-- [ ] **"Other retailers" panel**: the range, the lowest offer, and the difference
-      against the listing being viewed ("$17.99 more, 25%").
-- [ ] **Say what the listing does not contain**: shipping and tax are absent from the
-      offer, so they read *Not stated* rather than being guessed.
-- [ ] **README and judge brief**: real catalogue via Channel3; delete the "curated
-      local catalogue" claims; name Channel3 as the sponsor it is.
-- [ ] **Sponsor requirement met** — "search, product enrichment or recommendations":
-      the shop searches and compares offers.
+- [x] **Key in `.env.local` as `CHANNEL3_API_KEY=…`** — done 2026-11-10; the search and product
+      endpoints both answered 200 against the live API.
+- [x] **`lib/market/channel3.ts`** (2026-11-10) — `searchMarket(query)` and
+      `readMarketProduct(slug)`, a five-minute cache, `DETAIL_READ_DEADLINE_MS` on the read, no
+      vendor SDK. Defensive parsing: an offer without an https link or a USD price that cannot be
+      stated to the cent is dropped, never rounded. `cheapestInStock` chooses what a purchase would
+      use; `marketTerms` turns that offer into one-time terms with shipping, tax and exit stated as
+      absent.
+- [x] **`/shop` and `/product/ch3-…`** built from real data, server-rendered (2026-11-10).
+      `/shop` is a GET search form with a default query and suggestion links; a failure reads as
+      "no key configured" or "could not be reached", never an empty shelf.
+- [x] **"Other retailers" panel** — the product page lists every in-stock offer with its price,
+      the "was" price where the retailer gives one, and the spread between lowest and highest. The
+      shop card says the same in one line.
+- [x] **Say what the listing does not contain** — the cost-to-leave figure carries "Channel3 does
+      not carry cancellation or return terms for this listing", and shipping/tax rows are omitted
+      rather than shown as $0.00 (2026-11-10).
+- [x] **README and judge brief** updated to the live catalogue (2026-11-10); Channel3 is named as
+      the catalogue the shop reads.
+- [x] **Sponsor requirement met** — the shop searches and compares real offers across retailers.
+- [x] **`resolveProduct` reads a market slug from the live catalogue only** (2026-11-10) — it never
+      falls through to the demo file, and both the consent screen and the order route resolve the
+      same slug the same way, so the figure shown and the amount charged come from one read.
+- [ ] **Unverified:** the subscription/cancel demo still uses the invented coffee entry; the
+      financed mattress is untouched. Channel3 carries neither terms nor a schedule, so these stay
+      repository entries until the demo says so plainly.
+- [ ] **Shipping and tax for a market purchase** are zero in the terms because the offer does not
+      state them. The screen omits the rows (a zero row would claim the seller charges nothing).
+      The nullable-tax model is the honest fix and is still open (§9).
 
 The "what this means" panel (unchanged in principle):
 

@@ -67,10 +67,24 @@ const SYSTEM_PROMPT = [
   "You never write a monetary figure: no currency symbol, no currency code followed by a number,",
   "no decimal number. Figures on the screen are produced elsewhere. If the copy contains them,",
   "ignore them and describe the commitment in words only.",
+  "The summary is one sentence addressed to the shopper about what they are taking on.",
+  "Never mention labels, fields, placeholders or this record.",
 ].join(" ");
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
+}
+
+/**
+ * The schema asks for one sentence; a model that writes a paragraph is trimmed
+ * to what it was asked for. The tail of a longer answer tends to be about the
+ * model's own output rather than the shopper's commitment, and a screen must
+ * not show a reader a sentence about the machinery.
+ */
+function firstSentence(text: string): string {
+  const trimmed = text.trim();
+  const end = /[.!?](?=\s|$)/.exec(trimmed);
+  return end ? trimmed.slice(0, end.index + 1) : trimmed;
 }
 
 function asInt(value: unknown): number | null {
@@ -95,11 +109,11 @@ function toExtractedTerms(input: unknown): ExtractedTerms {
     cancellationWindowDays: asInt(raw.cancellationWindowDays),
     exitFeeKnown: raw.exitFeeKnown === true,
     labels: {
-      item: asString(labels.item),
-      shipping: asString(labels.shipping),
-      tax: asString(labels.tax),
+      item: asString(labels.item).trim(),
+      shipping: asString(labels.shipping).trim(),
+      tax: asString(labels.tax).trim(),
     },
-    summary: asString(raw.summary),
+    summary: firstSentence(asString(raw.summary)),
   };
 }
 

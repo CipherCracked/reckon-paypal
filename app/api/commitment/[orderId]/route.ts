@@ -56,13 +56,23 @@ export async function GET(request: Request, context: RouteContext) {
 
   const wording = settled[1].status === "fulfilled" ? settled[1].value : null;
 
+  // A label the model left blank is a label the screen cannot print, so each
+  // part falls back on its own: a blank item label does not cost the shipping
+  // one, and an unreadable model does not cost the product its name.
+  const fallbackLabels = { item: name, shipping: "Shipping", tax: "Sales tax" };
+  const labels = {
+    item: wording?.labels.item || fallbackLabels.item,
+    shipping: wording?.labels.shipping || fallbackLabels.shipping,
+    tax: wording?.labels.tax || fallbackLabels.tax,
+  };
+
   return Response.json({
     orderId,
     shape: terms.shape,
     translation,
     figures,
     schedule,
-    labels: wording?.labels ?? { item: name, shipping: "Shipping", tax: "Sales tax" },
+    labels,
     summary: wording?.summary ?? "",
     sources,
     exitNote: exitOutcome.note,

@@ -887,3 +887,204 @@ html[data-text-scale="larger"] {
   color: var(--ink-muted);
   max-width: 34rem;
 }
+
+/* The live catalogue: a search, its results, and one product's offers. */
+.market-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-5) 0;
+}
+
+.market-search label {
+  font-weight: 600;
+}
+
+.market-search-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.market-search-row input {
+  flex: 1 1 16rem;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.market-list {
+  list-style: none;
+  display: grid;
+  gap: var(--space-3);
+  padding: 0;
+  margin: var(--space-4) 0;
+}
+
+.market-card {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.market-card-link {
+  display: flex;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.market-card-link:hover .market-title,
+.market-card-link:focus-visible .market-title {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.market-thumb {
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
+  background: var(--sunken);
+  border-radius: var(--radius-sm);
+  flex: 0 0 auto;
+}
+
+.market-thumb-empty {
+  display: block;
+  border: 1px dashed var(--line);
+}
+
+.market-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.market-brand {
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-muted);
+}
+
+.market-title {
+  font-weight: 600;
+}
+
+.market-price {
+  font-variant-numeric: tabular-nums;
+}
+
+.market-note {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.market-product {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.market-rating {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.market-hero {
+  display: flex;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.market-hero-image {
+  width: min(320px, 100%);
+  height: auto;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+
+.market-hero-body {
+  flex: 1 1 18rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.market-description {
+  color: var(--ink-muted);
+}
+
+.market-spread {
+  font-weight: 600;
+}
+
+.market-offers {
+  list-style: none;
+  padding: 0;
+  margin: var(--space-3) 0 0;
+  border-top: 1px solid var(--line);
+}
+
+.market-offer {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--line);
+  align-items: baseline;
+}
+
+.market-offer-domain {
+  font-weight: 600;
+}
+
+.market-offer-price {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.market-offer-stock {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+}
+
+.market-open {
+  font-size: var(--text-sm);
+  justify-self: end;
+}
+
+.market-was {
+  color: var(--ink-muted);
+  font-weight: 400;
+  font-size: var(--text-sm);
+}
+
+.market-buy-note {
+  color: var(--ink-muted);
+}
+
+@media (max-width: 30rem) {
+  .market-card-link {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .market-offer {
+    grid-template-columns: 1fr;
+  }
+
+  .market-open {
+    justify-self: start;
+  }
+}

@@ -105,10 +105,13 @@ describe("the front door", () => {
     expect(screen.getByText("A document someone sent you")).toBeInTheDocument();
   });
 
-  it("keeps the shop reachable without making it the product", async () => {
+  it("keeps the live shop reachable without making it the product", async () => {
     render(await Home());
 
-    expect(screen.getByRole("link", { name: /browse the shop/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /search real products/i })).toHaveAttribute(
+      "href",
+      "/shop",
+    );
   });
 });
 

@@ -177,3 +177,22 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
     expect(body.degraded).toBe(false);
   });
 });
+
+describe("the labels the screen prints beside each part", () => {
+  it("fills a label the model left blank rather than printing an empty line", async () => {
+    vi.mocked(extractTerms).mockResolvedValue({
+      labels: { item: "", shipping: "Delivery", tax: "" },
+      summary: "You pay monthly.",
+    } as never);
+
+    const { body } = await get("coffee-subscription");
+
+    // The blank item label becomes the product's name; the one the model did
+    // write is kept as it wrote it.
+    expect(body.labels).toEqual({
+      item: "Coffee Subscription",
+      shipping: "Delivery",
+      tax: "Sales tax",
+    });
+  });
+});

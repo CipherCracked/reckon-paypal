@@ -194,8 +194,8 @@ export default async function Home() {
       </section>
 
       <p className="scope-note">
-        <Link href="/shop">Or browse the shop</Link> — three products, each a different shape of
-        commitment.
+        <Link href="/shop">Or search real products</Link> — live listings and prices from thousands
+        of shops, so the figures are about something you could actually buy.
       </p>
     </div>
   );

@@ -9,16 +9,26 @@ to produce a number.*
 
 ---
 
-### 1. The question (≈20s) — `/`
+### 1. The question, and something real to ask it about (≈35s) — `/` → `/shop`
 
 Open on the home page, not a shop.
 
 > "Every payment asks you to work something out. This shows the answer before you agree to it —
 > same three figures, whichever way the money is asked of you."
 
-Point at the four cards and read the figure printed on each: a purchase ($58.95 today), a
-subscription ($144.00 across the term), a bill ($260.00 owed by a date), a document. Say the point
-plainly: the shop is one of these four, not the product.
+Point at the worked commitment (the seller's words on the left, the three figures on the right) and
+at the three doors beneath it — a purchase, a bill, a document. Say the point plainly: the shop is
+where you find something real to ask the question about, not the product.
+
+Then follow **Or search real products**. Type `headphones` and search.
+
+> "These are live listings — real shops, real prices, and the same product at several of them. This
+> is the one thing a listing can honestly compare: what the same thing costs elsewhere."
+
+Open one product. Show the three figures for the cheapest in-stock offer, then the offers list: the
+retailer names, each price, and the spread between lowest and highest. Note that **cost to leave**
+reads *Not stated*, with the reason printed under it: the catalogue carries no cancellation terms,
+and this screen does not invent them.
 
 ### 2. A subscription, end to end (≈45s) — `/product/coffee-subscription` → consent
 
@@ -44,7 +54,7 @@ Then press "Pay now" and show PayPal's own approval page. Do not complete it yet
 Open it, and show: the due date first, then the three figures, then "Pay this bill at PayPal". Note
 what the page says when the biller published no cancellation terms: **Not stated**, never `$0.00`.
 
-### 4. The numbers are ours (≈20s) — stay on the bill page
+### 4. The numbers are ours (≈15s) — stay on the bill page
 
 Point at the arithmetic line and at the provenance note, which says the figures are the **biller's**
 arithmetic with the total agreeing with PayPal's copy — not that PayPal supplied them.

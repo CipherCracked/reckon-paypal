@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { BackLink } from "@/components/BackLink";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { findProduct } from "@/lib/catalog/products";
+import { isMarketSlug } from "@/lib/market/channel3";
 
 type PageProps = {
   params: Promise<{ orderId: string }>;
@@ -30,11 +31,14 @@ export default async function ConsentPage({ params, searchParams }: PageProps) {
   }
 
   const product = slug ? findProduct(slug) : undefined;
+  const listed = slug && isMarketSlug(slug) ? slug : null;
 
   return (
     <div className="page">
-      <BackLink href={product ? `/product/${product.slug}` : "/"}>
-        {product ? `Back to ${product.name}` : "Back to the ways in"}
+      <BackLink
+        href={product ? `/product/${product.slug}` : listed ? `/product/${listed}` : "/"}
+      >
+        {product ? `Back to ${product.name}` : listed ? "Back to this product" : "Back to the ways in"}
       </BackLink>
 
       <header className="page-header">

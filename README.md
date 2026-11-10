@@ -23,7 +23,10 @@ is clicked — and offers the other three ways in at a second rank.
 | **A bill** | owed by a date | **creates a real PayPal invoice**, then opens the bill page, which re-reads it from PayPal |
 | **A document** | whatever someone sent you | paste the text; three figures, each beside the sentence or arithmetic it came from |
 
-The shop (`/shop`) is one of these four, not the product.
+The shop (`/shop`) is the way in to real products: a search over a live catalogue, with each
+listing's real price, its retailers and the spread between their offers. The demo entries above
+still exist for the commitment shapes the catalogue cannot supply — a repeating term, a bill owed by
+a date, and a pasted document.
 
 Before the payment is taken, every path shows the same three figures, in the order that matters most
 to the decision:
@@ -107,7 +110,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists nine variables — four required, five optional:
+`env.example` lists ten variables — four required, six optional:
 
 | Variable | Purpose |
 |---|---|
@@ -120,6 +123,7 @@ npm run dev
 | `PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION` | Optional. A catalog product id whose billing plan holds the price and term |
 | `PAYPAL_PRODUCT_HEADPHONES` | Optional. Same, for the one-time product |
 | `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
+| `CHANNEL3_API_KEY` | Optional. Server-side key for the live product catalogue behind `/shop` |
 
 The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
 price and term from the plan and says so; with them empty it computes from the published terms in
@@ -182,8 +186,9 @@ See [`docs/demo-script.md`](docs/demo-script.md) for the screens a three-minute 
 
 ## Scope and limits
 
-No accounts, no profiles, no database, no stored session. The demo is USD only. The catalog is a
-curated local file (`lib/catalog/products.ts`, `lib/catalog/bills.ts`) behind a replaceable layer.
+No accounts, no profiles, no database, no stored session. The demo is USD only. The shop searches a
+live product catalogue (Channel3); the three demo entries remain in `lib/catalog/` for the
+commitment shapes the catalogue does not carry, and every screen says which source answered.
 Documents are pasted as text — there is no PDF parsing — and a third-party bill is read, never paid.
 
 The check needs only two things: the amount being charged, and the terms the seller publishes. That

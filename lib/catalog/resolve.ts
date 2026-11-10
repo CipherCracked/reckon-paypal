@@ -1,5 +1,6 @@
 import { findProduct, products, type Product } from "./products";
 import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
+import { cheapestInStock, isMarketSlug, marketTerms, readMarketProduct } from "@/lib/market/channel3";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 
 /**
@@ -76,6 +77,24 @@ export async function resolveProductCard(slug: string): Promise<ResolvedCard | n
  * plan. This is what a screen that shows figures needs and a listing does not.
  */
 export async function resolveProduct(slug: string): Promise<ResolvedProduct | null> {
+  // A slug that names a retail listing is answered by the live catalogue and by
+  // nothing else. Falling through to the demo file would let a real product id
+  // be priced from a constant — the one mismatch this product exists to prevent.
+  if (isMarketSlug(slug)) {
+    const listed = await readMarketProduct(slug);
+    const offer = listed ? cheapestInStock(listed.offers) : null;
+    if (!listed || !offer) return null;
+
+    return {
+      slug,
+      name: listed.title,
+      description: listed.description,
+      terms: marketTerms(offer),
+      sources: { paypal: null, published: `the price Channel3 lists at ${offer.domain}` },
+      descriptionLabel: "the description Channel3 lists for this product",
+    };
+  }
+
   const file = findProduct(slug);
 
   try {
