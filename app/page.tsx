@@ -3,6 +3,7 @@ import Link from "next/link";
 import { CommitmentView } from "@/components/CommitmentView";
 import { MarketSearch } from "@/components/MarketSearch";
 import { Page } from "@/components/Page";
+import { QuotedText } from "@/components/QuotedText";
 import { RecordHome } from "@/components/RecordHome";
 import { SignInCard } from "@/components/SignInCard";
 import { resolveProduct } from "@/lib/catalog/resolve";
@@ -130,20 +131,46 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   const translation = terms ? computeCommitment(terms) : null;
   // The seller's sentence and the figure it produced travel together, so the
   // entry can put them side by side without joining anything up itself (ITD 19).
+  // The term exists because the listing said so in words, so it carries that
+  // sentence the same way the exit figure carries its own (ITD 19). Both spans
+  // are printed beside the paragraph they were cut out of, so a reader can find
+  // them without being told the mechanism (IPD 30).
+  const termSource =
+    subscription?.termQuote
+      ? { label: "the term the listing states", span: subscription.termQuote }
+      : null;
+
   const figures =
     terms && translation
-      ? presentFigures(terms, translation, { sources: { exit: exitOutcome?.quoted ?? null } })
+      ? presentFigures(terms, translation, {
+          sources: { acrossTerm: termSource, exit: exitOutcome?.quoted ?? null },
+        })
       : null;
 
   return (
     <Page
+      wide
       title="What it costs, before you agree to it"
-      lede="Three figures for any commitment — what it costs across the whole term, what it costs to leave, and what is charged today — each with the words it was worked out from. Built for adults who find billing language hard: dyscalculia, ADHD, dyslexia."
+      // The opening is three ranks of information, not one paragraph (IPD 30):
+      // the promise, then who it is for. Both sentences are the ones the page
+      // already carried — the split is what lets the eye find the audience
+      // without reading for it.
+      lede={
+        <>
+          <span>
+            Three figures for any commitment — what it costs across the whole term, what it costs
+            to leave, and what is charged today — each with the words it was worked out from.
+          </span>
+          <span className="audience">
+            Built for adults who find billing language hard: dyscalculia, ADHD, dyslexia.
+          </span>
+        </>
+      }
     >
       {subscription && exitOutcome && terms && translation && figures ? (
         <section className="entry-worked" aria-labelledby="worked-heading">
-          <h2 id="worked-heading" className="eyebrow">
-            {subscription.name} — one commitment, worked through
+          <h2 id="worked-heading" className="entry-caption">
+            {subscription.name} — a real listing, worked through
           </h2>
 
           <div className="entry-pair">
@@ -152,7 +179,17 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
               {subscription.description ? (
                 // The shop's own copy, unedited and attributed. Never restyled into
                 // our voice, because it is evidence, not a summary (IPD 21).
-                <blockquote className="entry-words">{subscription.description}</blockquote>
+                //
+                // Since IPD 30 the span the term was read out of is marked in the
+                // paragraph itself, so the sentence under the figure can be found
+                // by looking rather than by remembering. The text is unchanged:
+                // the mark sits on the merchant's own words.
+                <blockquote className="entry-words">
+                  <QuotedText
+                    text={subscription.description}
+                    spans={[subscription.termQuote, exitOutcome.quoted?.span]}
+                  />
+                </blockquote>
               ) : (
                 <p className="entry-words entry-words-absent">
                   This listing has no description, so this screen has no words of the
@@ -209,8 +246,8 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
           someone deciding whether to trust the page: their own business first
           if they have any, then something new (IPD 28). */}
       <section className="front-doors" aria-labelledby="doors-heading">
-        <h2 id="doors-heading" className="eyebrow">
-          Where to go from here
+        <h2 id="doors-heading" className="entry-caption">
+          Your own, or something new
         </h2>
 
         {canSignIn ? <SignInCard /> : null}

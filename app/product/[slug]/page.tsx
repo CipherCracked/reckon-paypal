@@ -125,8 +125,14 @@ export default async function ProductPage({ params }: PageProps) {
       );
       const stated = { ...terms, exit: exitOutcome.exit };
       const translation = computeCommitment(stated);
+      // The term and, when the merchant states one, the cost to leave each carry
+      // the sentence they were read out of (ITD 19), and the screen marks both
+      // in the description beside them (IPD 30).
       const figures = presentFigures(stated, translation, {
-        sources: { exit: exitOutcome.quoted },
+        sources: {
+          acrossTerm: { label: "the term the listing states", span: term.quote },
+          exit: exitOutcome.quoted,
+        },
         unstatedAt: "checkout",
       });
 
@@ -136,6 +142,7 @@ export default async function ProductPage({ params }: PageProps) {
             slug={slug}
             name={product.title}
             description={product.description}
+            quoteSpans={[term.quote, exitOutcome.quoted?.span]}
             figures={figures}
             breakdown={translation.breakdown}
             schedule={describeSchedule(stated, { unstatedAt: "checkout" })}
@@ -193,6 +200,7 @@ export default async function ProductPage({ params }: PageProps) {
         slug={product.slug}
         name={product.name}
         description={product.description}
+        quoteSpans={[product.termQuote, exitOutcome.quoted?.span]}
         figures={figures}
         breakdown={translation.breakdown}
         schedule={describeSchedule(terms)}

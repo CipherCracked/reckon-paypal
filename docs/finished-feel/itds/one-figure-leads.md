@@ -1,4 +1,6 @@
-# ITD 26 — One Figure Leads, and Wears Its Sentence
+# ITD 26 — One Figure Leads
+
+> **Superseded in part (2026-11-12, IPD 30).** The first figure still leads, and still at display size. What changed is the arrangement around it: the figures are now one ledger at every width — a hairline between rows, the label on the left, the amount on the right edge — rather than a full-width first figure over a two-up grid. The display step also moved into `--text-hero`'s family: `clamp(2.5rem, 1.8rem + 3vw, 3.5rem)` on the first figure, against `clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem)` on the others, with the `data-quoted` trace rule unchanged., and Wears Its Sentence
 
 | ITD 26 — *"Use the first figure's own scale and the seller's rule to make the argument of a commitment card visible before it is read."* |  |
 | :---- | :---- |

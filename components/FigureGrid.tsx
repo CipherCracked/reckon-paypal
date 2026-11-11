@@ -57,22 +57,27 @@ export function FigureGrid({
         >
           <dt>{figure.label}</dt>
           <dd>
+            {/* The amount is its own element so it can be set on the right of
+                its own line (IPD 30). Three amounts in one column, right
+                aligned on one edge, are read as three sizes of the same thing;
+                the arithmetic and the sentence that follow stay on the left,
+                where a paragraph belongs. */}
             {figure.amount === null ? (
               <>
-                Not stated
+                <span className="commitment-amount commitment-amount-absent">Not stated</span>
                 {figureNotes?.[figure.id] ? (
                   <span className="commitment-hint">{figureNotes[figure.id]}</span>
                 ) : null}
               </>
             ) : (
-              // A floor, not a total: the source stated these parts and no
-              // others, so "At least" is the only honest word for it. It is a
-              // word, not a figure, so it is set as one — at display size it
-              // read as a second number.
-              <>
-                {figure.floor ? <span className="commitment-floor">At least </span> : null}
+              <span className="commitment-amount">
+                {/* A floor, not a total: the source stated these parts and no
+                    others, so "At least" is the only honest word for it. It is
+                    a word, not a figure, so it is set as one — at display size
+                    it read as a second number. */}
+                {figure.floor ? <span className="commitment-floor">At least{" "}</span> : null}
                 {formatMoney(figure.amount)}
-              </>
+              </span>
             )}
             {figure.arithmetic ? (
               <span className="commitment-arithmetic">{figure.arithmetic}</span>

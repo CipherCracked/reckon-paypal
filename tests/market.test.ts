@@ -11,7 +11,6 @@ import {
   readMarketProduct,
   searchMarket,
   type MarketOffer,
-  type MarketProduct,
 } from "@/lib/market/channel3";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { money } from "@/lib/money";
@@ -27,19 +26,6 @@ function offer(overrides: Partial<MarketOffer> = {}): MarketOffer {
     price: money(1999),
     compareAt: null,
     availability: "InStock",
-    ...overrides,
-  };
-}
-
-function product(id: string, overrides: Partial<MarketProduct> = {}): MarketProduct {
-  return {
-    id,
-    title: `Product ${id}`,
-    description: "A description.",
-    brand: null,
-    image: null,
-    rating: null,
-    offers: [offer()],
     ...overrides,
   };
 }

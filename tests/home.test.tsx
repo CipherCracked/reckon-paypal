@@ -121,6 +121,21 @@ describe("the front door", () => {
     ).toBeInTheDocument();
   });
 
+  it("marks the seller's sentence in their paragraph, and carries it under the figure", async () => {
+    render(await Home());
+
+    // IPD 30: the term exists because a sentence says it, so the sentence is
+    // marked where the seller wrote it and quoted under the figure it produced.
+    // One mark, one quote — the pairing is seen rather than explained.
+    const marks = Array.from(document.querySelectorAll("mark"));
+    expect(marks).toHaveLength(1);
+    expect(marks[0]).toHaveTextContent("6 month BarkBox plan");
+
+    const term = document.querySelector("[data-figure='acrossTerm']");
+    expect(term).toHaveAttribute("data-quoted", "true");
+    expect(term).toHaveTextContent(/6 month BarkBox plan/i);
+  });
+
   it("carries the one qualification, once, at the foot of the page", async () => {
     render(await Home());
 

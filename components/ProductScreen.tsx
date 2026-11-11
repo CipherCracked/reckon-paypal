@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { CommitmentView } from "@/components/CommitmentView";
+import { QuotedText } from "@/components/QuotedText";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
 
@@ -9,6 +10,8 @@ export type ProductScreenProps = {
   slug: string;
   name: string;
   description: string;
+  /** Spans of `description` that a figure was read out of, marked in place. */
+  quoteSpans?: (string | null | undefined)[];
   /** The three figures, computed by the page from the same terms consent uses. */
   figures: RenderedFigure[];
   breakdown: CommitmentBreakdown;
@@ -24,6 +27,7 @@ export function ProductScreen({
   slug,
   name,
   description,
+  quoteSpans,
   figures,
   breakdown,
   schedule,
@@ -46,7 +50,11 @@ export function ProductScreen({
         <h1>{name}</h1>
       </header>
 
-      <p className="product-copy">{description}</p>
+      {/* The seller's own text, with the spans the figures were read out of
+          marked in it (IPD 30). Unedited: the mark is a mark, not an edit. */}
+      <p className="product-copy">
+        <QuotedText text={description} spans={quoteSpans ?? []} />
+      </p>
 
       {/* The figures come before the button, the same rule as every other
           screen: a page that asks for money and shows no number is the page

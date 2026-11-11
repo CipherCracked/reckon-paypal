@@ -19,6 +19,11 @@
   --accent-ink: #ffffff;
   --focus: #1a4fd6;
   --success: #1c6b46;
+  /* A highlighter, not a second accent (IPD 30): the wash behind the seller's
+     sentence in their paragraph and behind the same sentence under the figure
+     it produced. Desaturated on purpose, so it reads as paper that has been
+     marked rather than as a colour that means something. */
+  --mark: #ded9c4;
 
   /* Type. The text face is drawn for low vision; the figure face is a mono, so
      amounts line up in a column. Both are set on `html` by `next/font`. */
@@ -43,6 +48,10 @@
   --text-lg: 1.625rem;
   --text-xl: 2rem;
   --text-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
+  /* The front door's headline, and only the front door's (IPD 30). It stays
+     below the term total at every width: the page is about a number, so the
+     number has to be the largest mark on it. */
+  --text-hero: clamp(2rem, 1.4rem + 2.2vw, 2.75rem);
 
   --radius: 4px;
   --radius-sm: 2px;
@@ -62,6 +71,7 @@
     --accent-ink: #0f100d;
     --focus: #9db8ff;
     --success: #86d5a8;
+    --mark: #33392c;
   }
 
   html {
@@ -359,6 +369,19 @@ main {
   gap: var(--space-6);
 }
 
+/* The front door shares the header's edge (IPD 30): a landing page inset inside
+   its own frame reads as a sheet pinned to a wall. Receipts and bills keep
+   `--measure`, because those are documents and a document has a column. */
+.page-wide {
+  max-width: 64rem;
+}
+
+.page-wide h1 {
+  font-size: var(--text-hero);
+  line-height: 1.1;
+  max-width: 20ch;
+}
+
 .footnote {
   font-size: var(--text-xs);
   color: var(--ink-muted);
@@ -399,8 +422,24 @@ main {
 }
 
 .lede {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
   color: var(--ink-muted);
-  max-width: 38rem;
+  font-size: var(--text-body);
+  line-height: 1.55;
+  /* Wide enough for the promise on two lines at a comfortable measure, and no
+     wider: a paragraph set the width of a 64rem page is read by turning the
+     head, which is the one cost this audience does not need to pay. */
+  max-width: 62ch;
+}
+
+/* Who the product is for is a second rank of information, not another clause
+   of the promise: it is set down a step so a reader can skip it or find it
+   without reading the paragraph to the end (IPD 30). */
+.lede .audience {
+  font-size: var(--text-sm);
+  line-height: 1.5;
 }
 
 /* The entry works one commitment in full, then offers the other ways in at a
@@ -412,8 +451,22 @@ main {
   gap: var(--space-5);
 }
 
+/* A caption, not app chrome: it names the example in sentence case, at the size
+   of a caption, so the first thing a reader meets after the headline is the
+   product the figures are about rather than a section label in capitals. */
+.entry-caption {
+  font-size: var(--text-sm);
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+
+/* The figure card is the only surface on the page (IPD 30). One raised object,
+   with a heavier rule along its top like a receipt's total line, and everything
+   else set directly on the paper. Two panels of equal weight was a page of two
+   boxes; one surface and one column of text is a page with an object on it. */
 .entry-worked > .commitment {
-  border-color: var(--line-strong);
+  border-top: 2px solid var(--ink);
 }
 
 /* The entry shows the work: the seller's words on one side, the figures — and
@@ -454,16 +507,23 @@ main {
   margin-block: 0 var(--space-3);
 }
 
-/* The seller's words sit on their own surface, opposite the figures they
-   produced: two panels of one height rather than a column and a card, so the
-   pair reads as a pair and the quieter side is a panel, not a hole. */
+/* The seller's words sit directly on the paper, opposite the figures they
+   produced (IPD 30). They used to sit in a filled panel of the same weight as
+   the card, which made the pair two boxes with no answer to which one was the
+   point; the words are evidence, so they belong in the column a document is
+   read in, and the card is the only thing raised off the page. */
 .entry-said {
-  background: var(--sunken);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: var(--space-4);
   min-width: 0;
 }
+
+/* The column keeps its own length, and the space below it is left empty (IPD
+   30). The card is nearly three times its height — six sentences and three
+   figures against one paragraph — so the obvious tidying was to stretch the
+   column and put the action at its foot, which was tried and was worse: it
+   carried "Check this commitment" a page away from the reading it follows from
+   and left a button alone in the middle of nowhere. A short column beside a
+   long one, both starting on the same line, is the cheaper defect; the action
+   stays under the sentence it belongs to. */
 
 .entry-words {
   margin: 0;
@@ -500,13 +560,24 @@ main {
 /* The front door's two jobs (IPD 28): the person's own record if they have one,
    and something new to check. Two panels side by side on a wide screen and
    stacked on a narrow one, so neither is a footnote to the other. */
+/* Two columns, named rather than fitted (IPD 30). `auto-fit` fitted three at the
+   front door's 1024px — 17rem fits three times — and because the section's
+   label spans every track, none of them was empty, so the row reserved a column
+   for the door that does not exist and the pair stopped two thirds of the way
+   across the page. Two doors, two columns, each the page's own width. */
 .front-doors {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   align-items: start;
   padding-top: var(--space-5);
   border-top: 1px solid var(--line);
+}
+
+@media (min-width: 44rem) {
+  .front-doors {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 /* The section's own label spans the pair; without this it takes the first
@@ -642,19 +713,19 @@ main {
    on takes the width and the size, and the other two sit beneath it on one rule
    as a ledger. Three containers inside a container is what made a page about
    money look like a page about panels. */
+/* One column, always (IPD 30). The figures used to sit two-up beneath the
+   total, which gave three unfamiliar amounts two different shapes and made the
+   reader compare across a gap. In one column, right-aligned on a shared edge
+   with tabular figures, the decimal points line up and the eye runs straight
+   down: the arrangement is the easiest one there is for a person who reads
+   numbers slowly, and it is what a receipt looked like before anyone called it
+   a design. */
 .commitment-figures {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-3) var(--space-5);
+  grid-template-columns: minmax(0, 1fr);
   padding-top: var(--space-4);
   border-top: 1px solid var(--line);
-}
-
-.commitment-figures > .commitment-figure:first-child {
-  grid-column: 1 / -1;
-  padding-bottom: var(--space-4);
-  border-bottom: 1px solid var(--line);
 }
 
 .commitment-figure {
@@ -662,6 +733,15 @@ main {
   flex-direction: column;
   gap: var(--space-1);
   min-width: 0;
+  padding-block: var(--space-4);
+}
+
+.commitment-figure + .commitment-figure {
+  border-top: 1px solid var(--line);
+}
+
+.commitment-figure:last-child {
+  padding-bottom: 0;
 }
 
 .commitment-figure dt {
@@ -670,47 +750,36 @@ main {
 }
 
 .commitment-figure dd {
-  /* Figures read in the mono face everywhere (ITD 24): the same number has to
-     look like the same kind of thing on every screen. */
+  min-width: 0;
+}
+
+/* The amount, on the right of its own line. Figures read in the mono face
+   everywhere (ITD 24), so the same number looks like the same kind of thing on
+   every screen. */
+.commitment-amount {
+  display: block;
+  text-align: right;
   font-family: var(--font-figures);
-  font-size: var(--text-md);
+  font-size: clamp(1.75rem, 1.4rem + 1.4vw, 2.5rem);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
-  line-height: 1.2;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
   overflow-wrap: anywhere;
 }
 
 /* The first figure at display size. It is the total the commitment adds up to,
    and it is the one number a person came to the page for. */
-.commitment-figures > .commitment-figure:first-child dd {
-  font-size: clamp(2.25rem, 1.5rem + 3vw, 3.5rem);
-  line-height: 1.05;
+.commitment-figures > .commitment-figure:first-child .commitment-amount {
+  font-size: clamp(2.5rem, 1.8rem + 3vw, 3.5rem);
+  line-height: 1;
   letter-spacing: -0.02em;
 }
 
-/* Whether the two smaller figures can sit side by side is a fact about the
-   card they are in, not about the window: on the entry the figures are one
-   column of a pair and there is room for one ledger line at a time; on a
-   product page the card is the width of the page. The container query asks the
-   card. */
-.commitment {
-  container-type: inline-size;
-}
-
-@container (max-width: 30rem) {
-  .commitment-figures {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .commitment-figures > .commitment-figure + .commitment-figure {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--line);
-  }
-
-  .commitment-figures > .commitment-figure:first-child {
-    border-bottom: 0;
-    padding-bottom: 0;
-  }
+/* "Not stated" is an answer, so it is set as one: the size and weight of an
+   amount, in ink, never a grey dash and never $0.00 (IPD 26, IPD 30). */
+.commitment-amount-absent {
+  color: var(--ink);
 }
 
 .commitment-hint {
@@ -756,6 +825,10 @@ main {
   font-weight: 400;
   color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
+  /* Under the amount, on the amount's edge: the working belongs to the figure
+     above it, and a line that starts at the far left belongs to neither. */
+  text-align: right;
+  overflow-wrap: anywhere;
 }
 
 /* Somebody else's sentence, under the figure it produced (ITD 19). Kept apart
@@ -776,7 +849,10 @@ main {
   display: block;
   margin-top: var(--space-2);
   border-left: 3px solid var(--accent);
-  padding-left: var(--space-3);
+  /* The same wash as the mark in the paragraph it was cut out of: two places,
+     one mark, so the correspondence is seen rather than explained (IPD 30). */
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  background: var(--mark);
   font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 400;
@@ -784,9 +860,29 @@ main {
   line-height: 1.4;
 }
 
+/* No italics, anywhere (IPD 30). Italics are the default way a designer sets a
+   quotation and the default way a dyslexic reader loses the line: the letters
+   slant, the shapes blur together, and the one sentence on the screen that has
+   to be checkable becomes the hardest one to read. The rule and the wash carry
+   "this is someone else's sentence" instead. */
 .commitment-quote q {
   quotes: "\201C" "\201D" "\2018" "\2019";
-  font-style: italic;
+  font-style: normal;
+}
+
+/* The highlighter (IPD 30). The same wash marks the span in the seller's own
+   paragraph and the sentence quoted under the figure it produced, so finding
+   one from the other is a matter of looking, not of remembering. It is a paper
+   mark rather than a colour with a meaning: the accent stays reserved for
+   actions, and a figure is never coloured. */
+mark,
+.quote-mark {
+  background: var(--mark);
+  color: inherit;
+  padding: 0 0.12em;
+  border-radius: 1px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .commitment-quote-source {

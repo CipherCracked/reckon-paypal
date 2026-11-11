@@ -36,6 +36,17 @@ export type ResolvedProduct = ResolvedCard & {
   /** How to name the description when the exit figure is read out of it (IPD 19). */
   descriptionLabel: string;
   /**
+   * The seller's sentence the term was read from, character for character, or
+   * null when the term came from anywhere else (ITD 19, IPD 30).
+   *
+   * A listing has no term field, so its term exists only because a sentence
+   * says it. Carrying that sentence out of the resolver is what lets a screen
+   * point at it instead of describing the mechanism in prose — and it is the
+   * same span `termIsStated` has just checked against the record, so it cannot
+   * be a sentence the merchant has since withdrawn.
+   */
+  termQuote: string | null;
+  /**
    * True when the terms came from a live retail listing rather than PayPal or
    * the file. A listing's missing parts belong to a checkout, and a listing
    * paid once has no term to leave, so the callers that say those things need
@@ -111,6 +122,7 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
           published: `the price Channel3 lists at ${offer.domain} and the term the listing states (“${term.quote}”)`,
         },
         descriptionLabel: "the description Channel3 lists for this product",
+        termQuote: term.quote,
         listed: true,
       };
     }
@@ -122,6 +134,9 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
       terms: marketTerms(offer),
       sources: { paypal: null, published: `the price Channel3 lists at ${offer.domain}` },
       descriptionLabel: "the description Channel3 lists for this product",
+      // A one-time listing states a price, not a term, so there is no sentence
+      // a schedule could have been read from.
+      termQuote: null,
       listed: true,
     };
   }
@@ -138,6 +153,9 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
         terms: entry.terms,
         sources: { paypal: entry.planLabel, published: null },
         descriptionLabel: "the description published with the PayPal product",
+        // A billing plan states its own cycle, so no sentence of the seller's
+        // produced the term and nothing is quoted for it.
+        termQuote: null,
       };
     }
   } catch {
@@ -151,6 +169,7 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
     ...cardFromFile(file),
     terms: file.terms,
     descriptionLabel: "the description shown on this page",
+    termQuote: null,
   };
 }
 

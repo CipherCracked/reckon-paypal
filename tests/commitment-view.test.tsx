@@ -123,7 +123,7 @@ describe("CommitmentView", () => {
     // payload built by this morning's build can still arrive this afternoon.
     // It cost the reader page three of its four example documents; a page that
     // cannot reload its way out of an error must not crash on a missing key.
-    const { breakdown, ...rest } = computeCommitment(knownTerms);
+    const { breakdown } = computeCommitment(knownTerms);
     const { item, shipping, tax } = breakdown;
 
     render(

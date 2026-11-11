@@ -21,18 +21,29 @@ export function Page({
   lede,
   back,
   headerExtra,
+  wide = false,
   children,
 }: {
   title?: React.ReactNode;
   eyebrow?: React.ReactNode;
   lede?: React.ReactNode;
   back?: { href: string; label: string };
+  /**
+   * A front door, not a reading column (IPD 30).
+   *
+   * A receipt or a bill is a document and 46rem is the right measure for it. A
+   * page whose job is to make an impression was also 46rem inside a 64rem bar,
+   * so its left edge started 144px in from the frame's own and the page read as
+   * a sheet pinned to a wall. The front door takes the frame's width; everything
+   * that is read rather than looked at keeps the narrow one.
+   */
+  wide?: boolean;
   /** Rendered inside the header, under the title — the account bar, for one. */
   headerExtra?: React.ReactNode;
   children?: React.ReactNode;
 }) {
   return (
-    <div className="page">
+    <div className={wide ? "page page-wide" : "page"}>
       {back ? <BackLink href={back.href}>{back.label}</BackLink> : null}
 
       {title ? (

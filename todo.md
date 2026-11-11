@@ -987,3 +987,42 @@ had removed one. Decomposition and four decisions: `docs/finished-feel/`.
 - [ ] **The video.** Still the biggest unfilled scoring item.
 - [ ] One receipt-level way back for a lost link — the sign-in lives in the frame
       (`Shell`) only; §13's last item is still open.
+
+## 15. The front door as a landing page (IPD 30 — 2026-11-12)
+
+*"Our home page does not feel like a proper landing page."* A blind review (an agent
+given the product, the audience and the situation, and no code, docs or screenshots)
+was asked what the treatment should be, and everything below was judged against it.
+Decomposition + decision: `docs/landing-page/`.
+
+- [x] **The page takes its own frame's edge.** `/` widens to 64rem (`.page-wide`,
+      the `wide` prop on `components/Page.tsx`); receipts and bills keep `--measure`,
+      because a document has a column. `h1` at `--text-hero`, held to 20ch.
+- [x] **Two ranks under the headline.** The promise at body size, the audience at
+      `--text-sm` — one is what the product does, the other is who it is for.
+- [x] **One surface.** The seller's panel loses its fill, border and padding and sits
+      on the paper; the figure card is the only raised object, with a 2px ink top rule
+      like a receipt's total line.
+- [x] **One ledger.** The three figures share a column with hairlines, label left,
+      amount right-aligned in mono at display size, the first figure larger,
+      `Not stated` at the size and weight of an amount. Container query removed.
+- [x] **The trace, finally drawn on `/`.** `termQuote` travels from `LISTED_TERMS`
+      through `resolveProduct` to the `acrossTerm` figure; `components/QuotedText.tsx`
+      marks that span in the seller's paragraph and `.commitment-quote` puts the same
+      `--mark` wash under the figure. No new words, and the example listing unchanged.
+- [x] **Doors span the page.** `auto-fit` fitted three tracks at 1024px and the label
+      spanning every track kept the empty one, so the two doors stopped two thirds
+      across; now two named columns above 44rem, one below.
+- [x] Tried and reverted: stretching the seller's column to the card's height and
+      putting the CTA at its foot. It moved the primary action a page away from the
+      reading it follows from. The void is the cheaper defect and is documented.
+- [x] 5 new tests (`tests/quoted-text.test.tsx` ×4, one in `home.test.tsx` pinning the
+      mark and the quote as a pair). Suite **450 → 455**, tsc clean, **lint clean**
+      (the two old unused-variable warnings fixed).
+- [x] Verified by screenshot at 1440, 1024 and 390, light and dark: no horizontal
+      overflow, no console errors, `h1` 44px against figure 56px at 1440 and 32
+      against 40.5 at 390 — the figure leads at both.
+- [ ] **The video.** Unchanged and still the biggest unfilled scoring item; it has to
+      be recorded signed out so this page, not the record, is what is seen first.
+- [ ] The header's wrap between 620px and 780px (§1a) — worse now that the page is
+      wider, still untouched.
