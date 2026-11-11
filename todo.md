@@ -955,3 +955,35 @@ the store's own records live. Decomposition and four decisions:
       sandbox are `CANCELLED`, so the page currently demonstrates only that state.
 - [ ] Entry point: the home page links to it; the receipt does not yet ("Lost this
       link? Sign in" is a one-line addition).
+
+## 14. Finished feel (IPD 29, ITD 26–28 — 2026-11-11)
+
+After the user watched the joined-up build: *"we write too much… This is ruining the
+product from getting a finished feel. And this removes focus from our USP."* The
+problem was volume, not structure — every decision had added its own sentence and none
+had removed one. Decomposition and four decisions: `docs/finished-feel/`.
+
+- [x] **One qualification, one place.** *Sandbox store: no real money moves and nothing
+      you do is stored* is the only standing caveat, at the foot of every page
+      (`Page.tsx`). The `Shell` footer (*Built with PayPal for the 2026 AI Hackathon*)
+      is deleted, as are both sandbox paragraphs and the pay-link note on the bill, the
+      three *Nothing is invented to fill the gap* lines on `/product`, and the sign-in
+      card's hint. ~19 sentences → 1 line + short clauses.
+- [x] **Findings kept, not cut.** *Not stated*, the failed-scan line, *Keep this page —
+      it is the only copy*, *None of these is a total*, *check the amount with them*,
+      *this is today's charge, not the total across the term* — the rule is in ITD 28.
+- [x] **A hierarchy in the figures.** Term total in its own band at
+      `clamp(2.25rem…3.5rem)`; the other two two-up beneath. The quoted figure and its
+      quote wear the same 3px `--accent` rule, driven by `data-quoted` from
+      `FigureGrid`, so the trace is visible before the words are read.
+- [x] **Layout answers to the card.** `.commitment` is a size container
+      (`@container (max-width: 30rem)`); on a phone the entry pair shows the figures
+      before the seller's words (flex `order`, DOM unchanged).
+- [x] Tests rewritten to the new behaviour, and two pin the caveat's *position* — once
+      on `/`, absent from the consent component. Suite **449 → 450**, tsc clean, lint
+      clean but the two pre-existing warnings.
+- [x] Verified by screenshot at 1440 and 390, light and dark, no horizontal overflow;
+      the big figure is above the fold on `/`, on a `/read` result and on the receipt.
+- [ ] **The video.** Still the biggest unfilled scoring item.
+- [ ] One receipt-level way back for a lost link — the sign-in lives in the frame
+      (`Shell`) only; §13's last item is still open.

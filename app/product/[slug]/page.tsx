@@ -54,8 +54,7 @@ export default async function ProductPage({ params }: PageProps) {
             <h1>This product could not be read</h1>
           </header>
           <p className="notice" role="status">
-            The live catalogue did not answer just now, so there is no price to show. Nothing is
-            invented to fill the gap.
+            The live catalogue did not answer just now, so there is no price to show.
           </p>
           <Link className="button-secondary" href={`/product/${encodeURIComponent(slug)}`}>
             Try again
@@ -80,7 +79,7 @@ export default async function ProductPage({ params }: PageProps) {
           </header>
           <p className="notice" role="status">
             The listing no longer contains the words this page read the term from, so there is no
-            term to show. Nothing is invented to fill the gap.
+            term to show.
           </p>
         </Page>
       );
@@ -98,7 +97,7 @@ export default async function ProductPage({ params }: PageProps) {
             </header>
             <p className="notice" role="status">
               The catalogue lists this subscription with no offer anyone can buy right now, so
-              there is no price to show. Nothing is invented to fill the gap.
+              there is no price to show.
             </p>
           </Page>
         );

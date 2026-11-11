@@ -100,12 +100,9 @@ export default async function BillPage({ params, searchParams }: PageProps) {
             not changed, only this attempt failed. Without this the visitor's
             only move is to give up on a page that would answer next time. */}
         <p className="scope-note">
-          This bill is an example, created in PayPal&apos;s sandbox, so no real money is owed or
-          moves.{" "}
           <a href={`/bill/${encodeURIComponent(invoiceId)}?slug=${encodeURIComponent(bill.slug)}`}>
             Try reading PayPal&apos;s copy again
           </a>
-          .
         </p>
       </Page>
     );
@@ -156,18 +153,8 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           <a href={record.payerUrl} rel="noreferrer">
             Pay this bill at PayPal
           </a>
-          <span className="pay-link-note">
-            {" "}
-            — you pay on PayPal&apos;s page; this screen never asks for card details.
-          </span>
         </p>
       ) : null}
-
-      <p className="scope-note">
-        This bill is an example, created in PayPal&apos;s sandbox, so no real money is owed or
-        moves. The page is built from the bill PayPal holds each time it opens; nothing about you
-        is stored here.
-      </p>
     </Page>
   );
 }

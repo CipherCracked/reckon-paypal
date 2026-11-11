@@ -103,6 +103,8 @@ h3 {
 
 h1 {
   font-size: var(--text-2xl);
+  letter-spacing: -0.02em;
+  text-wrap: balance;
 }
 
 h2 {
@@ -143,8 +145,7 @@ a {
   top: var(--space-4);
 }
 
-.site-header,
-.site-footer {
+.site-header {
   width: 100%;
   /* The frame is wider than the reading column, so the name and both controls
      stay on one line and the rule above the page reads as a frame rather than
@@ -345,27 +346,30 @@ main {
   flex: 1;
 }
 
-.site-footer {
-  padding-top: var(--space-5);
-  padding-bottom: var(--space-6);
-  color: var(--ink-muted);
-  font-size: var(--text-sm);
-  border-top: 1px solid var(--line);
-}
-
+/* The page column, and the one qualification every screen carries (IPD 29). The
+   line is the only place the sandbox and the absence of storage are stated, so
+   it can afford to be small: a caveat repeated in every paragraph stops being
+   read as a caveat and starts reading as an apology. */
 .page {
   max-width: var(--measure);
   margin: 0 auto;
-  padding: var(--space-6) 1.25rem var(--space-7);
+  padding: var(--space-5) 1.25rem var(--space-7);
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
 }
 
+.footnote {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
+}
+
 .page-header {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-2);
 }
 
 /* A back link names where it goes, because "Back" from a consent screen could
@@ -390,13 +394,13 @@ main {
 .eyebrow {
   font-size: var(--text-xs);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   color: var(--ink-muted);
 }
 
 .lede {
   color: var(--ink-muted);
-  max-width: 34rem;
+  max-width: 38rem;
 }
 
 /* The entry works one commitment in full, then offers the other ways in at a
@@ -419,13 +423,30 @@ main {
 .entry-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-5);
+  gap: var(--space-4);
   align-items: start;
 }
 
 @media (max-width: 44rem) {
   .entry-pair {
-    grid-template-columns: minmax(0, 1fr);
+    display: flex;
+    flex-direction: column;
+    /* The grid aligned its columns to their content; a column of panels is the
+       width of the page, or each one shrinks to its longest word. */
+    align-items: stretch;
+  }
+
+  /* On a phone the answer comes first: the three figures, then the seller's
+     words they were read from (IPD 29). The markup keeps "what they wrote,
+     then what it means" (IPD 21), and the two panels are labelled, so neither
+     sequence is ambiguous; nothing focusable sits between them, so the
+     keyboard's order and the figure order are unchanged. */
+  .entry-pair > .entry-said {
+    order: 2;
+  }
+
+  .entry-pair > .commitment {
+    order: 1;
   }
 }
 
@@ -604,7 +625,7 @@ main {
   padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .commitment h2,
@@ -616,21 +637,31 @@ main {
   font-size: var(--text-body);
 }
 
+/* The three figures are the object the product exists for, so they are not
+   three equal tiles inside another card (IPD 29): the figure the decision turns
+   on takes the width and the size, and the other two sit beneath it on one rule
+   as a ledger. Three containers inside a container is what made a page about
+   money look like a page about panels. */
 .commitment-figures {
   list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-3);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+}
+
+.commitment-figures > .commitment-figure:first-child {
+  grid-column: 1 / -1;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
 .commitment-figure {
-  background: var(--page);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  padding: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  min-width: 0;
 }
 
 .commitment-figure dt {
@@ -642,19 +673,64 @@ main {
   /* Figures read in the mono face everywhere (ITD 24): the same number has to
      look like the same kind of thing on every screen. */
   font-family: var(--font-figures);
-  font-size: var(--text-lg);
+  font-size: var(--text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
+/* The first figure at display size. It is the total the commitment adds up to,
+   and it is the one number a person came to the page for. */
+.commitment-figures > .commitment-figure:first-child dd {
+  font-size: clamp(2.25rem, 1.5rem + 3vw, 3.5rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+/* Whether the two smaller figures can sit side by side is a fact about the
+   card they are in, not about the window: on the entry the figures are one
+   column of a pair and there is room for one ledger line at a time; on a
+   product page the card is the width of the page. The container query asks the
+   card. */
+.commitment {
+  container-type: inline-size;
+}
+
+@container (max-width: 30rem) {
+  .commitment-figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .commitment-figures > .commitment-figure + .commitment-figure {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+  }
+
+  .commitment-figures > .commitment-figure:first-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+  }
+}
+
 .commitment-hint {
   display: block;
   margin-top: var(--space-1);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 400;
   color: var(--ink-muted);
+}
+
+/* "At least" in front of a figure is a word about the number, so it stays the
+   size of a word. At the figure's own size — which is what a display figure
+   makes it — it read as part of the amount. */
+.commitment-floor {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--ink-muted);
+  letter-spacing: 0;
 }
 
 /* Read-aloud sits under the figures it speaks, in the same place on every
@@ -684,10 +760,24 @@ main {
 
 /* Somebody else's sentence, under the figure it produced (ITD 19). Kept apart
    from the arithmetic on purpose: one is our working, the other is the seller's
-   words, and a screen that merges them makes the reading look like our sum. */
+   words, and a screen that merges them makes the reading look like our sum.
+
+   Since IPD 29 the pairing is drawn rather than described: the figure's label
+   and the sentence it came from wear the same rule, at the same offset, so a
+   reader can see which number was quoted and which was calculated. It is a
+   position cue, legible in greyscale and at 390px, that survives both themes —
+   no connector, no arrow, nothing that breaks when the page narrows. */
+.commitment-figure[data-quoted="true"] dt {
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-3);
+}
+
 .commitment-quote {
   display: block;
   margin-top: var(--space-2);
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-3);
+  font-family: var(--font-body);
   font-size: var(--text-sm);
   font-weight: 400;
   color: var(--ink);
@@ -873,7 +963,6 @@ main {
   .receipt-actions,
   .record-exits,
   .site-header,
-  .site-footer,
   .back-link,
   .skip-link {
     display: none;
@@ -1114,11 +1203,6 @@ html[data-text-scale="larger"] {
 
 .pay-link a {
   font-weight: 600;
-}
-
-.pay-link-note {
-  color: var(--ink-muted);
-  font-size: var(--text-sm);
 }
 
 .product-screen {

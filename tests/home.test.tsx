@@ -82,7 +82,7 @@ describe("the front door", () => {
     expect(screen.getAllByText(/what it costs to leave/i).length).toBeGreaterThan(0);
     // IPD 21: the audience is named in words, not left to be inferred from the
     // scope of the vocabulary.
-    expect(screen.getByText(/dyscalculia, ADHD and dyslexia/i)).toBeInTheDocument();
+    expect(screen.getByText(/dyscalculia, ADHD, dyslexia/i)).toBeInTheDocument();
   });
 
   it("puts the seller's words beside the figures they produced", async () => {
@@ -104,10 +104,10 @@ describe("the front door", () => {
     render(await Home());
 
     expect(screen.getByText("Across the term")).toBeInTheDocument();
-    expect(screen.getByText("At least $149.94")).toBeInTheDocument();
+    expect(screen.getByText("$149.94")).toBeInTheDocument();
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
     expect(screen.getByText("Charged today")).toBeInTheDocument();
-    expect(screen.getAllByText(/At least \$24\.99/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("$24.99").length).toBeGreaterThan(0);
   });
 
   it("says where the worked example's figures came from, and that nothing was created", async () => {
@@ -117,8 +117,18 @@ describe("the front door", () => {
       screen.getByText(/computed from the price Channel3 lists at bark\.co/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/nothing has been charged and nothing has been created at paypal/i),
+      screen.getByText(/nothing has been charged/i),
     ).toBeInTheDocument();
+  });
+
+  it("carries the one qualification, once, at the foot of the page", async () => {
+    render(await Home());
+
+    // IPD 29: the sandbox and the absence of storage are said in one place, in
+    // one sentence, rather than in each screen's own words.
+    expect(
+      screen.getAllByText(/sandbox store: no real money moves and nothing you do is stored/i),
+    ).toHaveLength(1);
   });
 
   it("performs no further request and creates nothing when it renders", async () => {
@@ -190,7 +200,7 @@ describe("the front door, signed in", () => {
 
     render(await Home());
 
-    expect(screen.getByText(/this is not a statement that you have no subscriptions/i))
+    expect(screen.getByText(/this is not a statement that you have none/i))
       .toBeInTheDocument();
   });
 });

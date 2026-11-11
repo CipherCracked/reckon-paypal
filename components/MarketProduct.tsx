@@ -163,8 +163,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
       )}
 
       <p className="scope-note">
-        This demo does not sell or ship this product; the buttons above check a purchase in
-        PayPal&apos;s sandbox, where no money moves. The retailer links open the shop&apos;s own
+        This demo does not sell or ship this product. The retailer links open the shop&apos;s own
         page.
       </p>
     </article>

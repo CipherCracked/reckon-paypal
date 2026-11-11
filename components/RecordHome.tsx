@@ -40,26 +40,24 @@ export async function RecordHome({
   return (
     <Page
       title="Your commitments"
-      lede="What this store holds under your PayPal account, read from PayPal at the moment you asked. There is no account here to leave behind, and nothing on this page was stored."
+      lede="What this store holds under your PayPal account, read from PayPal at the moment you asked."
       headerExtra={
         <p className="account-identity">
-          Read from PayPal just now{person.email ? " for" : ""}{" "}
-          {person.email ? <strong>{person.email}</strong> : null}. This store keeps no copy.
+          Read from PayPal just now{person.email ? " · " : ""}
+          {person.email ? <strong>{person.email}</strong> : null}
         </p>
       }
     >
       {discovery.kind === "unavailable" ? (
         <p className="notice" role="status">
-          We could not check what this store holds for you — PayPal did not answer, or the check
-          took longer than we will make you wait. This is not a statement that you have no
-          subscriptions. Try again in a moment.
+          We could not check what this store holds for you. This is not a statement that you have
+          none — try again in a moment.
         </p>
       ) : discovery.records.length === 0 ? (
         <p className="notice" role="status">
           This store holds no subscriptions under your PayPal account
-          {person.email ? ` (${person.email})` : ""}. Only subscriptions can be listed here — a
-          purchase you paid once does not appear, because PayPal gives this store no way to look one
-          up without an id.
+          {person.email ? ` (${person.email})` : ""}. Only subscriptions can be listed: PayPal gives
+          a store no way to find a one-time purchase without its id.
         </p>
       ) : (
         <>

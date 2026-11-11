@@ -332,11 +332,10 @@ export function ConsentScreen({
         />
       )}
 
-      {/* The product states its own status exactly once, here, where money is
-          involved (IPD 14). Everything else about what is and is not real
-          belongs to the judge brief outside the product (IPD 16). */}
+      {/* What the product claims about itself, said once: what the check needs,
+          which is the reason it travels to any checkout. What is and is not real
+          is the page's footnote now, in one sentence in one place (IPD 29). */}
       <p className="commitment-source">
-        This shop is an example, and payments run in PayPal&apos;s sandbox, so no real money moves.
         The check needs only the amount being charged and the terms the seller publishes, so it
         fits any checkout, not just this one.
       </p>

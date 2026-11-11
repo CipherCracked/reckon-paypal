@@ -14,7 +14,7 @@ import {
   type ExitOutcome,
 } from "@/lib/commitment/published-exit";
 import { describeSchedule } from "@/lib/commitment/schedule";
-import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
+import { describeSources } from "@/lib/commitment/sources";
 import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
 import { identityConfigured } from "@/lib/paypal/identity";
 import { SESSION_COOKIE, readSession, signInConfigured } from "@/lib/session";
@@ -29,15 +29,19 @@ export const dynamic = "force-dynamic";
  * for: the only figure read out of the seller's words is the cost to leave, the
  * other two are arithmetic over the price, and when the reading found nothing
  * the line says that instead of claiming a quote the screen does not show.
+ *
+ * Since IPD 29 it is a line, not a paragraph. The quote carries its own label
+ * and the source note says which price the arithmetic came from, so the
+ * mechanism no longer has to be explained twice on the first screen.
  */
 function relationshipSentence(outcome: ExitOutcome): string {
   switch (outcome.kind) {
     case "stated":
-      return "Cost to leave was read out of the seller's own words above — the reader copies the sentence and this page checks it against the text. The other two figures are arithmetic over the price the seller states, and the line under them says which source that price came from.";
+      return "The cost to leave is quoted from the seller's own words above. The other two figures are arithmetic over the price they state.";
     case "silent":
-      return "The seller's words above say nothing about leaving, so the cost to leave reads Not stated rather than a number this page would have had to invent. The other two figures are arithmetic over the price the seller states.";
+      return "The seller's words say nothing about leaving, so the cost to leave reads Not stated — not a number filled in to have one.";
     case "unreadable":
-      return "The seller's words above could not be read just now, so the cost to leave is not shown. A figure is never filled in from a guess.";
+      return "The seller's words could not be read just now, so the cost to leave is not shown.";
   }
 }
 
@@ -134,7 +138,7 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   return (
     <Page
       title="What it costs, before you agree to it"
-      lede="Three figures for any commitment — what it costs across the whole term, what it costs to leave, and what is charged today — each with the words it was worked out from. Built for adults who find billing language hard, including people with dyscalculia, ADHD and dyslexia."
+      lede="Three figures for any commitment — what it costs across the whole term, what it costs to leave, and what is charged today — each with the words it was worked out from. Built for adults who find billing language hard: dyscalculia, ADHD, dyslexia."
     >
       {subscription && exitOutcome && terms && translation && figures ? (
         <section className="entry-worked" aria-labelledby="worked-heading">
@@ -181,23 +185,23 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
               // version look identical to the version it exists to explain.
               summary=""
               schedule={describeSchedule(terms)}
-              figureNotes={exitOutcome.note ? { exit: exitOutcome.note } : undefined}
               sourceNote={`${describeSources({
                 paypal: subscription.sources.paypal,
                 published: subscription.sources.published,
-                // Only a seller's silence is theirs to report; a read that failed
-                // is ours, and the line says which (IPD 19).
-                absent: exitOutcome.kind === "unreadable" ? null : absentFigureNote(figures),
-                unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
-              })} Nothing has been charged and nothing has been created at PayPal.`}
+                // The sentence under the seller's words already says what is
+                // missing from them, so the figure does not say it again
+                // (IPD 29). The absence is stated once, in the place that can
+                // explain why there is one.
+                absent: null,
+                unreadable: null,
+              })} Nothing has been charged.`}
             />
           </div>
         </section>
       ) : (
         <p className="notice" role="status">
-          The live subscription listing this screen works through could not be read just now, so
-          there is no commitment to show. Nothing is invented to fill the gap — search the shop for
-          a real listing in the meantime.
+          The live listing this screen works through could not be read just now, so there is no
+          commitment to show. Search the shop for a real one in the meantime.
         </p>
       )}
 

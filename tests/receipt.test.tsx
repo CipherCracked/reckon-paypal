@@ -91,7 +91,7 @@ describe("CommitmentRecord", () => {
   it("tells the shopper what survives: this page, and PayPal's own record", () => {
     render(<CommitmentRecord {...base} nextCharge={null} calendarHref={null} />);
 
-    expect(screen.getByText(/nothing about this purchase is stored on this site/i)).toBeInTheDocument();
+    expect(screen.getByText(/it is the only copy/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /manage this payment at paypal/i })).toHaveAttribute(
       "href",
       base.manageUrl,

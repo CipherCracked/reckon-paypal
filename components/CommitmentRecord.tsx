@@ -140,9 +140,7 @@ export function CommitmentRecord(record: CommitmentRecordData) {
     <section className="receipt" aria-labelledby="receipt-heading">
       <h1 id="receipt-heading">Your record: {record.productName}</h1>
 
-      <p className="commitment-summary">
-        Keep this page. It is the only copy — nothing about this purchase is stored on this site.
-      </p>
+      <p className="commitment-summary">Keep this page — it is the only copy.</p>
 
       {cancelled ? (
         // Said separately from the figures, because the figures are what the

@@ -107,7 +107,7 @@ describe("reading a document", () => {
     expect(screen.getByText("$35.00")).toBeInTheDocument();
     // No computed figure appears in this mode at all.
     expect(screen.queryByText(/across the term/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/none of them is a total/i)).toBeInTheDocument();
+    expect(screen.getByText(/none of these is a total/i)).toBeInTheDocument();
   });
 
   it("reads a named example on one click, with no typing", async () => {
@@ -132,7 +132,7 @@ describe("reading a document", () => {
   it("says the examples are examples before the click", async () => {
     render(<ReadPage />);
 
-    expect(screen.getByText(/none of them is a real seller/i)).toBeInTheDocument();
+    expect(screen.getByText(/not yours, and not a real seller/i)).toBeInTheDocument();
     // The one written to be refused says so in its own words, not only after
     // the reading comes back.
     const refused = exampleDocuments.find((example) => example.refused);

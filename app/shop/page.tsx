@@ -30,18 +30,17 @@ type PageProps = { searchParams: Promise<{ q?: string }> };
  */
 function resultLine(count: number, matched: number, query: string): string {
   const results = `${count} result${count === 1 ? "" : "s"}`;
-  const maybeMore =
-    count >= SEARCH_LIMIT ? " One search shows at most 12, so there may be more." : "";
+  const maybeMore = count >= SEARCH_LIMIT ? " One search shows at most 12." : "";
 
   if (matched === count) {
-    return `The catalogue returned ${results} for “${query}”, and every one of them uses your words.${maybeMore}`;
+    return `${results} for “${query}” — every one uses your words.${maybeMore}`;
   }
 
   if (matched === 0) {
-    return `Nothing the catalogue returned uses “${query}”. It matches on more than spelling, so these are its nearest results — not a promise that they match.${maybeMore}`;
+    return `Nothing the catalogue returned uses “${query}”. It matches on more than spelling, so these are its nearest results.${maybeMore}`;
   }
 
-  return `${matched} of the ${results} the catalogue returned for “${query}” use your words. The rest may be matching something else.${maybeMore}`;
+  return `${matched} of the ${results} for “${query}” use your words; the rest may match something else.${maybeMore}`;
 }
 
 
@@ -65,7 +64,7 @@ export default async function Shop({ searchParams }: PageProps) {
   } catch {
     failure =
       process.env.CHANNEL3_API_KEY?.trim()
-        ? "The live product catalogue could not be reached just now. Nothing is invented to fill the gap — search again in a moment."
+        ? "The live product catalogue could not be reached just now. Search again in a moment."
         : "This deployment has no product catalogue key configured, so there is nothing live to show. See the README for the one variable it needs.";
   }
 
@@ -103,8 +102,7 @@ export default async function Shop({ searchParams }: PageProps) {
 
       <p className="scope-note">
         Prices, images and retailer links come from Channel3 and change without notice. Nothing here
-        is an offer to sell: this demo does not ship anything, and its checkout runs in PayPal&apos;s
-        sandbox.
+        is an offer to sell, and nothing ships.
       </p>
     </Page>
   );

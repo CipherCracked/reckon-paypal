@@ -140,9 +140,7 @@ export default function ReadPage() {
       <section className="examples" aria-labelledby="examples-heading">
         <h2 id="examples-heading">Or start from one of these</h2>
         <p className="field-hint">
-          Examples, written for this page. None of them is a real seller and none of them is yours.
-          Their readings were made when the server started, so a click answers at once — and if one
-          has to be read now, the button says so and the wait is a minute.
+          Examples, written for this page — not yours, and not a real seller.
         </p>
         <ul className="example-list">
           {exampleDocuments.map((example) => (
@@ -195,9 +193,8 @@ export default function ReadPage() {
           aria-describedby="document-hint"
         />
         <p id="document-hint" className="field-hint">
-          Nothing you paste is stored or logged. It is sent once to the model that picks out the
-          sentences, and the model is only allowed to copy them — it is never asked what anything
-          costs.
+          Sent once to the model, which may only copy sentences — never write a figure. Nothing
+          you paste is stored.
         </p>
         <button type="submit" className="button-primary" disabled={status === "reading"}>
           {status === "reading" ? "Reading…" : "Read this document"}
@@ -218,8 +215,8 @@ export default function ReadPage() {
         <section className="bill-offer" aria-labelledby="bill-offer-heading">
           <h2 id="bill-offer-heading">Or ask PayPal to issue a bill</h2>
           <p className="field-hint">
-            This creates a real invoice in PayPal&apos;s sandbox and then reads it back here, so
-            the screen you get is built from PayPal&apos;s own copy rather than from this page.
+            Creates an invoice at PayPal and reads it back, so the screen is built from PayPal&apos;s
+            copy rather than this page&apos;s.
           </p>
           <div className="bill-offer-list">
             <BillDoor
@@ -274,8 +271,7 @@ function ReadResultPanel({
     <>
       <p className="notice" role="status">
         Took {result.quotationCount} quotation{result.quotationCount === 1 ? "" : "s"} from your
-        document, each checked word for word against your text. Each figure below was worked out
-        by this page from the sentence shown beside it — not by the model.
+        document, each checked word for word. Every figure was worked out here, not by the model.
         {result.rejected > 0
           ? ` ${result.rejected} sentence${result.rejected === 1 ? "" : "s"} the model offered could not be found in your text and ${result.rejected === 1 ? "was" : "were"} discarded.`
           : ""}
@@ -344,8 +340,7 @@ function CandidatesPanel({ result, onReset }: { result: CandidatesResponse; onRe
         ) : null}
 
         <p className="commitment-source">
-          These are copied from your document. This page has not worked out what any of them means,
-          so none of them is a total and none of them is labelled as one.
+          Copied from your document. None of these is a total.
         </p>
       </section>
 

@@ -45,6 +45,14 @@ export function Page({
       ) : null}
 
       {children}
+
+      {/* The one qualification on every screen, in the one place a caveat
+          belongs (IPD 29). It used to be written out on each screen that needed
+          it, in a different sentence each time, until a page about three figures
+          was mostly a page about what the page was not. */}
+      <p className="footnote">
+        Sandbox store: no real money moves and nothing you do is stored.
+      </p>
     </div>
   );
 }

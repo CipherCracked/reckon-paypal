@@ -49,6 +49,10 @@ export function FigureGrid({
           className={compact ? "account-figure" : "commitment-figure"}
           key={figure.id}
           data-figure={figure.id}
+          // A figure that carries the seller's sentence is marked, so the quote
+          // and its figure can wear the same rule (IPD 29) without the layout
+          // having to know which figure was the quoted one.
+          data-quoted={!compact && figure.source ? "true" : undefined}
           data-held={heldFrom !== undefined && index >= heldFrom ? "true" : undefined}
         >
           <dt>{figure.label}</dt>
@@ -62,9 +66,11 @@ export function FigureGrid({
               </>
             ) : (
               // A floor, not a total: the source stated these parts and no
-              // others, so "At least" is the only honest word for it.
+              // others, so "At least" is the only honest word for it. It is a
+              // word, not a figure, so it is set as one — at display size it
+              // read as a second number.
               <>
-                {figure.floor ? "At least " : null}
+                {figure.floor ? <span className="commitment-floor">At least </span> : null}
                 {formatMoney(figure.amount)}
               </>
             )}

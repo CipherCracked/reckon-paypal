@@ -87,22 +87,24 @@ describe("consent screen", () => {
     expect(await screen.findByText("Charged today")).toBeInTheDocument();
 
     const todayRow = screen.getByText("Charged today").closest("div") as HTMLElement;
-    expect(within(todayRow).getByText("At least $24.99")).toBeInTheDocument();
-    expect(screen.getByText("At least $149.94")).toBeInTheDocument();
+    // "At least" is its own element now: a word about the figure is set as a
+    // word, so it stops reading as part of the amount (IPD 29).
+    expect(within(todayRow).getByText("At least")).toBeInTheDocument();
+    expect(within(todayRow).getByText("$24.99")).toBeInTheDocument();
+    expect(screen.getByText("$149.94")).toBeInTheDocument();
     expect(screen.getByText("Cost to leave")).toBeInTheDocument();
   });
 
-  it("states its own status once, at the point of payment, and says where the check belongs", async () => {
+  it("says where the check belongs, and leaves the status line to the page's footnote", async () => {
     render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
 
     expect(
-      await screen.findByText(
-        /this shop is an example, and payments run in paypal's sandbox, so no real money moves/i,
-      ),
+      await screen.findByText(/it fits any checkout, not just this one/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/it fits any checkout, not just this one/i),
-    ).toBeInTheDocument();
+    // The sandbox is the page's one line now (IPD 29). This component renders
+    // outside that frame, so if the sentence came back here it would be the
+    // second place it is said — which is the thing the decision removed.
+    expect(screen.queryByText(/real money moves/i)).toBeNull();
   });
 
   it("keeps the three figures when only the wording is unavailable", async () => {
@@ -117,7 +119,7 @@ describe("consent screen", () => {
       await screen.findByText(/we could not write a plain-language summary for this purchase/i),
     ).toBeInTheDocument();
     expect(screen.getByText("Charged today")).toBeInTheDocument();
-    expect(screen.getByText("At least $149.94")).toBeInTheDocument();
+    expect(screen.getByText("$149.94")).toBeInTheDocument();
   });
 
   it("moves focus to the breakdown when the shopper says the amount does not match", async () => {

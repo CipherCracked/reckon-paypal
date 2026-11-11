@@ -6,8 +6,9 @@ import { TextSizeControl } from "@/components/TextSizeControl";
  *
  * It names the service, gives the keyboard one way past it, and renders no page
  * content — so a page's figures never depend on the frame, and the frame never
- * depends on a page. The footer names the service and nothing else: a status
- * line repeated on every screen stops being disclosure (IPD 14).
+ * depends on a page. It carries no footer: the one line about what this store is
+ * is the page's (IPD 29), and a status sentence in the frame became furniture
+ * nobody read.
  *
  * **Navigation lives here, and it did not before.** `/shop` and `/read` were
  * reachable only from a link in the body of the entry, so a person who landed on
@@ -79,10 +80,6 @@ export function Shell({
       <main id="main" tabIndex={-1}>
         {children}
       </main>
-
-      <footer className="site-footer">
-        <p>Built with PayPal for the 2026 AI Hackathon.</p>
-      </footer>
     </>
   );
 }
