@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET } from "@/app/api/commitment/[orderId]/route";
 import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
 import { readMarketProduct } from "@/lib/market/channel3";
-import { EXIT_UNREADABLE_NOTE, resolveExitTerm } from "@/lib/commitment/published-exit";
+import { EXIT_SILENT_NOTE, EXIT_UNREADABLE_NOTE, resolveExitTerm } from "@/lib/commitment/published-exit";
 import { money } from "@/lib/money";
 import { recordedProduct } from "./fixtures/channel3-listings";
 
@@ -153,14 +153,14 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
     vi.mocked(resolveExitTerm).mockResolvedValue({
       kind: "silent",
       exit: { kind: "unknown" },
-      note: "The seller's published terms do not say what it costs to leave.",
+      note: EXIT_SILENT_NOTE,
       quoted: null,
     });
 
     const { body } = await get("ch3-YyLUjLT");
 
     expect(body.translation.exit).toBeNull();
-    expect(body.exitNote).toBe("The seller's published terms do not say what it costs to leave.");
+    expect(body.exitNote).toBe(EXIT_SILENT_NOTE);
     // The seller's silence, not a failed read — the two are worded differently
     // on the provenance line (IPD 19).
     expect(body.exitUnreadable).toBe(false);

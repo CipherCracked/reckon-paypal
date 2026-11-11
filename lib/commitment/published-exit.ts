@@ -3,6 +3,7 @@ import { requestQuotations, type ModelQuotation, type ReadOptions } from "@/lib/
 import { normaliseText } from "@/lib/document/normalise";
 import { parseAmount } from "@/lib/document/parse";
 import { verifyQuotations } from "@/lib/document/verify";
+import { SELLER_SAYS_NOTHING, SELLER_UNREADABLE } from "./absence";
 import type { FigureSource } from "./present";
 import type { ExitTerms } from "./types";
 
@@ -187,9 +188,13 @@ async function readOnce(source: string, options: ReadOptions): Promise<ExitFindi
  * The two absences, kept apart in the copy as well as in the type. "The seller
  * published nothing" is a fact about them; "we could not read it" is a fact
  * about us, and only one of those may be reported as the seller's silence.
+ *
+ * The words themselves live in `absence.ts` (IPD 31) so that the four screens
+ * that report an absence say the same sentence in the same place, and a reader
+ * learns one thing once instead of four paraphrases.
  */
-export const EXIT_SILENT_NOTE = "The seller's published terms do not say what it costs to leave.";
-export const EXIT_UNREADABLE_NOTE = "The seller's terms could not be read, so this figure is not shown.";
+export const EXIT_SILENT_NOTE = SELLER_SAYS_NOTHING;
+export const EXIT_UNREADABLE_NOTE = SELLER_UNREADABLE;
 
 export type ExitOutcome = {
   /**

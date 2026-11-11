@@ -1026,3 +1026,55 @@ Decomposition + decision: `docs/landing-page/`.
       be recorded signed out so this page, not the record, is what is seen first.
 - [ ] The header's wrap between 620px and 780px (§1a) — worse now that the page is
       wider, still untouched.
+
+## 16. Made visible — the AI's work on the screen (IPD 31, 32, ITD 29 — 2026-11-12)
+
+Raised by the owner — *"so AI coverage is pretty weak here? I think the task was
+basically integrate AI with PayPal?"* — and answered twice: by a blind churn (no code,
+no docs) and by a blind judge scoring the product against the rubric. Both agreed the
+AI is load-bearing and that nothing on a screen **shows** it. Judge's blunt version:
+*"Today it scores zero, because nothing is submitted."* Decomposition:
+`docs/ai-made-visible/`.
+
+- [x] **IPD 31 — say what is not there.** The three absences stayed distinct in the
+      code and were rendered as one grey footnote in four different wordings. The
+      words now live once, in `lib/commitment/absence.ts`, and `FigureGrid` renders
+      them as `.commitment-state`: body size, ink, left-aligned under the amount, in
+      the place where a figure with a number shows its arithmetic. `relationshipSentence`
+      and the whole `.entry-relationship` rule are deleted — the front door lost a
+      paragraph and gained no words.
+- [x] `EXIT_SILENT_NOTE` / `EXIT_UNREADABLE_NOTE` re-export the shared sentences, so
+      every screen that reports an absence says the same line; `commitment-route`'s
+      test mock was updated to the constant it now passes through.
+- [x] 4 new tests (`tests/commitment-view.test.tsx` pins the state's class and words;
+      three in `tests/published-exit.test.ts` pin the two sentences being different,
+      shared, and chosen by outcome). Suite **455 → 459**, tsc clean, lint clean.
+- [x] Verified on `/` and `/product/ch3-YyLUjLT` at 1440 and 390, light and dark: the
+      live BARK listing reads *Cost to leave — Not stated — The seller's words don't
+      say what leaving costs.*, no overflow, no console errors.
+- [x] **ITD 29 — carry the refused span.** `lib/document/refused.ts`: up to 3 spans,
+      300 characters each, partitioned by identity so one of two identical spans can
+      be the refused one, clipped with an ellipsis. `answer.ts` puts them on the
+      reading as an **optional** field; `verifyQuotations` untouched.
+- [x] **IPD 32 — the checking is shown.** `components/ReadingCheck.tsx` is the only
+      renderer of a refused span (plain text, no `<q>`, no mark, never parsed). The
+      counts paragraph is gone; a closed line sits under the card — *"Read 5
+      sentences from your document. Checked against it word for word."* — and its
+      body is not built until it is opened, so closed really is one line.
+- [x] 7 new tests (6 in `tests/document-refused.test.ts`, plus one in
+      `tests/read-page.test.tsx` proving the refused sentence is on screen and never
+      dressed as a quotation); the two tests that pinned the old paragraph now pin
+      the disclosure. Suite **459 → 466**, tsc clean, lint clean.
+- [x] Verified on `/read` at 1440 and 390, light and dark: closed line one sentence,
+      body absent until opened, three items under *The sentence behind each figure*,
+      no overflow, no console errors.
+- [ ] **A refused span cannot be produced on demand.** Six documents posted to
+      `/api/read` — two misspellings, typographic apostrophes, an ambiguous fee —
+      and the model copied every span verbatim (`rejected: 0` each time). The
+      panel's most convincing state therefore has no live demonstration yet. If the
+      video is to show the model being caught, it needs a document the model
+      actually misreads; drafting one is the open work here.
+- [ ] **The video.** Unchanged, still the biggest unfilled item, still has to be
+      recorded signed out. The judge's order: publish the repo, record the video,
+      make the AI legible, one person's impact quote. Cut test counts and process
+      docs from the submission narrative.

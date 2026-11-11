@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requestQuotations } from "@/lib/ai/read-document";
 import { ModelError } from "@/lib/ai/client";
-import { exitFromSpans, readPublishedExit, clearPublishedExitCache } from "@/lib/commitment/published-exit";
+import { SELLER_SAYS_NOTHING, SELLER_UNREADABLE } from "@/lib/commitment/absence";
+import {
+  EXIT_SILENT_NOTE,
+  EXIT_UNREADABLE_NOTE,
+  exitFromSpans,
+  readPublishedExit,
+  resolveExitTerm,
+  clearPublishedExitCache,
+} from "@/lib/commitment/published-exit";
 import { normaliseText } from "@/lib/document/normalise";
 import { money } from "@/lib/money";
 
@@ -221,5 +229,41 @@ describe("reading a seller's published text (ITD 18)", () => {
     await readPublishedExit(description, { retries: 0 });
 
     expect(requestQuotations).toHaveBeenCalledWith(description, { retries: 0 });
+  });
+});
+
+describe("the absences are worded once, for every screen (IPD 31)", () => {
+  it("keeps the seller's silence and a failed read in two different sentences", () => {
+    // `published-exit.ts` exists to keep these apart, and a screen that rendered
+    // them identically would undo the distinction in the last place it is read.
+    expect(EXIT_SILENT_NOTE).not.toBe(EXIT_UNREADABLE_NOTE);
+  });
+
+  it("takes both sentences from the one module the screens share", () => {
+    // Four screens reported an absence in four paraphrases before this. The
+    // constants are re-exported rather than rewritten so there is one source of
+    // the words, and a screen cannot have its own.
+    expect(EXIT_SILENT_NOTE).toBe(SELLER_SAYS_NOTHING);
+    expect(EXIT_UNREADABLE_NOTE).toBe(SELLER_UNREADABLE);
+  });
+
+  it("names the seller in the silence, and itself in the failure", async () => {
+    // The two are not interchangeable: a seller who published nothing and a
+    // reading that did not happen have different consequences, and only one of
+    // them may be reported as the seller's silence.
+    vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+    const silent = await resolveExitTerm({ kind: "unknown" }, description, "the description");
+    expect(silent.note).toBe(SELLER_SAYS_NOTHING);
+
+    vi.mocked(requestQuotations).mockRejectedValueOnce(new ModelError("Request timed out."));
+    // A different text, because a reading is cached against the seller's words:
+    // the same words would be answered from the first reading and never reach
+    // the request this test is about.
+    const failed = await resolveExitTerm(
+      { kind: "unknown" },
+      "Another seller's terms.",
+      "the description",
+    );
+    expect(failed.note).toBe(SELLER_UNREADABLE);
   });
 });

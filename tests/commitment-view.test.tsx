@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CommitmentView } from "@/components/CommitmentView";
+import { SELLER_SAYS_NOTHING } from "@/lib/commitment/absence";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { money } from "@/lib/money";
@@ -116,6 +117,31 @@ describe("CommitmentView", () => {
     // one it is instead of the row disappearing.
     expect(screen.getAllByText("Not stated").length).toBe(3);
     expect(screen.queryByText("$0.00")).not.toBeInTheDocument();
+  });
+
+  it("says which kind of nothing an absent figure is, in the shared sentence (IPD 31)", () => {
+    const unknown: CommitmentTerms = { ...knownTerms, exit: { kind: "unknown" } };
+    const { container } = render(
+      <CommitmentView
+        figures={presentFigures(unknown, computeCommitment(unknown))}
+        breakdown={computeCommitment(unknown).breakdown}
+        labels={labels}
+        summary=""
+        figureNotes={{ exit: SELLER_SAYS_NOTHING }}
+        sourceNote="Computed from the terms in this test."
+      />,
+    );
+
+    const exit = figure(container, "exit");
+    // The amount line still holds the figure's place at the size of an amount.
+    expect(exit).toHaveTextContent("Not stated");
+    // The state is a line of its own under it, in the words `absence.ts` fixes,
+    // so every screen says the same thing in the same place.
+    const state = exit.querySelector(".commitment-state");
+    expect(state).toHaveTextContent(SELLER_SAYS_NOTHING);
+    // Not the muted hint the absent figure used to carry: the product's most
+    // defining answer is not a footnote.
+    expect(state).not.toHaveClass("commitment-hint");
   });
 
   it("renders a breakdown from an older server that has no fee key at all", () => {

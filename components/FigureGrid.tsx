@@ -66,7 +66,12 @@ export function FigureGrid({
               <>
                 <span className="commitment-amount commitment-amount-absent">Not stated</span>
                 {figureNotes?.[figure.id] ? (
-                  <span className="commitment-hint">{figureNotes[figure.id]}</span>
+                  // The state, in the words `lib/commitment/absence.ts` fixes
+                  // (IPD 31): one short line under the figure, the same line on
+                  // every screen, saying which kind of absence this is. It was a
+                  // grey hint and, before that, a paragraph in the column beside
+                  // the card — a finding set as a footnote.
+                  <span className="commitment-state">{figureNotes[figure.id]}</span>
                 ) : null}
               </>
             ) : (

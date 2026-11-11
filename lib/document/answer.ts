@@ -6,6 +6,7 @@ import { findCandidates, type Candidates } from "./candidates";
 import type { FieldName } from "./fields";
 import { normaliseText } from "./normalise";
 import { presentReading, readQuotations } from "./read";
+import { refusedSpans, type RefusedSpan } from "./refused";
 import { verifyQuotations } from "./verify";
 
 /** A reading of one document, ready to send. */
@@ -22,6 +23,15 @@ export type ReadingAnswer =
       stated: FieldName[];
       quotationCount: number;
       rejected: number;
+      /**
+       * The spans that failed the check, capped and unparsed (ITD 29).
+       *
+       * Optional on purpose. Readings live on `globalThis` and outlive a
+       * recompile, so a payload written before this field existed arrives after
+       * it: the render site has to treat its absence as "nothing to show",
+       * which is exactly what an older reading knew.
+       */
+      refused?: RefusedSpan[];
     }
   | { mode: "candidates"; notice: string; candidates: Candidates };
 
@@ -107,6 +117,10 @@ export async function answerReading(text: string): Promise<Attempt> {
       stated: parsed.stated,
       quotationCount: accepted.length,
       rejected,
+      // The spans themselves, not only how many there were: a count is a claim
+      // that something was thrown away, and the sentence makes it visible
+      // (IPD 32). Capped in `refused.ts`, and shown by one component only.
+      refused: refusedSpans(reading.quotations, accepted),
     },
     keep: true,
   };

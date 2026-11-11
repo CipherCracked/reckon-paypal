@@ -61,8 +61,55 @@ describe("reading a document", () => {
     // The same sentence is the source of two figures, so it appears beside each
     // — on the figure itself, not in a list of sources further down (ITD 19).
     expect(screen.getAllByText("$35.00 per month")).toHaveLength(2);
+    // The checking is one closed line under the figures, not a paragraph above
+    // them (IPD 32). The claim it used to make is inside, one click away.
+    const line = screen.getByText(/checked against it word for word/i);
+    const disclosure = line.closest("details");
+    expect(disclosure).not.toHaveAttribute("open");
+
+    await userEvent.click(line);
+
+    expect(disclosure).toHaveAttribute("open");
     expect(screen.getByText(/not by the model/i)).toBeInTheDocument();
     expect(screen.getByText(/does not say what it costs to cancel/i)).toBeInTheDocument();
+  });
+
+  it("shows the sentence the model offered and the check refused (IPD 32, ITD 29)", async () => {
+    stubFetch({
+      mode: "read",
+      summary: "",
+      figures: [
+        { id: "acrossTerm", label: "Across the term", amount: money(42000), arithmetic: "12 × $35.00", source: { label: "your document", span: "$35.00 per month" } },
+        { id: "exit", label: "Cost to leave", amount: null, arithmetic: null, source: null },
+        { id: "today", label: "Charged today", amount: money(3500), arithmetic: "$35.00", source: { label: "your document", span: "$35.00 per month" } },
+      ],
+      breakdown: { item: money(3500), shipping: money(0), tax: money(0), fee: null },
+      notes: { exit: "The document does not say what it costs to cancel or leave early." },
+      schedule: "12 payments of $35.00, one a month.",
+      dueDate: null,
+      quotationCount: 2,
+      rejected: 1,
+      refused: [{ field: "exitFee", text: "Cancellation costs $25.00" }],
+    });
+
+    render(<ReadPage />);
+    await submit();
+    await userEvent.click(await screen.findByText(/checked against it word for word/i));
+
+    // The refused sentence is on the screen — that is the product catching its
+    // own model, and it is the whole point of carrying it.
+    const refused = screen.getByText("Cancellation costs $25.00");
+    expect(refused).toBeInTheDocument();
+    // But it is never dressed as a quotation of the reader's document: no
+    // `<q>`, no mark, and none of the classes that make a verified span look
+    // like one (ITD 29).
+    expect(refused.closest("q")).toBeNull();
+    expect(refused.querySelector("mark")).toBeNull();
+    expect(refused).not.toHaveClass("commitment-quote");
+    // And nothing was computed from it: the figures are the two the document
+    // states, and the exit figure is still absent.
+    expect(screen.getByText("$420.00")).toBeInTheDocument();
+    expect(screen.queryByText("$25.00")).not.toBeInTheDocument();
   });
 
   it("says a figure is absent when the document is silent, rather than showing a zero", async () => {

@@ -6,6 +6,7 @@ import { CommitmentView } from "@/components/CommitmentView";
 import { ExitNav, RECORD_EXITS } from "@/components/ExitNav";
 import { Page } from "@/components/Page";
 import { PaceControl } from "@/components/PaceControl";
+import { ReadingCheck } from "@/components/ReadingCheck";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
@@ -15,6 +16,7 @@ import type { RenderedFigure } from "@/lib/commitment/present";
 import type { FigureId } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
 import { formatReadingDate } from "@/lib/document/read";
+import type { RefusedSpan } from "@/lib/document/refused";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 
 type ReadResponse = {
@@ -27,6 +29,12 @@ type ReadResponse = {
   dueDate: string | null;
   quotationCount: number;
   rejected: number;
+  /**
+   * The spans the check refused, capped (ITD 29). Optional because readings are
+   * cached on the server across a recompile: a payload from an older build has
+   * no such field, and the panel must render as it did then.
+   */
+  refused?: RefusedSpan[];
 };
 
 type CandidatesResponse = {
@@ -269,14 +277,6 @@ function ReadResultPanel({
 
   return (
     <>
-      <p className="notice" role="status">
-        Took {result.quotationCount} quotation{result.quotationCount === 1 ? "" : "s"} from your
-        document, each checked word for word. Every figure was worked out here, not by the model.
-        {result.rejected > 0
-          ? ` ${result.rejected} sentence${result.rejected === 1 ? "" : "s"} the model offered could not be found in your text and ${result.rejected === 1 ? "was" : "were"} discarded.`
-          : ""}
-      </p>
-
       <CommitmentView
         figures={result.figures}
         breakdown={result.breakdown}
@@ -289,6 +289,17 @@ function ReadResultPanel({
           published: "the sentence beside each figure, which is quoted from your document",
           absent: absentFigureNote(result.figures),
         })}
+      />
+
+      {/* One closed line under the figures, where the provenance line already
+          was, in place of the paragraph that used to count quotations at the
+          top of the answer (IPD 32). The figures moved up to where the answer
+          starts, and the checking is what a reader can open rather than what
+          they have to scroll past. */}
+      <ReadingCheck
+        quotationCount={result.quotationCount}
+        figures={result.figures}
+        refused={result.refused}
       />
 
       <div className="consent-adjust">

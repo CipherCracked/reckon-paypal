@@ -24,29 +24,6 @@ import { SESSION_COOKIE, readSession, signInConfigured } from "@/lib/session";
 export const dynamic = "force-dynamic";
 
 /**
- * The sentence that says what the two columns are to each other (IPD 21 §4).
- *
- * It is derived from what actually happened rather than written once and hoped
- * for: the only figure read out of the seller's words is the cost to leave, the
- * other two are arithmetic over the price, and when the reading found nothing
- * the line says that instead of claiming a quote the screen does not show.
- *
- * Since IPD 29 it is a line, not a paragraph. The quote carries its own label
- * and the source note says which price the arithmetic came from, so the
- * mechanism no longer has to be explained twice on the first screen.
- */
-function relationshipSentence(outcome: ExitOutcome): string {
-  switch (outcome.kind) {
-    case "stated":
-      return "The cost to leave is quoted from the seller's own words above. The other two figures are arithmetic over the price they state.";
-    case "silent":
-      return "The seller's words say nothing about leaving, so the cost to leave reads Not stated — not a number filled in to have one.";
-    case "unreadable":
-      return "The seller's words could not be read just now, so the cost to leave is not shown.";
-  }
-}
-
-/**
  * The home screen, in two states (IPD 28).
  *
  * Signed out it is the product's argument: one real commitment worked through,
@@ -147,6 +124,12 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
         })
       : null;
 
+  // Which kind of nothing the exit figure is, when it is one (IPD 31). The
+  // sentence comes from the reading that produced the absence, so this screen
+  // does not word it; `lib/commitment/absence.ts` does, once, for all four
+  // screens that report an absence.
+  const exitNote = exitOutcome && exitOutcome.kind !== "stated" ? exitOutcome.note : null;
+
   return (
     <Page
       wide
@@ -198,14 +181,6 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
                 </p>
               )}
 
-              {/* The sentence that says what the two columns are to each other
-                  sits under the column it is about, rather than full width below
-                  both: it is the reading of these words, and the pair reads as a
-                  pair when each side carries its own part. */}
-              <p className="entry-relationship" data-entry-relationship={exitOutcome.kind}>
-                {relationshipSentence(exitOutcome)}
-              </p>
-
               {/* The next step sits under the reading it follows from, rather
                   than below both columns where it belonged to neither. */}
               <Link className="button-primary entry-action" href={`/product/${subscription.slug}`}>
@@ -222,13 +197,18 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
               // version look identical to the version it exists to explain.
               summary=""
               schedule={describeSchedule(terms)}
+              // The absence is now said by the figure it belongs to, not by a
+              // paragraph under the seller's words (IPD 31): the same short line
+              // this figure carries on every other screen. That paragraph was
+              // the last place on the page where a reader had to read prose to
+              // learn which kind of nothing they were looking at.
+              figureNotes={exitNote ? { exit: exitNote } : undefined}
               sourceNote={`${describeSources({
                 paypal: subscription.sources.paypal,
                 published: subscription.sources.published,
-                // The sentence under the seller's words already says what is
-                // missing from them, so the figure does not say it again
-                // (IPD 29). The absence is stated once, in the place that can
-                // explain why there is one.
+                // Said once, by the figure (IPD 31, IPD 29). The provenance line
+                // answers what the arithmetic came from, and the state line
+                // answers what is missing from the seller's words.
                 absent: null,
                 unreadable: null,
               })} Nothing has been charged.`}
