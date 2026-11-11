@@ -1,7 +1,8 @@
 import { CancelSubscription } from "@/components/CancelSubscription";
+import { FigureGrid } from "@/components/FigureGrid";
 import { ReadAloud } from "@/components/ReadAloud";
 import { formatMoney, type Money } from "@/lib/money";
-import type { FigureSource } from "@/lib/commitment/present";
+import type { FigureSource, RenderedFigure } from "@/lib/commitment/present";
 
 export type RecordNextCharge = { date: Date | null; amount: Money | null } | null;
 
@@ -48,21 +49,6 @@ export type CommitmentRecordData = {
   sourceNote: string;
 };
 
-/**
- * A figure PayPal did not state. Never filled from the catalogue: the record
- * exists because a payment happened, and a figure nobody stated is not evidence
- * that it did.
- */
-function amountOrNotStated(amount: Money | null, note?: string) {
-  if (amount !== null) return formatMoney(amount);
-  return (
-    <>
-      Not stated
-      {note ? <span className="commitment-hint">{note}</span> : null}
-    </>
-  );
-}
-
 function formatDate(date: Date): string {
   return date.toLocaleDateString("en-GB", {
     day: "numeric",
@@ -105,6 +91,51 @@ function spokenRecord(record: CommitmentRecordData): string {
 export function CommitmentRecord(record: CommitmentRecordData) {
   const cancelled = record.standing?.kind === "cancelled" ? record.standing : null;
 
+  // The three figures, in the order the product puts them everywhere else. The
+  // next charge is not one of them: it is a fact about the agreement, so it
+  // sits on the standing line above rather than opening a grid whose other
+  // tiles are the thing the page is for (ITD 25).
+  const figures: RenderedFigure[] = [
+    {
+      id: "acrossTerm",
+      label: "Across the term",
+      amount: record.acrossTerm,
+      floor: false,
+      arithmetic: null,
+      source: null,
+    },
+    {
+      id: "exit",
+      label: "Cost to leave",
+      amount: record.exit,
+      floor: false,
+      arithmetic: null,
+      // The record quotes too: a figure a shopper keeps is the one most worth
+      // tracing back to the seller's words (ITD 19).
+      source: record.exitSource,
+    },
+    {
+      id: "today",
+      label: "Charged today",
+      amount: record.paidToday,
+      floor: false,
+      arithmetic: null,
+      source: null,
+    },
+  ];
+
+  const nextCharge = cancelled
+    ? `None — PayPal reports this ${cancelled.agreement} as cancelled.`
+    : record.nextCharge === null
+      ? "None — this was a single payment."
+      : `${
+          record.nextCharge.date ? formatDate(record.nextCharge.date) : "Date not yet set"
+        } — ${
+          record.nextCharge.amount === null
+            ? "amount not stated by PayPal"
+            : formatMoney(record.nextCharge.amount)
+        }`;
+
   return (
     <section className="receipt" aria-labelledby="receipt-heading">
       <h1 id="receipt-heading">Your record: {record.productName}</h1>
@@ -123,30 +154,22 @@ export function CommitmentRecord(record: CommitmentRecordData) {
         </p>
       ) : null}
 
-      <dl className="commitment-figures">
-        <div className="commitment-figure" data-figure="nextCharge">
-          <dt>Next charge</dt>
-          <dd>
-            {cancelled
-              ? `None — PayPal reports this ${cancelled.agreement} as cancelled.`
-              : record.nextCharge === null
-                ? "None — this was a single payment."
-                : `${record.nextCharge.date ? formatDate(record.nextCharge.date) : "Date not yet set"} — ${
-                    record.nextCharge.amount === null
-                      ? "amount not stated by PayPal"
-                      : formatMoney(record.nextCharge.amount)
-                  }`}
-          </dd>
-        </div>
+      <p className="record-standing">
+        <span className="record-standing-label">Next charge</span> {nextCharge}
+      </p>
 
-        <div className="commitment-figure" data-figure="acrossTerm">
-          <dt>Across the term</dt>
-          <dd>
-            {amountOrNotStated(
-              record.acrossTerm,
-              "PayPal did not state the price this payment runs on.",
-            )}
-            {cancelled && record.acrossTerm !== null ? (
+      <FigureGrid
+        figures={figures}
+        figureNotes={{
+          acrossTerm: "PayPal did not state the price this payment runs on.",
+          today: "PayPal did not return the amount it charged.",
+          // No default sentence: the reason is the caller's to state, and "the
+          // seller published nothing" is wrong when the read failed.
+          exit: record.exitNote ?? undefined,
+        }}
+        figureExtras={{
+          acrossTerm:
+            cancelled && record.acrossTerm !== null ? (
               // The figure stays as the agreement stated it. Reconciling it with
               // what was actually paid would mean keeping state this product
               // does not keep, so the record says which of the two it shows.
@@ -154,27 +177,11 @@ export function CommitmentRecord(record: CommitmentRecordData) {
                 The whole agreement was for this much. It ended early, so this is what it was for,
                 not what it will cost.
               </span>
-            ) : null}
-          </dd>
-        </div>
-
-        <div className="commitment-figure" data-figure="exit">
-          <dt>Cost to leave</dt>
-          {/* No default sentence here: the reason is the caller's to state, and
-              "the seller published nothing" is wrong when the read failed. */}
-          <dd>
-            {amountOrNotStated(record.exit, record.exitNote ?? undefined)}
-            {record.exitSource ? (
-              // The record quotes too: a figure a shopper keeps is the one most
-              // worth tracing back to the seller's words (ITD 19).
-              <span className="commitment-quote">
-                <q>{record.exitSource.span}</q>{" "}
-                <span className="commitment-quote-source">— {record.exitSource.label}</span>
-              </span>
-            ) : null}
-            {/* The figure and its verb in one place (IPD 23): what leaving costs,
-                and the way to leave, are the same sentence of the record. */}
-            {record.standing?.kind === "running" ? (
+            ) : null,
+          // The figure and its verb in one place (IPD 23): what leaving costs,
+          // and the way to leave, are the same sentence of the record.
+          exit:
+            record.standing?.kind === "running" ? (
               <CancelSubscription
                 subscriptionId={record.standing.subscriptionId}
                 agreement={record.standing.agreement}
@@ -182,20 +189,9 @@ export function CommitmentRecord(record: CommitmentRecordData) {
                 reference={record.reference}
                 manageUrl={record.manageUrl}
               />
-            ) : null}
-          </dd>
-        </div>
-
-        <div className="commitment-figure" data-figure="paidToday">
-          <dt>Charged today</dt>
-          <dd>
-            {amountOrNotStated(
-              record.paidToday,
-              "PayPal did not return the amount it charged.",
-            )}
-          </dd>
-        </div>
-      </dl>
+            ) : null,
+        }}
+      />
 
       <div className="commitment-spoken">
         <ReadAloud text={spokenRecord(record)} />

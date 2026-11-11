@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { callbackUri, readProfile } from "@/lib/paypal/identity";
-import { publicOrigin } from "@/lib/origin";
+import { publicOrigin, signInHop, signInOrigin } from "@/lib/origin";
 
 /**
  * Two addresses and one id decide whether a sign-in is real: the browser's own
@@ -38,6 +38,49 @@ describe("the address the browser is on", () => {
     expect(callbackUri(request("http://localhost:3001/auth/paypal/start", { host: "127.0.0.1:3001" }))).toBe(
       "http://127.0.0.1:3001/auth/paypal/callback",
     );
+  });
+});
+
+describe("the address PayPal will accept", () => {
+  it("hands PayPal the registered spelling of this machine", () => {
+    // A browser opened on localhost asks for a redirect_uri of localhost, and
+    // PayPal answers that with "invalid client_id or redirect_uri" on its own
+    // site — observed 2026-11-11, with the dashboard having refused localhost
+    // and taken 127.0.0.1.
+    expect(signInOrigin(request("http://localhost:3001/account", { host: "localhost:3001" }))).toBe(
+      "http://127.0.0.1:3001",
+    );
+  });
+
+  it("leaves a real deployment's origin alone", () => {
+    expect(signInOrigin(request("https://companion.example/account", { host: "companion.example" }))).toBe(
+      "https://companion.example",
+    );
+  });
+
+  it("lets PAYPAL_RETURN_ORIGIN name the registered origin", () => {
+    vi.stubEnv("PAYPAL_RETURN_ORIGIN", "https://pay.example/");
+    expect(signInOrigin(request("https://companion.example/account", { host: "companion.example" }))).toBe(
+      "https://pay.example",
+    );
+  });
+
+  it("moves a localhost browser to the spelling PayPal knows", () => {
+    expect(signInHop(request("http://localhost:3001/account", { host: "localhost:3001" }))).toBe(
+      "http://127.0.0.1:3001/auth/paypal/start",
+    );
+  });
+
+  it("does not move anyone who is already in the right place", () => {
+    expect(signInHop(request("http://127.0.0.1:3001/account", { host: "127.0.0.1:3001" }))).toBeNull();
+    expect(signInHop(request("https://companion.example/account", { host: "companion.example" }))).toBeNull();
+  });
+
+  it("never bounces across ports, which would be a redirect that cannot end", () => {
+    // A configured origin on another port is a misconfiguration; following it
+    // would arrive, be told to hop, and arrive again.
+    vi.stubEnv("PAYPAL_RETURN_ORIGIN", "http://127.0.0.1:4000");
+    expect(signInHop(request("http://localhost:3001/account", { host: "localhost:3001" }))).toBeNull();
   });
 });
 

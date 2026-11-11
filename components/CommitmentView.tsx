@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { FigureGrid } from "@/components/FigureGrid";
 import { ReadAloud } from "@/components/ReadAloud";
 import { spokenCommitment } from "@/lib/commitment/spoken";
 import { formatMoney } from "@/lib/money";
@@ -71,54 +72,7 @@ export function CommitmentView({
         </p>
       ) : null}
 
-      <dl className="commitment-figures">
-        {figures.map((figure, index) => (
-          <div
-            className="commitment-figure"
-            key={figure.id}
-            data-figure={figure.id}
-            // Visually held back, but never removed: a reader who navigates by
-            // list still gets every figure.
-            data-held={index >= revealed ? "true" : undefined}
-          >
-            <dt>{figure.label}</dt>
-            <dd>
-              {figure.amount === null ? (
-                <>
-                  Not stated
-                  {/* No default: a generic sentence here once said "the seller
-                      published nothing" for a read that had failed, and for any
-                      figure, not just the exit one. The caller knows which
-                      absence this is; a component cannot guess it. */}
-                  {figureNotes?.[figure.id] ? (
-                    <span className="commitment-hint">{figureNotes[figure.id]}</span>
-                  ) : null}
-                </>
-              ) : (
-                // A floor, not a total: the source stated these parts and no
-                // others, so "At least" is the only honest word for it.
-                <>
-                  {figure.floor ? "At least " : null}
-                  {formatMoney(figure.amount)}
-                </>
-              )}
-              {figure.arithmetic ? (
-                <span className="commitment-arithmetic">{figure.arithmetic}</span>
-              ) : null}
-              {figure.source ? (
-                // The seller's sentence, in their words, under the figure it
-                // produced — the trace the whole product exists to show (ITD 19).
-                // Not clamped: a quoted sentence that has been shortened is no
-                // longer the span that was checked.
-                <span className="commitment-quote">
-                  <q>{figure.source.span}</q>{" "}
-                  <span className="commitment-quote-source">— {figure.source.label}</span>
-                </span>
-              ) : null}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <FigureGrid figures={figures} figureNotes={figureNotes} heldFrom={more ? revealed : undefined} />
 
       {more ? (
         <button

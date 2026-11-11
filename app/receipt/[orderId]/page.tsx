@@ -1,5 +1,6 @@
-import Link from "next/link";
 import { CommitmentRecord, type AgreementKind, type RecordStanding } from "@/components/CommitmentRecord";
+import { ExitNav, RECORD_EXITS } from "@/components/ExitNav";
+import { Page } from "@/components/Page";
 import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import {
@@ -21,6 +22,17 @@ type PageProps = {
   searchParams: Promise<{ slug?: string }>;
 };
 
+/**
+ * What a record opened without its listing cannot say.
+ *
+ * The listing supplies two things the record cannot get from PayPal: the name of
+ * the thing bought, and the seller's sentence about leaving. The second one is a
+ * figure, so it is refused rather than guessed — the same rule as everywhere
+ * else (IPD 19).
+ */
+const NO_LISTING_EXIT_NOTE =
+  "This record was opened without its listing, so what the seller says about leaving was not read.";
+
 function manageUrl(): string {
   const sandbox = paypalBaseUrl().includes("sandbox");
   return `https://www.${sandbox ? "sandbox." : ""}paypal.com/myaccount/autopay/`;
@@ -29,32 +41,24 @@ function manageUrl(): string {
 /**
  * The end of the journey (IPD 15). A payment that PayPal has not confirmed has
  * no record to show, and a confirmed one is the last screen rather than a stop:
- * it offers the two ways on, and no way back into the payment.
+ * it offers the ways on, and no way back into the payment.
  *
  * The figures are PayPal's, not the shop's (ITD 17). A record that restated the
  * catalogue would be a claim about a payment that may never have been made, on
  * the one screen a shopper keeps.
+ *
+ * **`?slug=` is now optional** (IPD 28). The list of a person's commitments links
+ * here, and a list has no slug to offer: it reads subscriptions from PayPal by
+ * id, not products from the catalogue. So the record reads what PayPal holds and
+ * says what it could not read — instead of refusing the one screen a person is
+ * most likely to arrive at without the original link.
  */
 export default async function ReceiptPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
   const { slug } = await searchParams;
   const resolved = slug ? await resolveProduct(slug) : null;
 
-  if (!resolved) {
-    return (
-      <div className="page">
-        <p className="notice">This record is for a purchase this store does not recognise.</p>
-        <RecordExits />
-      </div>
-    );
-  }
-
-  const recurring = resolved.terms.shape === "recurring";
-  const financed = resolved.terms.shape === "financed";
-  // Both are scheduled by PayPal and both come back as a subscription id. Only
-  // a one-time purchase comes back as an order.
-  const scheduled = recurring || financed;
-
+  let scheduled: boolean;
   let status: string;
   let nextBillingTime: string | null = null;
   let statusChangeTime: string | null = null;
@@ -62,6 +66,21 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   let planTerms: CommitmentTerms | null = null;
 
   try {
+    if (resolved) {
+      const recurring = resolved.terms.shape === "recurring";
+      const financed = resolved.terms.shape === "financed";
+      // Both are scheduled by PayPal and both come back as a subscription id.
+      // Only a one-time purchase comes back as an order.
+      scheduled = recurring || financed;
+    } else {
+      // No listing, so the shape is PayPal's to answer: a subscription id reads
+      // as a subscription, and anything else is tried as an order.
+      scheduled = await retrieveSubscription(orderId).then(
+        () => true,
+        () => false,
+      );
+    }
+
     if (scheduled) {
       const subscription = await retrieveSubscription(orderId);
       status = subscription.status;
@@ -76,43 +95,48 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
     }
   } catch {
     return (
-      <div className="page">
+      <Page title="We cannot confirm this payment">
         <p className="notice">
           We cannot confirm this payment with PayPal right now, so there is no record to show.
           Nothing has been charged twice — check PayPal directly if you are unsure.
         </p>
-        <RecordExits />
-      </div>
+        <ExitNav links={RECORD_EXITS} />
+      </Page>
     );
   }
 
   if (!isSettled(status)) {
     return (
-      <div className="page">
+      <Page title="Nothing has been taken yet">
         <p className="notice">
-          PayPal has not confirmed this payment, so there is nothing to record yet. Nothing has
-          been taken.
+          PayPal has not confirmed this payment, so there is nothing to record yet. Nothing has been
+          taken.
         </p>
-        <RecordExits />
-      </div>
+        <ExitNav links={RECORD_EXITS} />
+      </Page>
     );
   }
 
   // The third figure is the seller's, as everywhere else (IPD 19). The reading
   // is a model call, so it carries the same budget the bill page gives it: a
   // record that waited most of a minute would be a record nobody reads.
-  const exitOutcome = await withBudget(
-    resolveExitTerm(resolved.terms.exit, resolved.description, resolved.descriptionLabel, {
-      retries: 0,
-    }),
-    MODEL_READ_DEADLINE_MS,
-    {
-      kind: "unreadable",
-      exit: { kind: "unknown" },
-      note: EXIT_UNREADABLE_NOTE,
-      quoted: null,
-    } satisfies ExitOutcome,
-  );
+  //
+  // Without the listing there is nothing to read, and that absence is stated
+  // rather than papered over with a figure from somewhere else.
+  const exitOutcome: ExitOutcome = resolved
+    ? await withBudget(
+        resolveExitTerm(resolved.terms.exit, resolved.description, resolved.descriptionLabel, {
+          retries: 0,
+        }),
+        MODEL_READ_DEADLINE_MS,
+        {
+          kind: "unreadable",
+          exit: { kind: "unknown" },
+          note: EXIT_UNREADABLE_NOTE,
+          quoted: null,
+        } satisfies ExitOutcome,
+      )
+    : { kind: "unreadable", exit: { kind: "unknown" }, note: NO_LISTING_EXIT_NOTE, quoted: null };
   const exit = exitOutcome.exit;
 
   // What was charged is PayPal's own amount. What it adds up to is our
@@ -124,7 +148,11 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // collecting.
   let terms: CommitmentTerms | null;
   if (scheduled) {
-    terms = planTerms ? { ...planTerms, exit } : financed ? { ...resolved.terms, exit } : null;
+    terms = planTerms
+      ? { ...planTerms, exit }
+      : resolved?.terms.shape === "financed"
+        ? { ...resolved.terms, exit }
+        : null;
   } else {
     terms = paypalAmount
       ? {
@@ -142,13 +170,13 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // Two figures for one payment is not a record. Say so rather than pick one.
   if (translation && paypalAmount && translation.today.minor !== paypalAmount.minor) {
     return (
-      <div className="page">
+      <Page title="This record does not add up">
         <p className="notice">
           PayPal charged a different amount from the one these terms add up to, so no record is
           shown. Check the payment with PayPal directly.
         </p>
-        <RecordExits />
-      </div>
+        <ExitNav links={RECORD_EXITS} />
+      </Page>
     );
   }
 
@@ -164,7 +192,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // is the case this exists for: its figures are the seller's instalment terms,
   // checked against what PayPal took.
   const publishedLabel =
-    scheduled && !planTerms && financed
+    scheduled && !planTerms && resolved?.terms.shape === "financed"
       ? "the seller's published instalment terms, with today's charge agreeing with PayPal"
       : null;
 
@@ -184,7 +212,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // out of a twelve-month arrangement has been failed by the screen that sold it
   // to them. What the button cannot do is settle the debt: the confirmation says
   // that in the same breath as what it can do.
-  const agreement: AgreementKind = financed ? "payment plan" : "subscription";
+  const agreement: AgreementKind = resolved?.terms.shape === "financed" ? "payment plan" : "subscription";
   const standing: RecordStanding | null =
     scheduled && status === "ACTIVE"
       ? { kind: "running", subscriptionId: orderId, agreement }
@@ -196,10 +224,16 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
           }
         : null;
 
+  // Without the listing the record has no name for the thing, and inventing one
+  // is the one thing this product does not do. It names the agreement instead.
+  const productName =
+    resolved?.name ??
+    (scheduled ? "A subscription this store holds for you" : "A payment this store holds for you");
+
   return (
-    <div className="page">
+    <Page>
       <CommitmentRecord
-        productName={resolved.name}
+        productName={productName}
         reference={orderId}
         paidToday={translation?.today ?? null}
         acrossTerm={translation?.acrossTerm ?? null}
@@ -214,28 +248,14 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
         standing={standing}
         manageUrl={manageUrl()}
         calendarHref={
-          scheduled
+          scheduled && resolved
             ? `/api/receipt/${encodeURIComponent(orderId)}/calendar?slug=${encodeURIComponent(resolved.slug)}`
             : null
         }
         sourceNote={sourceNote}
       />
 
-      <RecordExits />
-    </div>
-  );
-}
-
-/** Two ways on, and never a third one back into a payment (IPD 15). */
-function RecordExits() {
-  return (
-    <nav className="record-exits" aria-label="Where to go next">
-      <Link className="button-secondary" href="/read">
-        Read another document
-      </Link>
-      <Link className="button-secondary" href="/shop">
-        Browse the shop
-      </Link>
-    </nav>
+      <ExitNav links={RECORD_EXITS} />
+    </Page>
   );
 }

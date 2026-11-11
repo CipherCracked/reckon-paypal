@@ -36,6 +36,79 @@ If it fails, the first thing to check is the request body sent to
 
 ---
 
+## 1a. The way in, and the look (IPD 27, ITD 24 — 2026-11-11)
+Raised by the user after seeing the live run: the sign-in was a sentence at the
+foot of the entry, and the product looked like the browser's default page.
+
+- [x] **The way in moved to the frame.** The header carries one control beside the
+      text-size control on every screen — *Sign in* when signed out, *Your
+      commitments* when signed in — and renders it only where signing in can work
+      (`identityConfigured() && signInConfigured()`). The root layout parses the
+      session cookie, so the label is right at first paint rather than flipping
+      once a client catches up.
+- [x] **The account page became a destination, not a detour.** "Back to the ways
+      in" removed; signed out it opens with what signing in reads, shows and keeps
+      and then one button; signed in it opens with the account, a live *Sign out*
+      in the page bar, and the rows. The home page's buried *"Already agreed to
+      something here?"* link is gone — one placement, not two.
+- [x] **The look is a ledger.** Atkinson Hyperlegible for text (drawn by the Braille
+      Institute for low vision, which is the audience), IBM Plex Mono with
+      `tabular-nums` for every amount, near-black ink on paper, one deep-green
+      accent used only for actions and the live state, `4px`/`2px` edges instead of
+      pills. Both faces are self-hosted at build by `next/font`; no runtime request
+      to a font host.
+- [x] **The entry reads as a pair.** The seller's words sit in their own panel with
+      the sentence that explains them, and the next step ("Check this commitment")
+      is under it; the figures keep the card opposite. Three doors in one row.
+- [x] Verified in a browser at 1280 and 390 wide, light and dark: no horizontal
+      overflow, figures in the mono face on the entry, the product screen,
+      `/account` and the receipt. Suite 436 → 439 (three frame tests).
+- [x] **A sign-in now starts on the address PayPal has registered.** The live
+      failure was `invalid client_id or redirect_uri`: the browser was on
+      `localhost:3001`, the app asked PayPal to return to
+      `localhost:3001/auth/paypal/callback`, and the dashboard had only accepted
+      `127.0.0.1`. `signInOrigin` (`lib/origin.ts`) answers with the registered
+      spelling and `signInHop` sends a `localhost` visitor there before the flow
+      starts — same port, or it refuses to hop at all, so a misconfigured origin
+      cannot become a redirect loop. `PAYPAL_RETURN_ORIGIN` overrides it for a
+      deployment. Verified by curl: `localhost:3001/auth/paypal/start` →
+      `127.0.0.1:3001/auth/paypal/start` → PayPal with
+      `redirect_uri=http%3A%2F%2F127.0.0.1%3A3001%2Fauth%2Fpaypal%2Fcallback`.
+      Suite 439 → 445.
+- [ ] The header wraps to a second line between roughly 620px and 780px, where the
+      service name and both controls no longer fit on one. It stays right-aligned
+      and readable; it is not elegant.
+- [ ] Receipt still has no "Lost this link? Sign in" line (§13).
+
+### The coherence audit (2026-11-11)
+
+The user rejected "no login wall" and said the disjointness was wider than
+sign-in. A read-only audit agent went over every route. Its verdict, in short:
+the wall is not the fix, but they are right that the product has no spine.
+**All six were built the same day — IPD 28 (`docs/joined-up-product/ipds/where-the-record-lives.md`) and ITD 25 (`.../itds/one-page-one-set-of-figures.md`), suite 445 → 449, verified by screenshot at 1280 and 390 and by a real sign-in on the live `:3001`.**
+
+- [x] **One home in two states.** `/` signed out = the worked commitment, then a
+      sign-in card, then search. `/` signed in = your commitments, then search,
+      with one line back to the worked example. `/account` becomes the sign-in
+      screen only and redirects signed-in visitors to `/`. (`components/RecordHome.tsx`; `app/page.tsx#Home` awaits the branch so the whole tree comes back from the page.)
+- [x] **One `Page` primitive.** `.page` + back link + `.page-header` is copy-pasted
+      into every route, which is why header rhythm and back-link wording differ.
+      (`components/Page.tsx`, used by `/`, `/account`, `/shop`, `/read`, product, consent, bill, receipt.)
+- [x] **One `Figures` primitive.** The same three figures are rendered three ways
+      (`CommitmentView`, `CommitmentRecord`, `account/page.tsx`); the receipt's grid
+      also buries "Next charge" as a fourth tile. (`components/FigureGrid.tsx`, full and compact; the next charge is now a standing line, not a tile.)
+- [x] **The record list cannot open the record.** No row on `/account` links to
+      `/receipt/{id}`. The receipt is also a dead end: its only exits are `/read`
+      and `/shop`. (`components/CommitmentRow.tsx` links *Open the record*; `components/ExitNav.tsx` puts three ways on at the end of every record.)
+- [x] **The frame has no navigation.** `/shop` and `/read` are reachable only by a
+      body link on `/`; on a phone the header is ~187px of text-size chips. (`Shell` nav = Shop + Read a document; the text-size control is a disclosure; the account control is the action — `/auth/paypal/start` signed out, a POST sign-out signed in — which fixes the reported dead control on `/account`.)
+- [x] **Cut the "other ways money is asked of you" tour** and the invented
+      headphones door; demote the bill to a line. Search is the real way in. (The bill is now a line on `/read`; its two tests moved to `tests/read-page.test.tsx`.)
+
+**Still open from this pass:** the receipt with no live subscription was checked only on a cancelled `I-GPD3KPT15D79` — an **active** one is still the user's to approve before the video. `/account` keeps the frame's sign-in beside the card's, deliberately: both work, one is the frame's affordance.
+
+---
+
 ## 2. Give it a face
 
 A stranger should understand the product in ten seconds: who it is for, and the
@@ -855,26 +928,29 @@ the store's own records live. Decomposition and four decisions:
       *invalid scope*), and the token reports them granted.
 - [x] Removed the buyer's old grant so PayPal would ask again: the consent screen
       did appear and was approved (*Agree and Connect*).
-- [ ] **BLOCKED on PayPal, not on configuration:** even after a fresh approval,
-      `userinfo` returns only `user_id`/`sub` (`…/identity/user/M3Pa4…`) — no email,
-      no payer id — from `openidconnect?schema=openid`, `oauth2?schema=paypalv1.1`,
-      `oauth2?schema=openid` and bare `oauth2`, and with `scope=email` alone. PayPal's
-      own API reference lists **no `payer_id` field** on the OIDC schema. `/account`
-      therefore says it cannot tell which account, which is true.
+- [x] **RESOLVED 2026-11-11 — it was PayPal's propagation delay, exactly as the panel
+      said.** After the three-hour window the same browser run lists both sandbox
+      subscriptions on `/account`: *"Read from PayPal just now, for
+      sb-br9fh53843654@personal.example.com"*, then two rows of *6 payments of $24.99,
+      one a month … cancelled*, each with **Across the term $149.94 · 6 × $24.99**,
+      **Cost to leave Not stated**, **Charged today $24.99**. The email coming back
+      proves both ticked attributes are live. Before propagation, the same code
+      returned only `user_id`/`sub` (`…/identity/user/M3Pa4…`) from all four userinfo
+      shapes — that is now a *seen-and-explained* state, not an open question.
 - [x] **App settings confirmed correct from the dashboard itself** (user's screenshots,
       2026-11-11): return URL `http://127.0.0.1:3001/auth/paypal/callback`, **Email**
       ticked, **PayPal account ID (payer ID)** ticked, privacy + user-agreement URLs
       `https://example.com`. Nothing is missing on our side of the configuration.
-- [ ] **WAIT, then retry — PayPal's own panel says "allow up to three hours for the
-      change to take effect".** Every test so far ran minutes after saving (still
-      `signin=unreadable`). Re-run the Playwright sign-in after that window; the probe
-      lives at `C:/Users/USER/AppData/Local/Temp/signin-probe.mjs` (headless Chrome,
-      `channel: "chrome"`, buyer sign-in, consent click, reports the returned page).
-      Success looks like: `/account` lists subscriptions instead of `?signin=unreadable`.
-- [ ] If it still fails after three hours: a **new** sandbox Personal (US) buyer with
-      no history (Testing Tools → Sandbox Accounts → Create → Personal, United States).
-      If that also returns only a subject, this is PayPal's limit and the page ships as
-      it is.
+- [x] Retried after the window and it worked. Probe kept at
+      `C:/Users/USER/AppData/Local/Temp/signin-probe.mjs` (headless Chrome,
+      `channel: "chrome"`, buyer sign-in, consent click, reports the returned page) —
+      **the fastest way to re-check the whole sign-in**, and the thing to run again
+      after any change to the app's Log in with PayPal settings or `SESSION_SECRET`.
+      The development server must be up on **:3001** first; the probe starts at
+      `http://127.0.0.1:3001/account`, and that host is the one registered at PayPal.
+- [x] **The way out works too (same probe run, 2026-11-11)** — *Sign out* on the
+      signed-in page returns to `/account` with the sign-in offered again, so the
+      session cookie is genuinely gone rather than merely hidden.
 - [ ] Approve one **active** subscription before the video: both records in the
       sandbox are `CANCELLED`, so the page currently demonstrates only that state.
 - [ ] Entry point: the home page links to it; the receipt does not yet ("Lost this

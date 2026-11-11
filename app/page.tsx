@@ -1,7 +1,10 @@
+import { cookies } from "next/headers";
 import Link from "next/link";
-import { BillDoor } from "@/components/BillDoor";
 import { CommitmentView } from "@/components/CommitmentView";
-import { findBill } from "@/lib/catalog/bills";
+import { MarketSearch } from "@/components/MarketSearch";
+import { Page } from "@/components/Page";
+import { RecordHome } from "@/components/RecordHome";
+import { SignInCard } from "@/components/SignInCard";
 import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
@@ -13,7 +16,8 @@ import {
 import { describeSchedule } from "@/lib/commitment/schedule";
 import { absentFigureNote, describeSources } from "@/lib/commitment/sources";
 import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
-import { formatMoney } from "@/lib/money";
+import { identityConfigured } from "@/lib/paypal/identity";
+import { SESSION_COOKIE, readSession, signInConfigured } from "@/lib/session";
 
 /** The catalogue is read per request, so the front door reflects PayPal rather than a build. */
 export const dynamic = "force-dynamic";
@@ -38,6 +42,35 @@ function relationshipSentence(outcome: ExitOutcome): string {
 }
 
 /**
+ * The home screen, in two states (IPD 28).
+ *
+ * Signed out it is the product's argument: one real commitment worked through,
+ * with the seller's own words beside the three figures, and then the two things
+ * a person came here to do — see what they have already agreed to, and check
+ * something new.
+ *
+ * Signed in it is the person's own record: what this store holds under their
+ * PayPal account, then the same search. One address, one frame, one nav — a
+ * person who has an account here is not sent to a second product.
+ *
+ * The proof is not shown to a signed-in visitor. It was the thing a returning
+ * shopper had to scroll past to reach their own business, which is the complaint
+ * this decision exists to answer; the link under the search keeps it one click
+ * away for anyone who wants to see how a check works.
+ */
+export default async function Home() {
+  const person = readSession((await cookies()).get(SESSION_COOKIE)?.value);
+
+  // The branch is awaited rather than returned as an element: both halves are
+  // async, and awaiting here is what makes the page's whole tree come back from
+  // `Home()`. A page that only points at another async component cannot be
+  // rendered outside the server, which would put the front door's own tests out
+  // of reach.
+  if (person) return RecordHome({ person });
+  return ProofHome({ canSignIn: identityConfigured() && signInConfigured() });
+}
+
+/**
  * The entry states the product, then proves it on one real commitment before
  * asking anything (IPD 14).
  *
@@ -51,21 +84,11 @@ function relationshipSentence(outcome: ExitOutcome): string {
  * figures and the sentence behind each on the right, so the transformation the
  * product exists for is visible without a click.
  */
-export default async function Home() {
+async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   // The worked subscription is a real listing, read live like every other real
   // product. Its price moves, and a hardcoded one would be the invented figure
   // this entry exists to replace.
-  const [subscription, purchase] = await Promise.all([
-    resolveProduct("ch3-YyLUjLT"),
-    resolveProduct("noise-cancelling-headphones"),
-  ]);
-  const bill = findBill("clinic-visit");
-
-  if (!purchase) {
-    // The file is a constant in this repository, so this cannot happen in a
-    // working build; failing loudly beats a blank front door.
-    throw new Error("The entry needs the purchase in the catalogue.");
-  }
+  const subscription = await resolveProduct("ch3-YyLUjLT");
 
   // The third figure is the seller's, so it is read from the seller's words
   // whenever the terms left it unanswered (IPD 19) — the same rule as consent.
@@ -75,6 +98,7 @@ export default async function Home() {
   // door gives the reading the same budget the bill does rather than holding a
   // visitor for most of a minute — a front door that takes 47 seconds is not a
   // front door (IPD 21).
+  //
   // A listing that has gone from the catalogue leaves the entry with nothing
   // honest to work through. It says so below rather than falling back to a
   // figure from the file, which would be about a different product.
@@ -108,17 +132,10 @@ export default async function Home() {
       : null;
 
   return (
-    <div className="page">
-      <header className="page-header">
-        <h1>What it costs, before you agree to it</h1>
-        <p className="lede">
-          Three figures for any commitment — what it costs across the whole term, what it costs to
-          leave, and what is charged today — each with the words it was worked out from. Built for
-          adults who find billing language hard, including people with dyscalculia, ADHD and
-          dyslexia.
-        </p>
-      </header>
-
+    <Page
+      title="What it costs, before you agree to it"
+      lede="Three figures for any commitment — what it costs across the whole term, what it costs to leave, and what is charged today — each with the words it was worked out from. Built for adults who find billing language hard, including people with dyscalculia, ADHD and dyslexia."
+    >
       {subscription && exitOutcome && terms && translation && figures ? (
         <section className="entry-worked" aria-labelledby="worked-heading">
           <h2 id="worked-heading" className="eyebrow">
@@ -139,6 +156,20 @@ export default async function Home() {
                   listing states.
                 </p>
               )}
+
+              {/* The sentence that says what the two columns are to each other
+                  sits under the column it is about, rather than full width below
+                  both: it is the reading of these words, and the pair reads as a
+                  pair when each side carries its own part. */}
+              <p className="entry-relationship" data-entry-relationship={exitOutcome.kind}>
+                {relationshipSentence(exitOutcome)}
+              </p>
+
+              {/* The next step sits under the reading it follows from, rather
+                  than below both columns where it belonged to neither. */}
+              <Link className="button-primary entry-action" href={`/product/${subscription.slug}`}>
+                Check this commitment
+              </Link>
             </section>
 
             <CommitmentView
@@ -161,14 +192,6 @@ export default async function Home() {
               })} Nothing has been charged and nothing has been created at PayPal.`}
             />
           </div>
-
-          <p className="entry-relationship" data-entry-relationship={exitOutcome.kind}>
-            {relationshipSentence(exitOutcome)}
-          </p>
-
-          <Link className="button-primary entry-action" href={`/product/${subscription.slug}`}>
-            Check this commitment
-          </Link>
         </section>
       ) : (
         <p className="notice" role="status">
@@ -178,53 +201,29 @@ export default async function Home() {
         </p>
       )}
 
-      <p className="entry-contrast">
-        Not every seller says. Where the words say nothing about leaving, the cost to leave reads{" "}
-        <strong>Not stated</strong> — never $0.00 — and the line beneath the figures names whose
-        silence it is.
-      </p>
-
-      <section aria-labelledby="other-heading">
-        <h2 id="other-heading" className="eyebrow">
-          The other ways money is asked of you
+      {/* The two things a person comes here to do, in the order they matter to
+          someone deciding whether to trust the page: their own business first
+          if they have any, then something new (IPD 28). */}
+      <section className="front-doors" aria-labelledby="doors-heading">
+        <h2 id="doors-heading" className="eyebrow">
+          Where to go from here
         </h2>
 
-        <ul className="second-rank">
-          <li className="door" data-door="purchase">
-            <span className="door-label">A purchase you pay once</span>
-            <Link className="door-link" href={`/product/${purchase.slug}`}>
-              {purchase.name} — {formatMoney(computeCommitment(purchase.terms).today)} today
-            </Link>
-          </li>
+        {canSignIn ? <SignInCard /> : null}
 
-          {bill ? (
-            <BillDoor
-              slug={bill.slug}
-              name={bill.name}
-              biller={bill.biller}
-              amount={formatMoney(computeCommitment(bill.terms).today)}
-            />
-          ) : null}
-
-          <li className="door" data-door="document">
-            <span className="door-label">A document someone sent you</span>
-            <Link className="door-link" href="/read">
-              Paste it and read the same three figures
-            </Link>
-          </li>
-        </ul>
+        <section aria-labelledby="check-heading" className="check-card">
+          <h2 id="check-heading">Check something new</h2>
+          <p>
+            Any product you are about to buy, and any document someone has sent you, works the same
+            way: the seller&apos;s words, then the three figures.
+          </p>
+          <MarketSearch inputId="home-q" />
+          <p className="scope-note">
+            <Link href="/read">Or paste a document someone sent you</Link> — a bill, a contract, a
+            renewal notice.
+          </p>
+        </section>
       </section>
-
-      <p className="scope-note">
-        <Link href="/shop">Or search real products</Link> — live listings and prices from thousands
-        of shops, so the figures are about something you could actually buy.
-      </p>
-
-      <p className="scope-note">
-        <Link href="/account">Already agreed to something here?</Link> Sign in with the PayPal
-        account you paid with and see what this store holds for you — read from PayPal when you ask,
-        kept nowhere.
-      </p>
-    </div>
+    </Page>
   );
 }

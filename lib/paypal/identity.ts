@@ -1,4 +1,4 @@
-import { publicOrigin } from "../origin";
+import { signInOrigin } from "../origin";
 import { paypalBaseUrl } from "./client";
 
 /**
@@ -38,10 +38,11 @@ export function identityConfigured(): boolean {
  *
  * It has to be character-for-character the return URL registered on the app,
  * and PayPal treats `localhost` and `127.0.0.1` as two different addresses — the
- * dashboard took one and refused the other (see `publicOrigin`).
+ * dashboard took one and refused the other — so this reads `signInOrigin`
+ * rather than the address the browser happened to use.
  */
 export function callbackUri(request: Request): string {
-  return `${publicOrigin(request)}/auth/paypal/callback`;
+  return `${signInOrigin(request)}/auth/paypal/callback`;
 }
 
 /**

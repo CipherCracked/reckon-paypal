@@ -1,11 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { BackLink } from "@/components/BackLink";
+import { BillDoor } from "@/components/BillDoor";
 import { CommitmentView } from "@/components/CommitmentView";
+import { ExitNav, RECORD_EXITS } from "@/components/ExitNav";
+import { Page } from "@/components/Page";
 import { PaceControl } from "@/components/PaceControl";
+import { findBill } from "@/lib/catalog/bills";
+import { computeCommitment } from "@/lib/commitment/compute";
 import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
 import { exampleDocuments, type ExampleDocument } from "@/lib/catalog/examples";
+import { formatMoney } from "@/lib/money";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { FigureId } from "@/lib/commitment/present";
 import type { CommitmentBreakdown } from "@/lib/commitment/types";
@@ -43,6 +48,9 @@ export default function ReadPage() {
   // The text size is the frame's (IPD 24); this page owns only the pacing.
   const [progressive, setProgressive] = useState(DEFAULT_PREFERENCES.progressive);
   const resultsRef = useRef<HTMLDivElement>(null);
+  // The one commitment PayPal issues rather than a seller describing it. Read
+  // from the catalogue file, which is a constant in this repository.
+  const bill = findBill("clinic-visit");
 
   // Preferences belong to the reader's browser and are read after mount, so the
   // first paint is the accessible default rather than a flash of someone else's
@@ -120,18 +128,12 @@ export default function ReadPage() {
   }
 
   return (
-    <div className="page">
-      <BackLink href="/">Back to the ways in</BackLink>
-
-      <header className="page-header">
-        <p className="eyebrow">A document</p>
-        <h1>Paste what someone sent you</h1>
-        <p className="lede">
-          A bill, a contract, a payment plan — anything you were asked to agree to. You get the same
-          three figures: what it costs across the whole term, what it costs to leave, and what is
-          charged first. Every figure shows the sentence — or the arithmetic — it came from.
-        </p>
-      </header>
+    <Page
+      back={{ href: "/", label: "Back to the start" }}
+      eyebrow="A document"
+      title="Paste what someone sent you"
+      lede="A bill, a contract, a payment plan — anything you were asked to agree to. You get the same three figures: what it costs across the whole term, what it costs to leave, and what is charged first. Every figure shows the sentence — or the arithmetic — it came from."
+    >
 
       {/* The examples come first because they are the demonstration; the box
           stays empty and stays the visitor's own way in. */}
@@ -207,6 +209,29 @@ export default function ReadPage() {
         ) : null}
       </form>
 
+      {/* A bill is the one commitment this page cannot read from a paste — it
+          is issued by PayPal, not described by a seller. It was a peer door on
+          the entry, which made three identical tiles behave three different
+          ways; it is a line here, next to the other third-party document
+          (IPD 28). */}
+      {bill ? (
+        <section className="bill-offer" aria-labelledby="bill-offer-heading">
+          <h2 id="bill-offer-heading">Or ask PayPal to issue a bill</h2>
+          <p className="field-hint">
+            This creates a real invoice in PayPal&apos;s sandbox and then reads it back here, so
+            the screen you get is built from PayPal&apos;s own copy rather than from this page.
+          </p>
+          <div className="bill-offer-list">
+            <BillDoor
+              slug={bill.slug}
+              name={bill.name}
+              biller={bill.biller}
+              amount={formatMoney(computeCommitment(bill.terms).today)}
+            />
+          </div>
+        </section>
+      ) : null}
+
       {result && status === "done" ? (
         <div
           ref={resultsRef}
@@ -226,7 +251,7 @@ export default function ReadPage() {
           )}
         </div>
       ) : null}
-    </div>
+    </Page>
   );
 }
 
@@ -277,6 +302,8 @@ function ReadResultPanel({
       <button type="button" className="button-secondary" onClick={onReset}>
         Read a different document
       </button>
+
+      <ExitNav links={RECORD_EXITS} />
     </>
   );
 }
@@ -325,6 +352,8 @@ function CandidatesPanel({ result, onReset }: { result: CandidatesResponse; onRe
       <button type="button" className="button-secondary" onClick={onReset}>
         Try a different document
       </button>
+
+      <ExitNav links={RECORD_EXITS} />
     </>
   );
 }

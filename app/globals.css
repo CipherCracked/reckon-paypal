@@ -4,18 +4,27 @@
    stylesheet. Contrast is checked against WCAG 2.2 AA in both themes. */
 
 :root {
-  /* Surfaces and ink */
-  --page: #fbfaf8;
-  --raised: #ffffff;
-  --sunken: #f2efea;
-  --ink: #1c1b19;
-  --ink-muted: #56534e;
-  --line: #d8d4cd;
-  --line-strong: #b0a99e;
-  --accent: #1c1b19;
+  /* Surfaces and ink. Paper and near-black rather than warm cream: the page is
+     a ledger, and a ledger is read for its figures (ITD 24). */
+  --page: #f3f3ee;
+  --raised: #fdfdfb;
+  --sunken: #e8e7de;
+  --ink: #15170f;
+  --ink-muted: #4f5346;
+  --line: #d5d4c6;
+  --line-strong: #a3a294;
+  /* One accent, used for actions and for the signed-in state. No figure is
+     ever coloured: colouring a number makes its meaning depend on the colour. */
+  --accent: #123a2e;
   --accent-ink: #ffffff;
   --focus: #1a4fd6;
-  --success: #1f7a4d;
+  --success: #1c6b46;
+
+  /* Type. The text face is drawn for low vision; the figure face is a mono, so
+     amounts line up in a column. Both are set on `html` by `next/font`. */
+  --font-body: var(--font-text), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-figures: var(--font-figure), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Space — a 4px base */
   --space-1: 0.25rem;
@@ -35,24 +44,24 @@
   --text-xl: 2rem;
   --text-2xl: clamp(1.75rem, 1.2rem + 2vw, 2.5rem);
 
-  --radius: 12px;
-  --radius-sm: 8px;
+  --radius: 4px;
+  --radius-sm: 2px;
   --measure: 46rem;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --page: #14130f;
-    --raised: #1d1b17;
-    --sunken: #26231e;
-    --ink: #f4f1eb;
-    --ink-muted: #beb7ab;
-    --line: #3a352d;
-    --line-strong: #554e43;
-    --accent: #f4f1eb;
-    --accent-ink: #14130f;
+    --page: #0f100d;
+    --raised: #171914;
+    --sunken: #20231c;
+    --ink: #eef0e6;
+    --ink-muted: #b5b9a9;
+    --line: #2e3229;
+    --line-strong: #4a4f42;
+    --accent: #eef0e6;
+    --accent-ink: #0f100d;
     --focus: #9db8ff;
-    --success: #8ad9ae;
+    --success: #86d5a8;
   }
 
   html {
@@ -75,8 +84,7 @@ body {
 body {
   background: var(--page);
   color: var(--ink);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+  font-family: var(--font-body);
   font-size: var(--text-body);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
@@ -88,8 +96,9 @@ body {
 h1,
 h2,
 h3 {
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  font-weight: 700;
 }
 
 h1 {
@@ -137,30 +146,199 @@ a {
 .site-header,
 .site-footer {
   width: 100%;
-  max-width: var(--measure);
+  /* The frame is wider than the reading column, so the name and both controls
+     stay on one line and the rule above the page reads as a frame rather than
+     as the top of the column. */
+  max-width: 64rem;
   margin: 0 auto;
   padding-inline: 1.25rem;
 }
 
 .site-header {
   padding-top: var(--space-5);
-  padding-bottom: var(--space-1);
+  padding-bottom: var(--space-3);
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line);
 }
 
 .service-name {
-  font-weight: 600;
+  font-weight: 700;
   text-decoration: none;
   letter-spacing: -0.01em;
+  font-size: var(--text-md);
+  line-height: 1.2;
 }
 
 .service-name:hover {
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* The frame's two controls share one row on the right (IPD 24, IPD 27). */
+.frame-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  /* Keeps the pair at the right edge even when the header wraps and they are
+     alone on the second line. */
+  margin-left: auto;
+}
+
+/* The navigation (IPD 28). Two destinations, in the frame, so they are reachable
+   from a product, a receipt or a bill rather than from one paragraph on the
+   entry. The service name is the way home: a third link with a second name for
+   the same place is one more word to learn. */
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+}
+
+.site-nav a {
+  color: var(--ink-muted);
+  text-decoration: none;
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid transparent;
+}
+
+.site-nav a:hover,
+.site-nav a:focus-visible {
+  color: var(--ink);
+  border-bottom-color: var(--ink);
+}
+
+/* The reader's text size, behind a disclosure (IPD 28). It stays in the same
+   place on every screen — that was the point of putting it in the frame — but
+   it stops occupying the first line, where on a phone it was the largest thing
+   on the page. */
+.text-size-disclosure {
+  position: relative;
+}
+
+.text-size-disclosure > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  list-style: none;
+}
+
+.text-size-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.text-size-disclosure > summary::after {
+  content: "▾";
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
+}
+
+.text-size-disclosure[open] > summary::after {
+  content: "▴";
+}
+
+.text-size-disclosure > .text-size-controls {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 20;
+  min-width: 15rem;
+  background: var(--raised);
+  box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
+}
+
+/* The way into a person's own record: the one filled control in the frame, so
+   it reads as the place to go rather than as another footnote (IPD 27). */
+.account-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  background: var(--accent);
+  color: var(--accent-ink);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.account-control:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* On a phone the frame is two rows rather than four: the service name beside
+   the way in, then the sections beside the text-size control. Stacking every
+   item in a column made three full-width control rows out of a header that has
+   two words in it, and the phone screenshot showed the controls wandering to
+   the right of a row that had already ended. `display: contents` lets the two
+   controls take cells of their own while staying one group in the markup. */
+@media (max-width: 620px) {
+  .site-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "name account"
+      "nav texts";
+    align-items: center;
+    column-gap: var(--space-2);
+    row-gap: var(--space-2);
+  }
+
+  .service-name {
+    grid-area: name;
+  }
+
+  .site-nav {
+    grid-area: nav;
+  }
+
+  .frame-controls {
+    display: contents;
+  }
+
+  .frame-controls > form,
+  .frame-controls > .account-control {
+    grid-area: account;
+    justify-self: end;
+  }
+
+  .frame-controls > .text-size-disclosure {
+    grid-area: texts;
+    justify-self: end;
+  }
+
+  /* The way in keeps its 44px height but not its desktop padding: at 390px the
+     two extra characters of the service name were the difference between one
+     line and two. */
+  .account-control {
+    padding-inline: var(--space-3);
+  }
+
+  /* The disclosure opens downwards inside the frame rather than over the
+     content it was meant to stay out of the way of. */
+  .text-size-disclosure > .text-size-controls {
+    position: static;
+    margin-top: var(--space-2);
+    box-shadow: none;
+  }
 }
 
 main {
@@ -241,7 +419,7 @@ main {
 .entry-pair {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-  gap: var(--space-6);
+  gap: var(--space-5);
   align-items: start;
 }
 
@@ -253,6 +431,17 @@ main {
 
 .entry-said h2 {
   margin-block: 0 var(--space-3);
+}
+
+/* The seller's words sit on their own surface, opposite the figures they
+   produced: two panels of one height rather than a column and a card, so the
+   pair reads as a pair and the quieter side is a panel, not a hole. */
+.entry-said {
+  background: var(--sunken);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4);
+  min-width: 0;
 }
 
 .entry-words {
@@ -267,43 +456,74 @@ main {
   color: var(--ink-muted);
 }
 
-.entry-relationship,
-.entry-contrast {
+.entry-relationship {
   color: var(--ink-muted);
   font-size: var(--text-sm);
   max-width: 46rem;
   margin: 0;
 }
 
-.entry-action {
-  align-self: flex-start;
+/* The sentence under the seller's words reads as a note on them: set off by a
+   hairline, so it is not mistaken for more of what the seller wrote. */
+.entry-said .entry-relationship {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--line);
 }
 
-.second-rank {
-  list-style: none;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4) var(--space-6);
+.entry-action {
+  align-self: flex-start;
+  margin-top: var(--space-4);
+}
+
+/* The front door's two jobs (IPD 28): the person's own record if they have one,
+   and something new to check. Two panels side by side on a wide screen and
+   stacked on a narrow one, so neither is a footnote to the other. */
+.front-doors {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+  gap: var(--space-4);
+  align-items: start;
   padding-top: var(--space-5);
   border-top: 1px solid var(--line);
 }
 
-.second-rank .door {
+/* The section's own label spans the pair; without this it takes the first
+   cell and the two doors sit one per row, unevenly (shown on / at 1280px). */
+.front-doors > h2 {
+  grid-column: 1 / -1;
+}
+
+.home-check {
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--line);
+}
+
+.check-card {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
-  max-width: 16rem;
+  gap: var(--space-3);
+  min-width: 0;
 }
 
-.door-label {
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
+.check-card h2 {
+  font-size: var(--text-md);
 }
 
-a.door-link,
-button.door-link {
+/* A door that has to do work before it can open: the bill is issued at PayPal
+   by pressing it, so it looks like a line of text with a link in it rather than
+   like a tile that behaves as a link does (IPD 28). */
+.inline-action {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.link-button {
   font: inherit;
   font-weight: 600;
   text-align: left;
@@ -314,34 +534,21 @@ button.door-link {
   padding: 0;
   color: var(--ink);
   cursor: pointer;
+  min-height: 44px;
 }
 
-/* The shop is a list, and it is allowed to be plain. */
-
-.product-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.product-card {
-  background: var(--raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: var(--space-5);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.product-card h2 a {
-  text-decoration-thickness: 1px;
-  text-underline-offset: 3px;
-}
-
-.product-card p {
+.link-button:disabled {
   color: var(--ink-muted);
+  cursor: progress;
+}
+
+.bill-offer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-6);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line);
 }
 
 .button-primary,
@@ -352,10 +559,10 @@ button.door-link {
   min-height: 44px;
   min-width: 44px;
   padding: var(--space-3) var(--space-5);
-  border-radius: 999px;
+  border-radius: var(--radius);
   border: 1px solid var(--accent);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   text-decoration: none;
   align-self: flex-start;
@@ -432,10 +639,14 @@ button.door-link {
 }
 
 .commitment-figure dd {
+  /* Figures read in the mono face everywhere (ITD 24): the same number has to
+     look like the same kind of thing on every screen. */
+  font-family: var(--font-figures);
   font-size: var(--text-lg);
-  font-weight: 700;
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .commitment-hint {
@@ -589,9 +800,8 @@ button.door-link {
 
 .button-quiet {
   min-height: 44px;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-1);
   border: 0;
-  border-radius: 999px;
   background: transparent;
   color: var(--ink-muted);
   font: inherit;
@@ -779,10 +989,10 @@ html[data-text-scale="larger"] {
   min-height: 44px;
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: var(--radius);
   background: var(--page);
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
 }
 
@@ -874,7 +1084,8 @@ html[data-text-scale="larger"] {
   color: var(--ink);
 }
 
-.field-hint {
+.field-hint,
+.hint {
   font-size: var(--text-sm);
   color: var(--ink-muted);
 }
@@ -1122,7 +1333,36 @@ html[data-text-scale="larger"] {
   }
 }
 
-/* What this store holds for you (IPD 25) — one row per commitment, read live. */
+/* What this store holds for you (IPD 25, IPD 27) — one row per commitment, read live.
+
+   The row is laid out as a ledger entry: what the schedule is, PayPal's own word
+   for the state, and the three figures in a fixed-width face so the columns line
+   up against each other and against the next row (ITD 24). */
+
+.account-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+}
+
+.account-identity {
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  /* It used to sit in a row of the old account header, where `flex` sized its
+     width. Inside the page header — a column — the same basis became 320px of
+     empty height under the lede. */
+  max-width: 52ch;
+}
+
+.account-identity strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .account-rows {
   list-style: none;
   display: grid;
@@ -1132,49 +1372,154 @@ html[data-text-scale="larger"] {
 }
 
 .account-row {
-  background: var(--page);
+  background: var(--raised);
   border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
   border-radius: var(--radius-sm);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--space-4) var(--space-5);
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-3);
+}
+
+.account-row-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
 }
 
 .account-row-heading {
   font-weight: 700;
+  max-width: 44ch;
+}
+
+/* PayPal's word for the state, not this page's. A chip is a label, so it never
+   stands in for the sentence beneath it. */
+.status-chip {
+  font-family: var(--font-figures);
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  color: var(--ink-muted);
+  white-space: nowrap;
+}
+
+.status-chip[data-tone="open"] {
+  border-color: var(--success);
+  color: var(--success);
 }
 
 .account-row-standing {
   color: var(--ink-muted);
+  max-width: 52ch;
 }
 
 .account-figures {
-  list-style: none;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: var(--space-3);
-  padding: 0;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-3) var(--space-4);
+  padding: var(--space-3) 0 0;
   margin: 0;
+  border-top: 1px solid var(--line);
 }
 
 .account-figure {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  min-width: 0;
 }
 
-.account-figure-label {
+.account-figure dt {
   color: var(--ink-muted);
   font-size: var(--text-sm);
 }
 
-.account-figure-amount {
-  font-size: var(--text-lg);
-  font-weight: 700;
+.account-figure dd {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-family: var(--font-figures);
+  font-size: var(--text-md);
+  font-weight: 600;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
-.account-figure-arithmetic {
+.account-figure .commitment-arithmetic {
   color: var(--ink-muted);
+  font-size: var(--text-xs);
+  font-weight: 400;
+}
+
+/* On a phone the three figures stack into one column, ruled like a ledger
+   rather than two-and-one with a gap where the third would not fit. */
+@media (max-width: 480px) {
+  .account-figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .account-figure + .account-figure {
+    border-top: 1px solid var(--line);
+    padding-top: var(--space-2);
+  }
+}
+
+/* The signed-out destination (IPD 27). One card, saying what signing in reads
+   and keeps before it offers the button that leaves for PayPal. The same card
+   is on the entry and on `/account`: one promise, one wording (IPD 28). */
+
+.signin-card {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.signin-card h2 {
+  font-size: var(--text-md);
+}
+
+.signin-card p {
+  max-width: 52ch;
+}
+
+/* The row a commitment in a list ends with. A summary that cannot be opened is
+   a dead end, and the list is where a person starts (IPD 28). */
+.row-link {
+  align-self: flex-start;
+  font-weight: 700;
   font-size: var(--text-sm);
+  text-underline-offset: 3px;
+}
+
+/* What a record says before its figures: the next charge, and whether there is
+   one. It is a fact about the agreement, not a fourth figure, so it sits on its
+   own line rather than opening the grid (ITD 25). */
+.record-standing {
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.record-standing-label {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+/* A failure, said as a failure. Empty and broken are not the same sentence
+   (IPD 26), so they are not the same colour either. */
+.notice-error {
+  border-left: 3px solid var(--danger, #a3231d);
+  padding-left: var(--space-3);
 }

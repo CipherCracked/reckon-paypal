@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ReadPage from "@/app/read/page";
@@ -7,6 +7,15 @@ import { money } from "@/lib/money";
 
 const document = `Service Agreement
 Monthly plan: $35.00 per month for 12 months.`;
+
+// The bill line is the one thing on this page that creates something, and it
+// navigates once PayPal answers. The router is the frame's, so the test supplies
+// one rather than mounting the whole app.
+const push = vi.fn();
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
 
 function stubFetch(body: unknown, ok = true) {
   const fetchMock = vi.fn().mockResolvedValue({ ok, json: async () => body });
@@ -18,6 +27,10 @@ async function submit() {
   await userEvent.type(screen.getByLabelText(/the document/i), document);
   await userEvent.click(screen.getByRole("button", { name: /read this document/i }));
 }
+
+beforeEach(() => {
+  push.mockReset();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -135,5 +148,30 @@ describe("reading a document", () => {
     await submit();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/at least 40 characters/i);
+  });
+});
+
+describe("the bill line", () => {
+  it("asks PayPal for a bill and opens the screen it produces", async () => {
+    const fetchMock = stubFetch({ invoiceId: "INV2-1" });
+
+    render(<ReadPage />);
+    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/paypal/invoices",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(push).toHaveBeenCalledWith("/bill/INV2-1?slug=clinic-visit");
+  });
+
+  it("says so when PayPal will not issue the bill, instead of opening a broken page", async () => {
+    stubFetch({ error: "PayPal could not create this bill (INVALID_REQUEST)." }, false);
+
+    render(<ReadPage />);
+    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/INVALID_REQUEST/);
+    expect(push).not.toHaveBeenCalled();
   });
 });

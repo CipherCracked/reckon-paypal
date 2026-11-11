@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { Shell } from "@/components/Shell";
 import Shop from "@/app/shop/page";
 import ReadPage from "@/app/read/page";
@@ -100,23 +100,77 @@ describe("the frame", () => {
   });
 });
 
+describe("the way in (IPD 27, revised by IPD 28)", () => {
+  it("offers nothing where signing in cannot work", () => {
+    render(
+      <Shell>
+        <p>page content</p>
+      </Shell>,
+    );
+
+    // A Sign in that leads to a page saying signing in is off is a claim the
+    // frame is not allowed to make.
+    expect(screen.queryByRole("link", { name: /sign in|your commitments/i })).toBeNull();
+  });
+
+  it("points the sign-in at the sign-in itself, not at a page about it", () => {
+    render(
+      <Shell canSignIn>
+        <p>page content</p>
+      </Shell>,
+    );
+
+    // The owner's report: the control was a link to /account, which is where the
+    // control already was. It now starts the sign-in.
+    expect(screen.getByRole("link", { name: /^sign in$/i })).toHaveAttribute(
+      "href",
+      "/auth/paypal/start",
+    );
+  });
+
+  it("offers a way out where signing in can work, instead of a second sign-in", () => {
+    const { container } = render(
+      <Shell canSignIn signedIn>
+        <p>page content</p>
+      </Shell>,
+    );
+
+    expect(screen.queryByRole("link", { name: /^sign in$/i })).toBeNull();
+    // Signed in, the frame's control ends the session. It is a POST so a stray
+    // link cannot end it for someone (IPD 28).
+    const signOut = screen.getByRole("button", { name: /sign out/i });
+    expect(signOut).toHaveAttribute("type", "submit");
+    expect(container.querySelector("form")?.getAttribute("action")).toBe("/auth/paypal/signout");
+  });
+
+  it("puts the product's sections in the frame once, not on every page", () => {
+    render(
+      <Shell canSignIn>
+        <p>page content</p>
+      </Shell>,
+    );
+
+    const sections = screen.getByRole("navigation", { name: /sections/i });
+    expect(
+      within(sections).getByRole("link", { name: /^shop$/i }),
+    ).toHaveAttribute("href", "/shop");
+    expect(
+      within(sections).getByRole("link", { name: /read a document/i }),
+    ).toHaveAttribute("href", "/read");
+  });
+});
+
 describe("the journey", () => {
   it("names where the shop's back link goes", async () => {
     render(await Shop({ searchParams: Promise.resolve({}) }));
 
-    expect(screen.getByRole("link", { name: /back to the ways in/i })).toHaveAttribute(
-      "href",
-      "/",
-    );
+    expect(screen.getByRole("link", { name: /back to the start/i })).toHaveAttribute("href", "/");
   });
 
   it("names where the reader's back link goes", async () => {
     render(<ReadPage />);
 
-    expect(screen.getByRole("link", { name: /back to the ways in/i })).toHaveAttribute(
-      "href",
-      "/",
-    );
+    expect(screen.getByRole("link", { name: /back to the start/i })).toHaveAttribute("href", "/");
   });
 
   it("names the commitment the consent screen goes back to", async () => {
@@ -138,8 +192,8 @@ describe("the journey", () => {
     );
 
     // A listing came from the shop, so its way out goes back to the search
-    // rather than to the front door's four ways in.
-    expect(screen.getByRole("link", { name: /back to the search/i })).toHaveAttribute(
+    // rather than to the front door.
+    expect(screen.getByRole("link", { name: /back to the shop/i })).toHaveAttribute(
       "href",
       "/shop",
     );
@@ -153,10 +207,13 @@ describe("the journey", () => {
       }),
     );
 
-    expect(screen.getByRole("link", { name: /back to the ways in/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /back to the document reader/i })).toHaveAttribute(
+      "href",
+      "/read",
+    );
   });
 
-  it("ends the record with two ways on and no way back into the payment", async () => {
+  it("ends the record with its ways on, and none of them back into the payment", async () => {
     render(
       await ReceiptPage({
         params: Promise.resolve({ orderId: "I-SUB-1" }),
@@ -164,14 +221,17 @@ describe("the journey", () => {
       }),
     );
 
-    expect(screen.getByRole("link", { name: /read another document/i })).toHaveAttribute(
+    // IPD 28: the record is a page of the product, not a terminal one.
+    expect(screen.getByRole("link", { name: /back to the start/i })).toHaveAttribute("href", "/");
+    expect(
+      screen.getByRole("link", { name: /see everything this store holds for you/i }),
+    ).toHaveAttribute("href", "/account");
+    expect(screen.getByRole("link", { name: /read a document/i })).toHaveAttribute(
       "href",
       "/read",
     );
-    expect(screen.getByRole("link", { name: /browse the shop/i })).toHaveAttribute(
-      "href",
-      "/shop",
-    );
-    expect(screen.queryByRole("link", { name: /^back/i })).toBeNull();
+
+    // Nothing on a record reopens the thing that already happened.
+    expect(document.querySelector('a[href^="/consent"]')).toBeNull();
   });
 });

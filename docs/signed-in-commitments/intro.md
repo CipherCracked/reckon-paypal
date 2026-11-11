@@ -103,10 +103,15 @@ None of the rows is a defect. They cannot all be answered the same way, and choo
 │   ├── Login not enabled, PayPal down, deadline exceeded: which of them does the page admit?
 │   └── Is an empty list ever a finding?
 
-└── Q5. What happens to the claim that nothing is stored?
-    ├── A cookie is state. Does the receipt's copy have to change, and to what?
-    ├── README, judge brief and demo script each repeat the claim.
-    └── Is "we keep a cookie, not a record" stronger or weaker than "we keep nothing"?
+├── Q5. What happens to the claim that nothing is stored?
+│   ├── A cookie is state. Does the receipt's copy have to change, and to what?
+│   ├── README, judge brief and demo script each repeat the claim.
+│   └── Is "we keep a cookie, not a record" stronger or weaker than "we keep nothing"?
+│
+└── Q6. Where does the way back in sit in the product? (added 2026-11-11, implementation)
+    ├── In the frame on every screen, or a link at the foot of the entry?
+    ├── Does the frame show that someone is signed in, and what does it say?
+    └── What is the signed-out page when it is a destination, not a dead end?
 ```
 
 ---
@@ -117,8 +122,10 @@ None of the rows is a defect. They cannot all be answered the same way, and choo
 |---|---|---|
 | IPD 25 | Q1 — what the signed-in page shows | [`ipds/signed-in-page.md`](ipds/signed-in-page.md) |
 | IPD 26 | Q4 — what it says when it finds nothing or cannot look | [`ipds/empty-and-unreadable.md`](ipds/empty-and-unreadable.md) |
+| IPD 27 | Q6 — where the way in sits, and whether the frame names the state | [`ipds/where-the-way-in-lives.md`](ipds/where-the-way-in-lives.md) |
 | ITD 22 | Q2, Q5 — identity and what is kept | [`itds/identity-and-session.md`](itds/identity-and-session.md) |
 | ITD 23 | Q3 — finding a person's records without storing them | [`itds/discovery-without-storage.md`](itds/discovery-without-storage.md) |
+| ITD 24 | Q6 — the frame reads the session; the ledger visual system | [`itds/frame-and-ledger.md`](itds/frame-and-ledger.md) |
 
 ---
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { BackLink } from "@/components/BackLink";
 import { ConsentScreen } from "@/components/ConsentScreen";
+import { Page } from "@/components/Page";
 import { findProduct } from "@/lib/catalog/products";
 import { isMarketSlug } from "@/lib/market/channel3";
 
@@ -34,18 +34,16 @@ export default async function ConsentPage({ params, searchParams }: PageProps) {
   const listed = slug && isMarketSlug(slug) ? slug : null;
 
   return (
-    <div className="page">
-      <BackLink
-        href={product ? `/product/${product.slug}` : listed ? `/product/${listed}` : "/"}
-      >
-        {product ? `Back to ${product.name}` : listed ? "Back to this product" : "Back to the ways in"}
-      </BackLink>
-
-      <header className="page-header">
-        <p className="eyebrow">Before you agree</p>
-        <h1>Check what you are taking on</h1>
-      </header>
-
+    <Page
+      back={{
+        href: product ? `/product/${product.slug}` : listed ? `/product/${listed}` : "/",
+        label: product ? `Back to ${product.name}` : listed ? "Back to this product" : "Back to the start",
+      }}
+      eyebrow="Before you agree"
+      // The thing being bought is the one word this screen used to leave out:
+      // the page immediately before the money named the act, not the product.
+      title={product ? `Check what ${product.name} asks of you` : "Check what you are taking on"}
+    >
       <ConsentScreen
         orderId={token ?? orderId}
         slug={slug ?? ""}
@@ -54,6 +52,6 @@ export default async function ConsentPage({ params, searchParams }: PageProps) {
         returning={approved === "1"}
         cancelled={cancelled === "1"}
       />
-    </div>
+    </Page>
   );
 }

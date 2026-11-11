@@ -1,14 +1,34 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import Home from "@/app/page";
+import { signSession } from "@/lib/session";
 import { readMarketProduct } from "@/lib/market/channel3";
+import { findSubscriptionsFor } from "@/lib/paypal/records";
 import { recordedProduct } from "./fixtures/channel3-listings";
 
-const push = vi.fn();
+// The front door asks who is calling before it decides which home to render
+// (IPD 28). The test supplies the cookie store rather than mounting the app.
+const cookie = vi.hoisted(() => ({ value: undefined as string | undefined }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push }),
+vi.mock("next/headers", () => ({
+  cookies: async () => ({
+    get: (name: string) =>
+      name === "acc_signed_in" && cookie.value ? { value: cookie.value } : undefined,
+  }),
+}));
+
+// Signing in is a feature of a configured deployment; these tests are about the
+// door, not about whether PayPal credentials happen to be present in the suite.
+vi.mock("@/lib/paypal/identity", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/paypal/identity")>()),
+  identityConfigured: () => true,
+}));
+
+// Signed in, the home is the person's own record, which is a scan of PayPal.
+// The scan itself is tested where it lives; here the answer is fixed.
+vi.mock("@/lib/paypal/records", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/paypal/records")>()),
+  findSubscriptionsFor: vi.fn(),
 }));
 
 // The entry reads a real listing. This suite is about the screen's own
@@ -39,8 +59,17 @@ vi.mock("@/lib/commitment/published-exit", async () => {
 });
 
 beforeEach(() => {
+  cookie.value = undefined;
+  vi.stubEnv("SESSION_SECRET", "a-test-secret-long-enough-to-sign");
   vi.mocked(readMarketProduct).mockReset();
   vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
+  vi.mocked(findSubscriptionsFor).mockReset();
+  vi.mocked(findSubscriptionsFor).mockResolvedValue({
+    kind: "found",
+    records: [],
+    scanned: 0,
+    stopped: false,
+  });
 });
 
 describe("the front door", () => {
@@ -99,7 +128,6 @@ describe("the front door", () => {
     render(await Home());
 
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(push).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 
@@ -110,59 +138,59 @@ describe("the front door", () => {
     expect(primary).toHaveAttribute("href", "/product/ch3-YyLUjLT");
   });
 
-  it("keeps the other ways in at a second rank, not as four equal cards", async () => {
+  it("puts the two things a person came to do after the proof, not four equal doors", async () => {
     render(await Home());
 
-    const doors = screen.getAllByRole("listitem");
-    expect(doors).toHaveLength(3);
-    expect(screen.getByText("A purchase you pay once")).toBeInTheDocument();
-    expect(screen.getByText("A bill you were sent")).toBeInTheDocument();
-    expect(screen.getByText("A document someone sent you")).toBeInTheDocument();
+    // IPD 28: their own record first, then something new. The invented
+    // one-time-purchase door and the invented headphones listing are gone —
+    // both were tiles about products the product does not have.
+    expect(
+      screen.getByRole("heading", { name: /see what you have already agreed to/i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /check something new/i })).toBeInTheDocument();
+    expect(screen.queryByText("A purchase you pay once")).toBeNull();
+    expect(screen.queryByText("A bill you were sent")).toBeNull();
   });
 
-  it("keeps the live shop reachable without making it the product", async () => {
+  it("offers one sign-in on the front door, and it starts the sign-in", async () => {
     render(await Home());
 
-    expect(screen.getByRole("link", { name: /search real products/i })).toHaveAttribute(
-      "href",
-      "/shop",
-    );
+    const signIn = screen.getAllByRole("link", { name: /sign in with paypal/i });
+    expect(signIn).toHaveLength(1);
+    // The control is the action. A link to a page that only repeats the button
+    // is a click that does nothing (IPD 28).
+    expect(signIn[0]).toHaveAttribute("href", "/auth/paypal/start");
+  });
+
+  it("lets a search go straight to the shop", async () => {
+    render(await Home());
+
+    expect(screen.getByRole("search")).toHaveAttribute("action", "/shop");
   });
 });
 
-describe("the bill door", () => {
-  it("asks PayPal for a bill and opens the screen it produces", async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ invoiceId: "INV2-1" }),
-    });
-    vi.stubGlobal("fetch", fetchMock);
+describe("the front door, signed in", () => {
+  it("is the person's own record, not the proof", async () => {
+    const session = signSession({ payerId: "PAYER-1", email: "shopper@example.com" });
+    cookie.value = session ?? undefined;
 
     render(await Home());
-    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/paypal/invoices",
-      expect.objectContaining({ method: "POST" }),
-    );
-    expect(push).toHaveBeenCalledWith("/bill/INV2-1?slug=clinic-visit");
-    vi.unstubAllGlobals();
+    expect(
+      screen.getByRole("heading", { name: /your commitments/i }),
+    ).toBeInTheDocument();
+    // The proof was the thing a returning shopper had to scroll past.
+    expect(screen.queryByRole("heading", { name: /what the seller wrote/i })).toBeNull();
+    expect(findSubscriptionsFor).toHaveBeenCalledWith("PAYER-1");
   });
 
-  it("says so when PayPal will not issue the bill, instead of opening a broken page", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        json: async () => ({ error: "PayPal could not create this bill (INVALID_REQUEST)." }),
-      }),
-    );
+  it("says it could not look, rather than saying there is nothing", async () => {
+    cookie.value = signSession({ payerId: "PAYER-1", email: "shopper@example.com" }) ?? undefined;
+    vi.mocked(findSubscriptionsFor).mockResolvedValue({ kind: "unavailable" });
 
     render(await Home());
-    await userEvent.click(screen.getByRole("button", { name: /clinic visit/i }));
 
-    expect(screen.getByRole("alert")).toHaveTextContent(/INVALID_REQUEST/);
-    expect(push).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
+    expect(screen.getByText(/this is not a statement that you have no subscriptions/i))
+      .toBeInTheDocument();
   });
 });

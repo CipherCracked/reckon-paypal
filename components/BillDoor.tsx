@@ -49,11 +49,10 @@ export function BillDoor({ slug, name, biller, amount }: BillDoorProps) {
   }
 
   return (
-    <li className="door" data-door="bill">
-      <span className="door-label">A bill you were sent</span>
+    <div className="inline-action" data-door="bill">
       <button
         type="button"
-        className="door-link"
+        className="link-button"
         onClick={open}
         disabled={status === "working"}
       >
@@ -62,10 +61,10 @@ export function BillDoor({ slug, name, biller, amount }: BillDoorProps) {
           : `${name} from ${biller} — ${amount}`}
       </button>
       {status === "failed" ? (
-        <p className="notice" role="alert">
+        <p className="notice notice-error" role="alert">
           {message}
         </p>
       ) : null}
-    </li>
+    </div>
   );
 }

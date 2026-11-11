@@ -18,6 +18,11 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: pushMock }),
 }));
 
+// The front door asks who is calling; the journey below is the signed-out one.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: () => undefined }),
+}));
+
 // The front door reads a real listing, and the exit sentence with a model. No
 // model runs in the suite, so both are fixed here. What each does is tested
 // where it lives — this test is about the journey between screens.
@@ -60,11 +65,13 @@ afterEach(() => {
 
 describe("demo flow", () => {
   it("takes a shopper from the storefront to a stated commitment", async () => {
-    // 1. The front door offers the purchase as one of the ways in.
+    // 1. The front door works one commitment through in full and offers the
+    // next step on it. (The headphones that used to be a second door here were
+    // an invented listing for a product the shop does not sell, IPD 28.)
     const firstScreen = render(await Home());
     expect(
-      screen.getByRole("link", { name: /Noise-Cancelling Headphones/ }),
-    ).toHaveAttribute("href", "/product/noise-cancelling-headphones");
+      screen.getByRole("link", { name: /check this commitment/i }),
+    ).toHaveAttribute("href", "/product/ch3-YyLUjLT");
     // The next step is a different screen rather than what a click would replace,
     // so the first one is taken down before it is rendered.
     firstScreen.unmount();

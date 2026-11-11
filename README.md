@@ -14,19 +14,24 @@ step and no dependencies.
 
 The home page is the question, not a catalogue: **what are you being asked to pay?** It works one
 real commitment through in full — the three figures and the arithmetic behind them, before anything
-is clicked — and offers the other three ways in at a second rank.
+is clicked — and then offers the two things a person came here to do: see what this store already
+holds for them, or check something new.
 
-| Door | Commitment shape | What clicking it does |
+Signed in, the same address is that person's record: every subscription PayPal holds under their
+account, the same three figures on each row, and a link from the row to the full receipt. Nothing is
+stored — the list is rebuilt from PayPal on every visit.
+
+| You have | The screen | What it does |
 |---|---|---|
-| **A purchase** | paid once | three figures, then PayPal's own approval page, then capture on return |
-| **A subscription** | paid every month for a year | three figures, then the subscription's approval page |
-| **A bill** | owed by a date | **creates a real PayPal invoice**, then opens the bill page, which re-reads it from PayPal |
-| **A document** | whatever someone sent you | paste the text; three figures, each beside the sentence or arithmetic it came from |
+| a product to check | `/shop` → the listing | three figures from the live catalogue's price and the term its listing states, then PayPal's own approval page |
+| a subscription | the same | the same three figures, then the subscription's approval page; the receipt offers **Cancel this subscription** |
+| a bill | `/read` → *ask PayPal to issue a bill* | **creates a real PayPal invoice**, then opens the bill screen, which re-reads it from PayPal |
+| a document | `/read` | paste the text; three figures, each beside the sentence or arithmetic it came from |
 
 The shop (`/shop`) is the way in to real products: a search over a live catalogue, with each
-listing's real price, its retailers and the spread between their offers. The demo entries above
-still exist for the commitment shapes the catalogue cannot supply — a repeating term, a bill owed by
-a date, and a pasted document.
+listing's real price, its retailers and the spread between their offers. One demo entry remains in
+`lib/catalog/` for the shape the catalogue cannot supply — a one-time purchase with no listing to
+read — plus the bill owed by a date and the pasted document.
 
 Before the payment is taken, every path shows the same three figures, in the order that matters most
 to the decision:
@@ -58,13 +63,13 @@ order or subscription back from PayPal, refuses to render unless it is settled, 
 entry for the next charge. Nothing about the purchase is stored — the record survives because the
 shopper keeps it and PayPal holds the agreement.
 
-**A way back when the link is lost.** `/account` signs a shopper in with their own PayPal account
-and lists the subscriptions this store holds under it — each with the same three figures, read from
-PayPal at the moment they ask. There is still no account and no user record: the sign-in is a
-signed cookie that expires in two hours, and the list is rebuilt on every visit by reading PayPal.
-Two things it will not pretend: one-time purchases cannot appear (PayPal gives a merchant no way to
-look them up without an id), and when the check cannot run the page says *"we could not check"*
-rather than *"you have none"*.
+**A way back when the link is lost.** Signing in with your own PayPal account turns the home page
+into your record: the subscriptions this store holds under that account, each with the same three
+figures, read from PayPal at the moment you ask, and each row opening its full receipt. There is
+still no account and no user record: the sign-in is a signed cookie that expires in two hours, and
+the list is rebuilt on every visit by reading PayPal. Two things it will not pretend: one-time
+purchases cannot appear (PayPal gives a merchant no way to look them up without an id), and when the
+check cannot run the page says *"we could not check"* rather than *"you have none"*.
 
 Signing in needs **Log in with PayPal** enabled on the REST app — a dashboard setting, not a code
 one. *Apps & Credentials → your app → Log in with PayPal → Advanced Settings*, then:
@@ -137,7 +142,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists twelve variables — four required, eight optional:
+`env.example` lists thirteen variables — four required, nine optional:
 
 | Variable | Purpose |
 |---|---|
@@ -153,6 +158,7 @@ npm run dev
 | `CHANNEL3_API_KEY` | Optional. Server-side key for the live product catalogue behind `/shop` |
 | `SESSION_SECRET` | Optional. Signs the `/account` sign-in cookie (16+ characters). Absent, that page says it cannot check |
 | `APP_ORIGIN` | Optional. The public origin, for a deployment behind a rewriting proxy. `/account` otherwise uses the address the browser is on |
+| `PAYPAL_RETURN_ORIGIN` | Optional. The origin registered as the app's return URL at PayPal. A sign-in starts and ends here, and a browser on another spelling of the same machine is moved here first. Empty, `localhost` is moved to `127.0.0.1` on the same port |
 
 The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
 price and term from the plan and says so; with them empty it computes from the published terms in

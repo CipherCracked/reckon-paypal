@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { publicOrigin } from "@/lib/origin";
+import { publicOrigin, signInHop } from "@/lib/origin";
 import { authorizeUrl, callbackUri, identityConfigured } from "@/lib/paypal/identity";
 import { signInConfigured, stateCookie } from "@/lib/session";
 
@@ -7,12 +7,17 @@ import { signInConfigured, stateCookie } from "@/lib/session";
  * The first half of a sign-in: a random `state`, kept in a cookie this browser
  * can prove it set, and a redirect to PayPal's page.
  *
- * Nothing about the person is sent here. The redirect URI is read from the
- * address the browser used (see `callbackUri`), so the same code works on
+ * Nothing about the person is sent here. The redirect URI is the address
+ * registered on the PayPal app (see `signInOrigin`), so the same code works on
  * localhost and on a deployment — the one thing that must match is the return
- * URL registered on the PayPal app.
+ * URL, and PayPal answers a mismatch on its own site with a sentence a person
+ * can do nothing about. A browser that reached this page by a spelling PayPal
+ * will not accept is therefore moved to the one it will, before any of that.
  */
 export async function GET(request: Request) {
+  const hop = signInHop(request);
+  if (hop) return Response.redirect(hop, 302);
+
   const origin = publicOrigin(request);
 
   // A half-configured deployment sends the person back to the page that can say

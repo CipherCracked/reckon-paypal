@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { BackLink } from "@/components/BackLink";
+import { MarketSearch } from "@/components/MarketSearch";
+import { Page } from "@/components/Page";
 import {
   cheapestInStock,
   marketSlug,
@@ -14,7 +15,6 @@ import { formatMoney } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 const DEFAULT_QUERY = "headphones";
-const SUGGESTIONS = ["headphones", "subscription box", "coffee maker", "running shoes", "desk lamp"];
 /** How many results one search can return — the catalogue's own limit. */
 const SEARCH_LIMIT = 12;
 
@@ -70,43 +70,13 @@ export default async function Shop({ searchParams }: PageProps) {
   }
 
   return (
-    <div className="page">
-      <BackLink href="/">Back to the ways in</BackLink>
-
-      <header className="page-header">
-        <p className="eyebrow">The shop</p>
-        <h1>Search real products</h1>
-        <p className="lede">
-          Every product below is a real listing, with its real price, read from the live catalogue
-          when this page loaded. Pick one to see what the purchase asks of you before you agree to
-          it.
-        </p>
-      </header>
-
-      <form className="market-search" action="/shop" method="get">
-        <label htmlFor="market-q">What are you looking for?</label>
-        <div className="market-search-row">
-          <input
-            id="market-q"
-            name="q"
-            type="search"
-            defaultValue={query}
-            maxLength={120}
-            aria-describedby="market-hint"
-          />
-          <button type="submit" className="button-primary">
-            Search
-          </button>
-        </div>
-        <p id="market-hint" className="field-hint">
-          Searching: {SUGGESTIONS.map((suggestion, index) => (
-            <span key={suggestion}>
-              {index > 0 ? " · " : ""}
-              <Link href={`/shop?q=${encodeURIComponent(suggestion)}`}>{suggestion}</Link>
-            </span>
-          ))}
-        </p>
-      </form>
+    <Page
+      back={{ href: "/", label: "Back to the start" }}
+      eyebrow="The shop"
+      title="Search real products"
+      lede="Every product below is a real listing, with its real price, read from the live catalogue when this page loaded. Pick one to see what the purchase asks of you before you agree to it."
+    >
+      <MarketSearch query={query} />
 
       {failure ? (
         <p className="notice" role="status">
@@ -136,7 +106,7 @@ export default async function Shop({ searchParams }: PageProps) {
         is an offer to sell: this demo does not ship anything, and its checkout runs in PayPal&apos;s
         sandbox.
       </p>
-    </div>
+    </Page>
   );
 }
 

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { BackLink } from "@/components/BackLink";
 import { MarketProduct } from "@/components/MarketProduct";
+import { Page } from "@/components/Page";
 import { ProductScreen } from "@/components/ProductScreen";
 import { resolveProduct } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
@@ -48,8 +48,7 @@ export default async function ProductPage({ params }: PageProps) {
       product = await readMarketProduct(slug);
     } catch {
       return (
-        <div className="page">
-          <BackLink href="/shop">Back to the search</BackLink>
+        <Page back={{ href: "/shop", label: "Back to the shop" }}>
           <header className="page-header">
             <p className="eyebrow">A real listing</p>
             <h1>This product could not be read</h1>
@@ -61,7 +60,7 @@ export default async function ProductPage({ params }: PageProps) {
           <Link className="button-secondary" href={`/product/${encodeURIComponent(slug)}`}>
             Try again
           </Link>
-        </div>
+        </Page>
       );
     }
 
@@ -74,8 +73,7 @@ export default async function ProductPage({ params }: PageProps) {
     // sentence is true of the record in front of us, so the page says so.
     if (term && !termIsStated(product, term)) {
       return (
-        <div className="page">
-          <BackLink href="/shop">Back to the search</BackLink>
+        <Page back={{ href: "/shop", label: "Back to the shop" }}>
           <header className="page-header">
             <p className="eyebrow">A real listing</p>
             <h1>{product.title}</h1>
@@ -84,7 +82,7 @@ export default async function ProductPage({ params }: PageProps) {
             The listing no longer contains the words this page read the term from, so there is no
             term to show. Nothing is invented to fill the gap.
           </p>
-        </div>
+        </Page>
       );
     }
 
@@ -93,8 +91,7 @@ export default async function ProductPage({ params }: PageProps) {
 
       if (!offer) {
         return (
-          <div className="page">
-            <BackLink href="/shop">Back to the search</BackLink>
+          <Page back={{ href: "/shop", label: "Back to the shop" }}>
             <header className="page-header">
               <p className="eyebrow">A real listing</p>
               <h1>{product.title}</h1>
@@ -103,7 +100,7 @@ export default async function ProductPage({ params }: PageProps) {
               The catalogue lists this subscription with no offer anyone can buy right now, so
               there is no price to show. Nothing is invented to fill the gap.
             </p>
-          </div>
+          </Page>
         );
       }
 
@@ -135,8 +132,7 @@ export default async function ProductPage({ params }: PageProps) {
       });
 
       return (
-        <div className="page">
-          <BackLink href="/shop">Back to the search</BackLink>
+        <Page back={{ href: "/shop", label: "Back to the shop" }}>
           <ProductScreen
             slug={slug}
             name={product.title}
@@ -152,15 +148,14 @@ export default async function ProductPage({ params }: PageProps) {
               unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
             })}
           />
-        </div>
+        </Page>
       );
     }
 
     return (
-      <div className="page">
-        <BackLink href="/shop">Back to the search</BackLink>
+      <Page back={{ href: "/shop", label: "Back to the shop" }}>
         <MarketProduct product={product} slug={slug} />
-      </div>
+      </Page>
     );
   }
 
@@ -194,9 +189,7 @@ export default async function ProductPage({ params }: PageProps) {
   const figures = presentFigures(terms, translation, { sources: { exit: exitOutcome.quoted } });
 
   return (
-    <div className="page">
-      <BackLink href="/">Back to the ways in</BackLink>
-
+    <Page back={{ href: "/", label: "Back to the start" }}>
       <ProductScreen
         slug={product.slug}
         name={product.name}
@@ -212,6 +205,6 @@ export default async function ProductPage({ params }: PageProps) {
           unreadable: exitOutcome.kind === "unreadable" ? "what it costs to leave" : null,
         })}
       />
-    </div>
+    </Page>
   );
 }

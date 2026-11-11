@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { BackLink } from "@/components/BackLink";
 import { CommitmentView } from "@/components/CommitmentView";
+import { Page } from "@/components/Page";
 import { findBill } from "@/lib/catalog/bills";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
@@ -71,13 +71,11 @@ export default async function BillPage({ params, searchParams }: PageProps) {
     record = await retrieveInvoice(invoiceId);
   } catch {
     return (
-      <div className="page">
-        <BackLink href="/">Back to the ways in</BackLink>
-
-        <header className="page-header">
-          <p className="eyebrow">Bill from {bill.biller}</p>
-          <h1>{bill.name}</h1>
-        </header>
+      <Page
+        back={{ href: "/read", label: "Back to the document reader" }}
+        eyebrow={`Bill from ${bill.biller}`}
+        title={bill.name}
+      >
         <p className="notice" role="status">
           PayPal could not show this bill right now. The figures below are computed from what{" "}
           {bill.biller} published, not from PayPal&apos;s copy — check the amount with them before
@@ -109,7 +107,7 @@ export default async function BillPage({ params, searchParams }: PageProps) {
           </a>
           .
         </p>
-      </div>
+      </Page>
     );
   }
 
@@ -120,14 +118,11 @@ export default async function BillPage({ params, searchParams }: PageProps) {
   const dueDate = formatDueDate(record.dueDate);
 
   return (
-    <div className="page">
-      <BackLink href="/">Back to the ways in</BackLink>
-
-      <header className="page-header">
-        <p className="eyebrow">Bill from {bill.biller}</p>
-        <h1>{bill.name}</h1>
-      </header>
-
+    <Page
+      back={{ href: "/read", label: "Back to the document reader" }}
+      eyebrow={`Bill from ${bill.biller}`}
+      title={bill.name}
+    >
       {disagreement ? (
         <p className="notice" role="alert">
           PayPal holds {record.amount ? formatMoney(record.amount) : "an amount"} for this bill, but
@@ -173,6 +168,6 @@ export default async function BillPage({ params, searchParams }: PageProps) {
         moves. The page is built from the bill PayPal holds each time it opens; nothing about you
         is stored here.
       </p>
-    </div>
+    </Page>
   );
 }

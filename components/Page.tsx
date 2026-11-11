@@ -1,0 +1,50 @@
+import { BackLink } from "@/components/BackLink";
+
+/**
+ * The frame inside the frame (ITD 25).
+ *
+ * Every screen had its own copy of this: a `.page` wrapper, an optional back
+ * link, an eyebrow, an `h1` and a lede. The copies drifted — the same back link
+ * was called "Back to the ways in" on four screens, "Back to the search" on
+ * five, and "Back to this product" on one — because each route decided its own
+ * header rhythm in its own file. The rhythm is not a per-screen decision.
+ *
+ * A screen reached by drilling into something passes `back`; a screen that is a
+ * destination does not, because the frame's navigation is the way out (IPD 28).
+ * The label names the parent in the product's own words rather than in a
+ * metaphor, and it is the page's job to name it correctly — this component can
+ * only guarantee that a way back exists and says where it goes.
+ */
+export function Page({
+  title,
+  eyebrow,
+  lede,
+  back,
+  headerExtra,
+  children,
+}: {
+  title?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  lede?: React.ReactNode;
+  back?: { href: string; label: string };
+  /** Rendered inside the header, under the title — the account bar, for one. */
+  headerExtra?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="page">
+      {back ? <BackLink href={back.href}>{back.label}</BackLink> : null}
+
+      {title ? (
+        <header className="page-header">
+          {eyebrow ? <p className="eyebrow">{eyebrow}</p> : null}
+          <h1>{title}</h1>
+          {lede ? <p className="lede">{lede}</p> : null}
+          {headerExtra}
+        </header>
+      ) : null}
+
+      {children}
+    </div>
+  );
+}
