@@ -28,16 +28,27 @@ export type EnsurePlanInput = {
 export type Subscription = { id: string; status: string; approveUrl: string | null };
 
 /**
- * The plan's name carries its cycle count and its opening fee. A PayPal plan is
- * immutable once created, and a repeat run resolves to the plan it made last
- * time by name — so a name that did not state the term would keep handing back
- * an open-ended plan after the screen had learned to promise an end, and one
- * that did not state the fee would hand back a plan that charges $60.00 less
- * than the screen says it will.
+ * What makes one plan a different plan from another.
+ *
+ * The name carries every field PayPal charges on, because a PayPal plan is
+ * immutable once created and a repeat run resolves to the plan it made last time
+ * by name. A name that did not state the term would keep handing back an
+ * open-ended plan after the screen had learned to promise an end; one that did
+ * not state the fee would hand back a plan that charges $60.00 less than the
+ * screen says it will. The same goes for the price and the cadence: the shop
+ * reads both live, so a merchant can change either while the plan made for the
+ * old figure still exists — and matching it would take a price the screen never
+ * showed.
  */
-function planName(planId: string, totalCycles: number, setupFee: Money | null | undefined): string {
-  const fee = setupFee && setupFee.minor > 0 ? ` +${toPayPalAmount(setupFee).value}` : "";
-  return `Commitment demo plan ${planId} ${totalCycles}x${fee}`;
+type PlanIdentity = Pick<
+  EnsurePlanInput,
+  "planId" | "totalCycles" | "setupFee" | "amount" | "interval"
+>;
+
+function planName(plan: PlanIdentity): string {
+  const fee = plan.setupFee && plan.setupFee.minor > 0 ? ` +${toPayPalAmount(plan.setupFee).value}` : "";
+  const price = toPayPalAmount(plan.amount).value;
+  return `Commitment demo plan ${plan.planId} ${plan.totalCycles}x${price}/${plan.interval.toLowerCase()}${fee}`;
 }
 
 function isDuplicate(error: unknown): boolean {
@@ -67,20 +78,14 @@ function clampDescription(text: string): string {
  * only way back to the existing plan is to list the product's plans and match
  * by name.
  */
-async function findExistingPlan(
-  productId: string,
-  planId: string,
-  totalCycles: number,
-  setupFee: Money | null | undefined,
-): Promise<string> {
+async function findExistingPlan(productId: string, input: PlanIdentity): Promise<string> {
   const list = await paypalRequest<{ plans?: Array<{ id: string; name?: string }> }>(
     `/v1/billing/plans?product_id=${encodeURIComponent(productId)}&page_size=20&page=1`,
     { method: "GET" },
   );
 
-  const match = list.plans?.find(
-    (plan) => plan.name === planName(planId, totalCycles, setupFee),
-  );
+  const wanted = planName(input);
+  const match = list.plans?.find((plan) => plan.name === wanted);
   if (!match) {
     throw new Error("PayPal reports the plan exists, but it could not be found.");
   }
@@ -129,7 +134,7 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
       method: "POST",
       body: JSON.stringify({
         product_id: product.id,
-        name: planName(input.planId, input.totalCycles, input.setupFee),
+        name: planName(input),
         status: "ACTIVE",
         billing_cycles: [
           {
@@ -158,7 +163,7 @@ export async function ensurePlan(input: EnsurePlanInput): Promise<string> {
     return plan.id;
   } catch (error) {
     if (isDuplicate(error)) {
-      return findExistingPlan(product.id, input.planId, input.totalCycles, input.setupFee);
+      return findExistingPlan(product.id, input);
     }
     throw error;
   }

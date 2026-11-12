@@ -58,6 +58,18 @@ describe("RecognitionCheck", () => {
     expect(onResult).toHaveBeenCalledWith(false);
   });
 
+  it("answers a 'no' on the screen, rather than leaving the question standing", async () => {
+    // "Yes" and "Skip" both replace the question with a sentence; "No" left it
+    // there. A shopper who answered was shown the same three buttons again and
+    // no way to tell whether the answer had landed.
+    renderCheck();
+
+    await userEvent.click(screen.getByRole("button", { name: /show me the breakdown/i }));
+
+    expect(screen.queryByText(/does that match what you expected\?/i)).toBeNull();
+    expect(screen.getByText(/breakdown above shows where each figure comes from/i)).toBeInTheDocument();
+  });
+
   it("can be skipped without reporting a result and without changing anything", async () => {
     const onResult = vi.fn();
     renderCheck(onResult);

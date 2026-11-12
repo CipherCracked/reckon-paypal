@@ -96,6 +96,7 @@ async function resolveLink(address: string): Promise<string> {
   if (looked.outcome === "not-found") return NOT_FOUND;
 
   const slug = marketSlug(looked.product.id);
+  if (!slug) return CANNOT_OPEN;
   let opened: MarketProduct | null;
   try {
     opened = await readMarketProduct(slug);

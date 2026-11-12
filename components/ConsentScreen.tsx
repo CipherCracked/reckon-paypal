@@ -9,6 +9,7 @@ import { RecognitionCheck } from "@/components/RecognitionCheck";
 import type { RenderedFigure } from "@/lib/commitment/present";
 import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/types";
 import { describeSources } from "@/lib/commitment/sources";
+import { describeApproval } from "@/lib/commitment/approval";
 import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
 import { formatMoney } from "@/lib/money";
 
@@ -155,7 +156,9 @@ export function ConsentScreen({
       if (!response.ok) {
         setPayment({
           status: "failed",
-          message: body.error ?? "PayPal could not complete this payment. Nothing was charged twice.",
+          message:
+            body.error ??
+            "We could not confirm whether PayPal completed this payment. Check your PayPal activity before trying again.",
         });
         return "failed" as const;
       }
@@ -186,9 +189,15 @@ export function ConsentScreen({
       });
       return "pending" as const;
     } catch {
+      // The shopper has already approved at PayPal and this was the capture, so
+      // no answer is not proof that nothing moved: the request may have died
+      // after our own server completed it. "Nothing has been taken" is a
+      // sentence only PayPal can write, and the cancel button already refuses
+      // to write it.
       setPayment({
         status: "failed",
-        message: "We could not reach PayPal. No payment has been taken.",
+        message:
+          "We could not confirm whether PayPal completed this payment. Check your PayPal activity before trying again.",
       });
       return "failed" as const;
     }
@@ -409,6 +418,11 @@ export function ConsentScreen({
       ? `This is today's charge. Across the term the page says ${acrossTerm.floor ? "at least " : ""}${formatMoney(acrossTerm.amount)}.`
       : "This is today's charge, not the total across the term.";
 
+  // What PayPal's button will do, in words the screen owns (IPD 48). It is not
+  // a fourth figure: it re-says the two figures the page already printed, beside
+  // the control, because PayPal's label says "Subscribe" and nothing else.
+  const saysWhatTheButtonDoes = describeApproval(payload.shape, payload.figures);
+
   return (
     <section className="consent">
       {payload.degraded ? (
@@ -471,7 +485,26 @@ export function ConsentScreen({
         fits any checkout, not just this one.
       </p>
 
-      <div className="consent-actions" ref={payButton} tabIndex={-1}>
+      {/* IPD 48, as finally built. The decision asked for a sentence of ours
+          above PayPal's control saying what approval does; seen in a browser on
+          2026-11-12 the reason is plain — the button says "Subscribe" and
+          prints no amount at all, so beside it this sentence is the only place
+          the money is named. A hairline puts it with the button rather than with
+          the paragraph above it, and the group it labels means a screen reader
+          hears what pressing it costs before it hears "Subscribe". */}
+      {saysWhatTheButtonDoes && payment.status !== "approve" ? (
+        <p className="commitment-approval" id="what-the-button-does">
+          {saysWhatTheButtonDoes}
+        </p>
+      ) : null}
+
+      <div
+        className="consent-actions"
+        ref={payButton}
+        tabIndex={-1}
+        role="group"
+        aria-labelledby={saysWhatTheButtonDoes ? "what-the-button-does" : undefined}
+      >
         {payment.status === "approve" ? null : clientId ? (
           <PayPalButton
             shape={payload.shape}
@@ -493,10 +526,17 @@ export function ConsentScreen({
               })
             }
             onFailed={() =>
-              setPayment({
-                status: "failed",
-                message: "PayPal could not complete this payment. Nothing has been charged.",
-              })
+              setPayment((current) =>
+                // A sentence that says why has already been set by the route
+                // that refused. PayPal's script reports the same rejection as a
+                // generic error, and the vaguer sentence must not replace it.
+                current.status === "failed"
+                  ? current
+                  : {
+                      status: "failed",
+                      message: "PayPal could not complete this payment. Nothing has been charged.",
+                    },
+              )
             }
             onUnavailable={() => void pay(true)}
           />

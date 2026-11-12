@@ -80,6 +80,11 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
       : LISTING_GONE_EXIT_NOTE;
 
   let scheduled: boolean;
+  // Kept rather than discarded when the listing could not say the shape: that
+  // read is the only one this page needs, and the record is the screen a
+  // shopper is most likely to open straight from PayPal, so a second round trip
+  // here is the one they feel.
+  let readSubscription: Awaited<ReturnType<typeof retrieveSubscription>> | null = null;
   let status: string;
   let startedAt: string | null = null;
   let nextBillingTime: string | null = null;
@@ -101,15 +106,19 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
       scheduled = recurring || financed;
     } else {
       // No listing, so the shape is PayPal's to answer: a subscription id reads
-      // as a subscription, and anything else is tried as an order.
+      // as a subscription, and anything else is tried as an order. The read that
+      // answers the question is the read the record uses.
       scheduled = await retrieveSubscription(orderId).then(
-        () => true,
+        (subscription) => {
+          readSubscription = subscription;
+          return true;
+        },
         () => false,
       );
     }
 
     if (scheduled) {
-      const subscription = await retrieveSubscription(orderId);
+      const subscription = readSubscription ?? (await retrieveSubscription(orderId));
       status = subscription.status;
       startedAt = subscription.startedAt;
       nextBillingTime = subscription.nextBillingTime;

@@ -23,12 +23,12 @@ function toUtcStamp(date: Date): string {
  */
 export function buildCalendar(entry: CalendarEntry): string {
   const stamp = toUtcStamp(entry.start);
-  const uid = `${stamp}-${Math.abs(hash(entry.title))}@accessible-commerce-companion`;
+  const uid = `${stamp}-${Math.abs(hash(entry.title))}@reckon`;
 
   return [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
-    "PRODID:-//Accessible Commerce Companion//EN",
+    "PRODID:-//Reckon//EN",
     "CALSCALE:GREGORIAN",
     "METHOD:PUBLISH",
     "BEGIN:VEVENT",

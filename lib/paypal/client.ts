@@ -66,8 +66,22 @@ export async function getAccessToken(signal?: AbortSignal | null): Promise<strin
     throw new PayPalError("PayPal rejected the credentials.", response.status);
   }
 
-  const body = (await response.json()) as { access_token: string; expires_in: number };
-  const lifetimeMs = Math.max(body.expires_in - 60, 0) * 1000;
+  const body = (await response.json()) as { access_token?: unknown; expires_in?: unknown };
+
+  // A 200 whose body is not the token shape is still a failure. Cached as-is,
+  // it went out as `Bearer undefined` and every call after it looked like a
+  // wrong key.
+  if (typeof body.access_token !== "string" || body.access_token.length === 0) {
+    throw new PayPalError("PayPal answered with no access token.", response.status);
+  }
+
+  // A lifetime PayPal did not state is not a lifetime to guess at: the token is
+  // used once and not kept. `NaN` made `expiresAt` compare false forever, which
+  // happened to behave the same way — by accident, and looking like a cache.
+  const stated = body.expires_in;
+  const lifetimeMs =
+    typeof stated === "number" && Number.isFinite(stated) ? Math.max(stated - 60, 0) * 1000 : 0;
+
   tokenCache = { value: body.access_token, expiresAt: Date.now() + lifetimeMs };
   return tokenCache.value;
 }

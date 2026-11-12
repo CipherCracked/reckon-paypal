@@ -27,6 +27,15 @@ import { TextSizeControl } from "@/components/TextSizeControl";
  * control that names a page the person is already on is a button that does
  * nothing — the defect that produced IPD 28. Signed out it starts the sign-in;
  * signed in it ends it, and the home screen says whose record is being shown.
+ *
+ * **The name is Reckon.** To reckon is to count and to judge, and this product
+ * does both on one screen: it counts the three figures, and then the shopper
+ * decides. The name before it — *Accessible Commerce Companion* — described the
+ * category, which is why it read as furniture. It stays text and never an image:
+ * a name drawn as a picture would not scale with the reader's text size, would
+ * not be found by a screen reader's heading list, and could not be translated.
+ * The wordmark asset (`public/reckon-logo.svg`) is for the README and the
+ * submission, not for the frame.
  */
 export function Shell({
   children,
@@ -45,7 +54,7 @@ export function Shell({
 
       <header className="site-header">
         <Link className="service-name" href="/">
-          Accessible Commerce Companion
+          Reckon
         </Link>
 
         <nav className="site-nav" aria-label="Sections">

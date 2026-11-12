@@ -90,6 +90,23 @@ describe("a real product's slug", () => {
       expect(marketProductId(slug)).toBeNull();
     }
   });
+
+  it("refuses an id its own parser could not read back", () => {
+    // A catalogue id outside the slug grammar used to build a link that opened
+    // nothing: `marketSlug` accepted anything and the parser accepted only some
+    // of it. The builder now answers with the same grammar the parser reads.
+    expect(marketSlug("ab")).toBeNull();
+    expect(marketSlug("has-a-dash")).toBeNull();
+    expect(marketSlug("x".repeat(17))).toBeNull();
+  });
+
+  it("only ever builds a slug it can read back", () => {
+    for (const id of ["oUZqBOZ", "prd00001", "PRD_1234", "ab", "a b", "x".repeat(40)]) {
+      const slug = marketSlug(id);
+      if (slug === null) continue;
+      expect(marketProductId(slug)).toBe(id);
+    }
+  });
 });
 
 /* ------------------------------------------------------------------ */

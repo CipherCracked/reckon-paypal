@@ -1,7 +1,8 @@
 import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import { noScheduleSentence } from "@/lib/catalog/term-state";
+import { computeCommitment } from "@/lib/commitment/compute";
 import type { CommitmentTerms } from "@/lib/commitment/types";
-import { addMoney, zeroMoney, type Money } from "@/lib/money";
+import { subtractMoney, type Money } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
 import { createSubscription, ensurePlan } from "@/lib/paypal/subscriptions";
 
@@ -14,31 +15,46 @@ import { createSubscription, ensurePlan } from "@/lib/paypal/subscriptions";
  * promised twelve payments and PayPal was asked for one, which is a figure with
  * nothing behind it. Creating the plan is what makes "across the term" a number
  * PayPal will actually collect.
+ *
+ * Both figures come from `computeCommitment` rather than being read off the
+ * terms here. The first charge PayPal takes is the screen's *charged today*, and
+ * that includes the parts which happen once — the opening fee **and** stated
+ * shipping. Recomputing the fee at this end is how the plan came to collect
+ * $5.00 less than the figure above the button: it sent the fee and forgot the
+ * shipping. A plan takes *today* minus *one period* at the start, and this
+ * screen's arithmetic is the only place that difference is defined.
  */
 function planFor(
   terms: CommitmentTerms,
-): { amount: Money; interval: "MONTH" | "YEAR"; totalCycles: number } | null {
+): { amount: Money; setupFee: Money | null; interval: "MONTH" | "YEAR"; totalCycles: number } | null {
+  let interval: "MONTH" | "YEAR";
+  let totalCycles: number;
+
   if (terms.shape === "recurring" && terms.recurrence) {
-    return {
-      // One period's charge: the item plus its tax, the same figure the
-      // commitment view multiplies by the term. A tax the source never stated
-      // is not part of a plan PayPal will charge for, so it adds nothing here.
-      amount: addMoney(terms.itemPrice, terms.tax ?? zeroMoney()),
-      interval: terms.recurrence.period === "month" ? "MONTH" : "YEAR",
-      totalCycles: terms.recurrence.count,
-    };
+    interval = terms.recurrence.period === "month" ? "MONTH" : "YEAR";
+    totalCycles = terms.recurrence.count;
+  } else if (terms.shape === "financed" && terms.installment) {
+    // The seller's page and the schedule both say "one a month".
+    interval = "MONTH";
+    totalCycles = terms.installment.count;
+  } else {
+    return null;
   }
 
-  if (terms.shape === "financed" && terms.installment) {
-    return {
-      amount: terms.installment.amount,
-      // The seller's page and the schedule both say "one a month".
-      interval: "MONTH",
-      totalCycles: terms.installment.count,
-    };
-  }
+  const { perPeriod, today } = computeCommitment(terms);
+  // What PayPal takes when the plan starts, on top of the first period.
+  const setupFee = subtractMoney(today, perPeriod);
 
-  return null;
+  return {
+    // One period's charge: the item plus its tax, the same figure the commitment
+    // view multiplies by the term. A tax the source never stated adds nothing.
+    amount: perPeriod,
+    // Omitted rather than sent as "0.00": a plan with nothing to take at the
+    // start says nothing, and a zero is a claim.
+    setupFee: setupFee.minor > 0 ? setupFee : null,
+    interval,
+    totalCycles,
+  };
 }
 
 export async function POST(request: Request) {
@@ -107,10 +123,11 @@ export async function POST(request: Request) {
       // The same count the screen prints. A plan that never ends would outlive
       // the term the shopper agreed to.
       totalCycles: plan.totalCycles,
-      // The same fee the screen says is charged today: PayPal takes it when the
-      // plan starts, so leaving it off here would charge a different amount from
-      // the one the figures above the button state.
-      setupFee: product.terms.openingFee ?? null,
+      // The same fee the screen says is charged today. It is the difference
+      // between the screen's *charged today* and one period, so it carries
+      // whatever happens once — the opening fee and any stated shipping — and
+      // PayPal takes it when the plan starts.
+      setupFee: plan.setupFee,
     });
 
     const subscription = await createSubscription(planId, {

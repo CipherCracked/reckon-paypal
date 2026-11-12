@@ -27,13 +27,16 @@ export function MarketCard({
   evidence?: string;
 }) {
   const cheapest = cheapestInStock(product.offers);
-  if (!cheapest) return null;
+  // A tile is one link, so a product the shop cannot address has no tile: an id
+  // the slug grammar cannot hold would render a card that opens nothing.
+  const slug = marketSlug(product.id);
+  if (!cheapest || !slug) return null;
 
   const retailers = product.offers.filter((offer) => offer.availability === "InStock").length;
 
   return (
     <li className="market-card">
-      <Link className="market-card-link" href={`/product/${marketSlug(product.id)}`}>
+      <Link className="market-card-link" href={`/product/${slug}`}>
         {product.image ? (
           // The catalogue's own image, at the size it is shown. A plain <img>
           // keeps the catalogue's CDN out of the build's image pipeline.

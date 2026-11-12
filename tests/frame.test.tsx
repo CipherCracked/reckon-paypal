@@ -83,9 +83,7 @@ describe("the frame", () => {
       </Shell>,
     );
 
-    expect(
-      screen.getByRole("link", { name: /accessible commerce companion/i }),
-    ).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Reckon" })).toHaveAttribute("href", "/");
   });
 
   it("does not repeat a status line on every screen", async () => {

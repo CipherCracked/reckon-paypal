@@ -1,4 +1,4 @@
-# Accessible Commerce Companion
+# Reckon
 
 Shows what a commitment actually costs — what is charged today, what it adds up to across its term,
 and what it costs to leave — before a shopper agrees to it.
@@ -23,7 +23,7 @@ stored — the list is rebuilt from PayPal on every visit.
 
 | You have | The screen | What it does |
 |---|---|---|
-| a product to check | `/shop` → the listing | three figures from the live catalogue's price and the term its listing states, then PayPal's own approval page |
+| a product to check | `/shop` → the listing | three figures from the live catalogue's price and the term its listing states, then PayPal's own button in the page (its hosted approval page where the script cannot load) |
 | a subscription | the same | the same three figures, then the subscription's approval page; the receipt offers **Cancel this subscription** |
 | a bill | `/read` → *ask PayPal to issue a bill* | **creates a real PayPal invoice**, then opens the bill screen, which re-reads it from PayPal |
 | a document | `/read` | paste the text; three figures, each beside the sentence or arithmetic it came from |
@@ -166,9 +166,11 @@ price and term from the plan and says so; with them empty it computes from the p
 at PayPal on first use and reuses them afterwards (`lib/paypal/subscriptions.ts`); the purchases and
 bills create their own PayPal objects as they are used.
 
-Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. Every value
-above stays server-side — the app loads no PayPal client script into the page, so there is no public
-key to expose.
+Create a sandbox app at <https://developer.paypal.com/dashboard/applications/sandbox>. One value
+above reaches the browser: `PAYPAL_CLIENT_ID`, because PayPal's own button needs it — PayPal treats a
+client id as public, and it is the same id every site running its script exposes. `PAYPAL_CLIENT_SECRET`
+never leaves the server, and the amount is agreed on our own route before PayPal is asked for
+anything. Where the script cannot load, the screen falls back to PayPal's hosted approval page.
 
 **No provider is named in the configuration.** The endpoint, the key and the model id are three
 environment variables and nothing else. One dependency in `package.json` carries a vendor's name on

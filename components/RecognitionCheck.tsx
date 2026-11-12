@@ -25,6 +25,7 @@ export type RecognitionCheckProps = {
 export function RecognitionCheck({ amount, label, note, onResult }: RecognitionCheckProps) {
   const [skipped, setSkipped] = useState(false);
   const [matched, setMatched] = useState(false);
+  const [refused, setRefused] = useState(false);
 
   // "Yes" used to call back and change nothing: the shopper answered, got no
   // acknowledgement, and was left staring at the same three buttons. A check
@@ -41,6 +42,17 @@ export function RecognitionCheck({ amount, label, note, onResult }: RecognitionC
     return (
       <p className="recognition-skipped" role="status">
         Check skipped. Your figures have not changed.
+      </p>
+    );
+  }
+
+  // "No" is an answer, not an exit: the screen above shows the itemisation, so
+  // the panel says where it is. Same reason as "Yes" — an answer that produced
+  // no visible change reads as an answer that did not register.
+  if (refused) {
+    return (
+      <p className="recognition-skipped" role="status">
+        The breakdown above shows where each figure comes from. Your figures have not changed.
       </p>
     );
   }
@@ -63,7 +75,14 @@ export function RecognitionCheck({ amount, label, note, onResult }: RecognitionC
         >
           Yes
         </button>
-        <button type="button" className="button-secondary" onClick={() => onResult(false)}>
+        <button
+          type="button"
+          className="button-secondary"
+          onClick={() => {
+            setRefused(true);
+            onResult(false);
+          }}
+        >
           No, show me the breakdown
         </button>
         <button type="button" className="button-quiet" onClick={() => setSkipped(true)}>

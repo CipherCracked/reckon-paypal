@@ -31,6 +31,17 @@ vi.mock("@/lib/paypal/records", async (importOriginal) => ({
   findSubscriptionsFor: vi.fn(),
 }));
 
+// Each row is a per-id read. The row reads are counted here because the limit
+// is the screen's to keep: the scan bounds its own reads, and a screen that
+// threw every id at PayPal at once would spend the scan's politeness.
+vi.mock("@/lib/paypal/retrieve", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/paypal/retrieve")>()),
+  retrieveSubscription: vi.fn(),
+}));
+
+import { retrieveSubscription } from "@/lib/paypal/retrieve";
+import { READ_CONCURRENCY } from "@/lib/paypal/records";
+
 // The entry reads a real listing. This suite is about the screen's own
 // behaviour, so the live read is fixed to the record captured from the
 // catalogue; what `readMarketProduct` does with the wire is tested where it
@@ -70,6 +81,8 @@ beforeEach(() => {
     scanned: 0,
     stopped: false,
   });
+  vi.mocked(retrieveSubscription).mockReset();
+  vi.mocked(retrieveSubscription).mockResolvedValue(null as never);
 });
 
 describe("the front door", () => {
@@ -270,5 +283,35 @@ describe("the front door, signed in", () => {
 
     expect(screen.getByText(/this is not a statement that you have none/i))
       .toBeInTheDocument();
+  });
+
+  it("reads the rows a few at a time, never all of them at once", async () => {
+    // A hundred subscriptions is a hundred ids, and PayPal's sandbox answers a
+    // burst with 429 — which this app would then report as "we could not read
+    // your record". The scan keeps to five in flight; the row reads did not.
+    cookie.value = signSession({ payerId: "PAYER-1", email: "shopper@example.com" }) ?? undefined;
+    vi.mocked(findSubscriptionsFor).mockResolvedValue({
+      kind: "found",
+      records: Array.from({ length: READ_CONCURRENCY * 2 }, (_, i) => ({
+        id: `I-${i}`,
+        status: "ACTIVE",
+      })),
+      scanned: READ_CONCURRENCY * 2,
+      stopped: false,
+    });
+
+    let inFlight = 0;
+    let peak = 0;
+    vi.mocked(retrieveSubscription).mockImplementation(async () => {
+      inFlight += 1;
+      peak = Math.max(peak, inFlight);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      inFlight -= 1;
+      return null as never;
+    });
+
+    render(await Home());
+
+    expect(peak).toBeLessThanOrEqual(READ_CONCURRENCY);
   });
 });

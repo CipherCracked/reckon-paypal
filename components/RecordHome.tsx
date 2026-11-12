@@ -2,7 +2,7 @@ import { CommitmentRow } from "@/components/CommitmentRow";
 import { MarketSearch } from "@/components/MarketSearch";
 import { Page } from "@/components/Page";
 import { withBudget } from "@/lib/deadline";
-import { findSubscriptionsFor } from "@/lib/paypal/records";
+import { findSubscriptionsFor, mapLimited, READ_CONCURRENCY } from "@/lib/paypal/records";
 import { retrieveSubscription } from "@/lib/paypal/retrieve";
 
 /**
@@ -28,12 +28,15 @@ export async function RecordHome({
   const discovery = await findSubscriptionsFor(person.payerId);
 
   // "We could not look" is never "you have none" (IPD 26).
+  //
+  // The rows are read five at a time, the same bound the scan keeps: a hundred
+  // subscriptions is a hundred ids, and PayPal answers a burst with a 429 that
+  // this screen would print as "we could not read your record". `mapLimited`
+  // keeps the input order, so row `n` is still `records[n]`.
   const reads =
     discovery.kind === "found"
-      ? await Promise.all(
-          discovery.records.map((record) =>
-            withBudget(retrieveSubscription(record.id), ROW_DEADLINE_MS, null),
-          ),
+      ? await mapLimited(discovery.records, READ_CONCURRENCY, (record) =>
+          withBudget(retrieveSubscription(record.id), ROW_DEADLINE_MS, null),
         )
       : [];
 

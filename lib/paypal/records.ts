@@ -21,8 +21,16 @@ export const PAGE_SIZE = 20;
 /** Five pages is a hundred subscriptions: enough for a demo, and a stated limit. */
 export const MAX_PAGES = 5;
 
-/** Reads in flight at once. Sandbox rate limits are unforgiving and a 429 is our fault. */
-const READ_CONCURRENCY = 5;
+/**
+ * Reads in flight at once. Sandbox rate limits are unforgiving and a 429 is our
+ * fault.
+ *
+ * Exported because the scan is not the only thing that reads one record per id:
+ * the home screen renders a row per subscription it finds, and those reads are
+ * bounded by the same number for the same reason. A screen that fired every id
+ * at once would spend the scan's politeness on its own first render.
+ */
+export const READ_CONCURRENCY = 5;
 
 /** The whole scan, not one call. A page that waits longer than this says it could not look. */
 export const SCAN_DEADLINE_MS = 8_000;
@@ -64,7 +72,7 @@ async function listIds(signal: AbortSignal): Promise<{ ids: string[]; stopped: b
 }
 
 /** Runs `work` over `items`, at most `limit` at a time, keeping the input order. */
-async function mapLimited<T, R>(
+export async function mapLimited<T, R>(
   items: T[],
   limit: number,
   work: (item: T) => Promise<R>,

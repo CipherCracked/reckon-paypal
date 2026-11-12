@@ -95,16 +95,26 @@ export class MarketError extends Error {
 const SLUG = /^ch3-([A-Za-z0-9]{4,16})$/;
 
 /** True when a slug names a real product rather than one of the demo entries. */
-export function isMarketSlug(slug: string): boolean {
-  return SLUG.test(slug);
+export function isMarketSlug(slug: string | null): boolean {
+  return slug !== null && SLUG.test(slug);
 }
 
-export function marketSlug(productId: string): string {
-  return `ch3-${productId}`;
+/**
+ * The slug for a catalogue id, or `null` when that id has none.
+ *
+ * The grammar is the parser's, not the builder's: a slug this function invented
+ * for an id `marketProductId` could not read back would be a link that opens
+ * nothing, produced by the app itself. An id outside the grammar is a catalogue
+ * that answered something this shop cannot address, and a card without a link
+ * says that honestly where a dead link does not.
+ */
+export function marketSlug(productId: string): string | null {
+  const slug = `ch3-${productId}`;
+  return marketProductId(slug) === productId ? slug : null;
 }
 
-export function marketProductId(slug: string): string | null {
-  const match = SLUG.exec(slug);
+export function marketProductId(slug: string | null): string | null {
+  const match = slug === null ? null : SLUG.exec(slug);
   return match ? match[1] : null;
 }
 
@@ -583,7 +593,7 @@ export async function lookupProduct(address: string): Promise<MarketLookup> {
 }
 
 /** Reads one product by its slug; `null` means the catalogue does not list it. */
-export async function readMarketProduct(slug: string): Promise<MarketProduct | null> {
+export async function readMarketProduct(slug: string | null): Promise<MarketProduct | null> {
   const id = marketProductId(slug);
   if (!id) return null;
 

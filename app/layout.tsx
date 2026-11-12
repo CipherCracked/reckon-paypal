@@ -29,7 +29,8 @@ const figureFace = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Accessible Commerce Companion",
+  title: "Reckon",
+  applicationName: "Reckon",
   description:
     "States what a commitment actually costs — what is charged today, what it adds up to across its term, and what it costs to leave — before anyone agrees to it.",
 };

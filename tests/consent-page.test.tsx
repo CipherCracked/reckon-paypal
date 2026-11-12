@@ -72,7 +72,13 @@ vi.mock("@/components/PayPalButton", () => ({
         <button
           type="button"
           onClick={() => {
-            void props.createOrder?.().then((made) => setCreated(made.orderId));
+            // The screen rejects these promises on purpose, so PayPal's window
+            // never opens on nothing. The real SDK turns the rejection into
+            // `onError`; the stub answers it the same way — by ignoring it.
+            void props
+              .createOrder?.()
+              .then((made) => setCreated(made.orderId))
+              .catch(() => {});
           }}
         >
           stub create order
@@ -80,7 +86,10 @@ vi.mock("@/components/PayPalButton", () => ({
         <button
           type="button"
           onClick={() => {
-            void props.createSubscription?.().then((made) => setCreated(made.subscriptionId));
+            void props
+              .createSubscription?.()
+              .then((made) => setCreated(made.subscriptionId))
+              .catch(() => {});
           }}
         >
           stub create subscription
@@ -220,6 +229,19 @@ describe("consent screen", () => {
     // not beside PayPal's.
     expect(screen.queryByRole("button", { name: /pay now/i })).toBeNull();
     expect(screen.queryByRole("button", { name: /approve subscription with paypal/i })).toBeNull();
+  });
+
+  it("says in the page's own words what PayPal's button will do, and labels the group with it", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    // Seen live on 2026-11-12, PayPal's button prints no amount and its label is
+    // one word, so the sentence beside it is the only place the money is named
+    // (IPD 48). It is also what a screen reader hears before "Subscribe".
+    const group = await screen.findByRole("group", {
+      name: /PayPal's button approves the plan above: .*\$24\.99 today, .*\$149\.94 across the term/,
+    });
+    expect(group).toContainElement(screen.getByTestId("paypal-control"));
   });
 
   it("keeps the plain button when no client id reached the page", async () => {
@@ -542,6 +564,76 @@ describe("consent screen", () => {
     expect(
       await screen.findByText(/you left paypal before approving\. nothing has been charged\./i),
     ).toBeInTheDocument();
+  });
+});
+
+describe("a capture we did not get an answer to", () => {
+  // The shopper has already approved at PayPal. If our own capture request comes
+  // back with nothing, the payment may or may not have been completed — and
+  // "nothing has been taken" is a claim only PayPal can make. It is the same
+  // rule the cancel button keeps.
+  const approvedThen = (answer: { ok: boolean; json: () => Promise<unknown> } | Error) => {
+    const capture =
+      answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => ({ ...payload, shape: "one_time" }) })
+        .mockReturnValueOnce(capture),
+    );
+  };
+
+  it("says it cannot tell, rather than that no payment was taken", async () => {
+    approvedThen(new TypeError("fetch failed"));
+
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" returning />);
+
+    expect(
+      await screen.findByText(/could not confirm whether paypal completed this payment/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/no payment has been taken/i)).toBeNull();
+  });
+
+  it("says the same when PayPal answers with an error and no reason", async () => {
+    approvedThen({ ok: false, json: async () => ({}) });
+
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" returning />);
+
+    expect(
+      await screen.findByText(/could not confirm whether paypal completed this payment/i),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("a refusal the server explained", () => {
+  it("keeps the server's sentence when PayPal's script also reports a failure", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ ...payload, shape: "one_time" }) })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: async () => ({
+          error: "The price changed while you were reading. Nothing was charged.",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    // A rejected create callback is what PayPal's SDK turns into `onError`, so
+    // both of these happen: the route's reason, then the SDK's generic failure.
+    await userEvent.click(await screen.findByRole("button", { name: /stub create order/i }));
+    expect(
+      await screen.findByText(/the price changed while you were reading/i),
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /stub fail/i }));
+
+    // The vaguer sentence must not replace the one that says why.
+    expect(screen.getByText(/the price changed while you were reading/i)).toBeInTheDocument();
+    expect(screen.queryByText(/paypal could not complete this payment/i)).toBeNull();
   });
 });
 

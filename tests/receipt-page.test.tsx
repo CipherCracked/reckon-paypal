@@ -110,6 +110,32 @@ describe("what the record says PayPal has taken", () => {
   });
 });
 
+describe("a record opened without its listing", () => {
+  const renderBare = () =>
+    ReceiptPage({
+      params: Promise.resolve({ orderId: "I-SUB-1" }),
+      searchParams: Promise.resolve({}),
+    });
+
+  it("asks PayPal for the subscription once, not twice", async () => {
+    // Without a listing the shape has to be discovered, and the discovery read
+    // is the record's only read: asking again would spend a second round trip
+    // on the screen a shopper is most likely to open from PayPal itself.
+    render(await renderBare());
+
+    expect(retrieveSubscription).toHaveBeenCalledTimes(1);
+  });
+
+  it("still shows the figures the subscription's plan states", async () => {
+    render(await renderBare());
+
+    expect(screen.getAllByText(/\$149\.94/).length).toBeGreaterThan(0);
+    // Today's charge and the next charge are both one period, so $24.99 is on
+    // the page more than once — which is the record agreeing with itself.
+    expect(screen.getAllByText(/\$24\.99/).length).toBeGreaterThan(0);
+  });
+});
+
 describe("a record opened when the catalogue did not answer", () => {
   it("still shows what PayPal holds, and says the seller's words were not read", async () => {
     // The record is the one screen a shopper keeps. A catalogue outage must not

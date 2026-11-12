@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createPayPalOrder } from "@/lib/paypal/orders";
-import { resetTokenCache } from "@/lib/paypal/client";
+import { getAccessToken, PayPalError, resetTokenCache } from "@/lib/paypal/client";
 import { money } from "@/lib/money";
 
 const tokenResponse = {
@@ -36,6 +36,35 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+});
+
+describe("the access token", () => {
+  it("refuses an answer with no token, rather than sending 'Bearer undefined' to PayPal", async () => {
+    // A 200 with a body that is not the token shape used to be cached as
+    // `undefined` and sent as a credential: every call after it failed with a
+    // 401 that looked like a bad key rather than a bad answer.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({ ok: true, json: async () => ({ expires_in: 3600 }) }),
+    );
+
+    await expect(getAccessToken()).rejects.toBeInstanceOf(PayPalError);
+  });
+
+  it("does not keep a token whose lifetime PayPal did not state", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ access_token: "tok" }) });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await getAccessToken();
+    await getAccessToken();
+
+    // A NaN expiry would compare false forever, which reads as "cached" in the
+    // code and behaves as "never cached" here. Said out loud, it is the answer:
+    // the token is used and not kept.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe("createPayPalOrder", () => {

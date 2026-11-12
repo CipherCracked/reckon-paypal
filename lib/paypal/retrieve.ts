@@ -117,11 +117,17 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
 
 async function retrievePlanTerms(planId: string): Promise<CommitmentTerms | null> {
   try {
-    const plan = await withinDeadline((signal) =>
-      paypalRequest<PayPalPlan>(`/v1/billing/plans/${encodeURIComponent(planId)}`, {
-        method: "GET",
-        signal,
-      }),
+    // The detail deadline, like every other read this page makes. The default
+    // (two seconds) is the budget for a read that decorates a render, and this
+    // one is not: it is where *Across the term* and *Charged today* come from,
+    // and the catch below turns a slow answer into a silent absence.
+    const plan = await withinDeadline(
+      (signal) =>
+        paypalRequest<PayPalPlan>(`/v1/billing/plans/${encodeURIComponent(planId)}`, {
+          method: "GET",
+          signal,
+        }),
+      DETAIL_READ_DEADLINE_MS,
     );
 
     // The same reader the catalogue uses: a plan with no fixed price, no

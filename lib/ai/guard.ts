@@ -1,10 +1,15 @@
 import type { ExtractedTerms } from "./types";
 
 /**
- * The whole amount, not just its first digit: reporting "$1" for "$12.00"
+ * The whole figure, not just its first digit: reporting "$1" for "$12.00"
  * would tell a reader nothing about what went wrong.
+ *
+ * A bare count counts. "*for 3 months*" is as much a claim about the schedule as
+ * "*$12.00*" is a claim about the money, and the model was given neither — every
+ * figure on a screen is computed. The pattern used to know only currency shapes,
+ * so a wrong count in a summary crossed the gate untouched.
  */
-const MONEY_PATTERN = /\$\s?[\d,]+(?:\.\d{2})?|USD\s?[\d,]+(?:\.\d{2})?|\d+\.\d{2}/i;
+const MONEY_PATTERN = /\$\s?[\d,]+(?:\.\d{2})?|USD\s?[\d,]+(?:\.\d{2})?|\b\d[\d,]*(?:\.\d+)?\b/i;
 
 export function findMoneyLike(text: string): string | null {
   const match = MONEY_PATTERN.exec(text);

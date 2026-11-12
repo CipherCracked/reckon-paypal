@@ -97,7 +97,7 @@ describe("warming the listings the front door leads to", () => {
     // screen that has to be quick.
     vi.mocked(isModelConfigured).mockReturnValue(true);
     const listing = recordedProduct("YyLUjLT");
-    vi.mocked(readMarketProduct).mockImplementation(async (slug: string) =>
+    vi.mocked(readMarketProduct).mockImplementation(async (slug: string | null) =>
       slug === "ch3-YyLUjLT" ? listing : null,
     );
 

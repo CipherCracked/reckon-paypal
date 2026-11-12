@@ -33,6 +33,16 @@ export function addMoney(a: Money, b: Money): Money {
 }
 
 /**
+ * Subtracts in minor units. Used where one figure is the difference between two
+ * others — what a plan takes at the start is *today's charge* minus *one
+ * period* — so the difference is computed once rather than restated.
+ */
+export function subtractMoney(a: Money, b: Money): Money {
+  assertSameCurrency(a, b);
+  return money(a.minor - b.minor, a.currency);
+}
+
+/**
  * Multiplies by a whole factor. A fractional factor would land on a part of a
  * cent, so it is refused rather than rounded: every displayed total must be a
  * total the processor can actually charge.

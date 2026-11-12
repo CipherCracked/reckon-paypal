@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 110" role="img" aria-label="Reckon">
+  <title>Reckon</title>
+  <!--
+    The word, standing on the rule a column of figures is totalled under. One
+    rule says "these are the figures"; the second says "this total is final" —
+    which is the product's whole promise, drawn.
+
+    Both the word and the rules are centred on the same axis, so the lockup
+    holds together in any font the viewer happens to have. Atkinson
+    Hyperlegible — the product's own face, drawn for low vision — is preferred;
+    the rule is set a little narrower than the word so a wider fallback still
+    sits comfortably inside it.
+  -->
+  <text
+    x="150"
+    y="60"
+    text-anchor="middle"
+    font-family="Atkinson Hyperlegible, Verdana, Helvetica, Arial, sans-serif"
+    font-weight="700"
+    font-size="52"
+    letter-spacing="-1"
+    fill="#15170f"
+  >Reckon</text>
+  <rect x="72" y="70" width="156" height="4.5" fill="#15170f"/>
+  <rect x="72" y="79" width="156" height="2.25" fill="#15170f"/>
+</svg>

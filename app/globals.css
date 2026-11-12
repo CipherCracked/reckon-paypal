@@ -963,6 +963,18 @@ mark,
   font-variant-numeric: tabular-nums;
 }
 
+/* The last thing read before the money moves (IPD 48). PayPal's control is the
+   quietest thing on the page — a gold pill whose label is one word and which
+   prints no amount — so the sentence in the product's own words carries the
+   figure, and a hairline joins it to the button instead of to the paragraph
+   above it. The text size control scales this; it cannot scale theirs. */
+.commitment-approval {
+  margin-top: var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line);
+  font-size: var(--text-md);
+}
+
 .commitment-source {
   font-size: var(--text-sm);
   color: var(--ink-muted);

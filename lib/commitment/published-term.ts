@@ -84,7 +84,8 @@ export function termFromSpans(
   spans: ModelQuotation[],
   /** Must already have been through `normaliseText`. */
   normalisedSource: string,
-): TermFinding {  const offered = spans.filter(
+): TermFinding {
+  const offered = spans.filter(
     (span) => TERM_FIELDS.has(span.field) || CADENCE_FIELDS.has(span.field),
   );
   if (offered.length === 0) return { kind: "silent" };

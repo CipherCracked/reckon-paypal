@@ -30,7 +30,14 @@ describe("findMoneyLike", () => {
 
   it("accepts a summary with no currency", () => {
     expect(findMoneyLike("You pay monthly for one year.")).toBeNull();
-    expect(findMoneyLike("A 12-month term, 40% off the first bag.")).toBeNull();
+  });
+
+  it("flags a bare count, which is a figure the model was not given", () => {
+    // "for 3 months" is a claim about the schedule, and the schedule is
+    // computed, never written by the model. It used to pass this gate because
+    // the pattern only knew currency-shaped figures.
+    expect(findMoneyLike("A 12-month term, 40% off the first bag.")).toBe("12");
+    expect(findMoneyLike("You pay for 3 months.")).toBe("3");
   });
 });
 
@@ -47,6 +54,11 @@ describe("assertNoMoney", () => {
   it("throws when a label carries an amount", () => {
     const bad = { ...valid, labels: { ...valid.labels, item: "Coffee, $12.00 a bag" } };
     expect(() => assertNoMoney(bad)).toThrow(/labels\.item/);
+  });
+
+  it("throws when the summary states a count", () => {
+    const bad = { ...valid, summary: "You pay for 3 months, then it stops." };
+    expect(() => assertNoMoney(bad)).toThrow(MoneyInModelOutputError);
   });
 });
 

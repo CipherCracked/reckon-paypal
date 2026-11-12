@@ -33,10 +33,31 @@ vi.mock("@/lib/catalog/resolve", async () => {
       };
     }
 
+    // A term that states what it charges once: $5.00 of shipping and a $10.00
+    // opening fee, neither of which repeats. The screen puts both in today's
+    // charge, so the plan has to collect both when it starts.
+    if (slug === "shipping-example") {
+      return {
+        slug,
+        name: "A box with shipping",
+        description: "Six deliveries.",
+        terms: {
+          shape: "recurring",
+          itemPrice: amount(2499),
+          shipping: amount(500),
+          tax: null,
+          recurrence: { count: 6, period: "month" },
+          openingFee: amount(1000),
+          exit: { kind: "unknown" },
+        },
+        sources: { paypal: null, published: "the terms shown on this page" },
+        descriptionLabel: "the description shown on this page",
+      };
+    }
+
     // No catalogue entry has the financed shape today. The route still has a
     // branch for it, and this term is what that branch is handed.
-    if (slug === "financed-example") {
-      return {
+    if (slug === "financed-example") {      return {
         slug,
         name: "A financed example",
         description: "Twelve instalments and one opening fee.",
@@ -160,7 +181,7 @@ describe("ensurePlan", () => {
         .mockResolvedValueOnce(
           json({
             plans: [
-              { id: "P-EXISTING", name: "Commitment demo plan P-DEMO-MONTHLY 6x" },
+              { id: "P-EXISTING", name: "Commitment demo plan P-DEMO-MONTHLY 6x24.99/month" },
             ],
           }),
         ),
@@ -271,10 +292,15 @@ describe("ensurePlan", () => {
     expect(productRequest).not.toHaveProperty("description");
   });
 
-  it("names the plan after its term and its fee, in the plan's own language", async () => {
+  it("names the plan after its term, its price and its fee, in the plan's own language", async () => {
     // A repeated run finds the plan it made last time by this exact name. One
     // that spelled the fee as a raw object would never match — and would show
     // "[object Object]" to anyone reading the plan in PayPal's dashboard.
+    //
+    // The price and the cadence are in the name because they are what a plan
+    // charges: a name without them matches a plan made for a different amount,
+    // and the store keeps taking the old price while the screen shows the new
+    // one.
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
@@ -285,7 +311,31 @@ describe("ensurePlan", () => {
     await ensurePlan({ ...planInput, setupFee: money(6000) });
 
     const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
-    expect(planRequest.name).toBe("Commitment demo plan P-DEMO-MONTHLY 6x +60.00");
+    expect(planRequest.name).toBe("Commitment demo plan P-DEMO-MONTHLY 6x24.99/month +60.00");
+  });
+
+  it("does not reuse a plan made for a different price", async () => {
+    // The catalogue price is read live, so it can change while the plan made for
+    // the old figure still exists. That plan is not this plan: creating one with
+    // a different name is what PayPal needs, and reusing the old one would
+    // charge a figure the screen never showed.
+    // The stale plan's name is the price-free one this code used to write: under
+    // that scheme it matched whatever the price was, which is the defect.
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+        .mockResolvedValueOnce(duplicate())
+        .mockResolvedValueOnce(duplicate())
+        .mockResolvedValueOnce(
+          json({
+            plans: [{ id: "P-OLD-PRICE", name: "Commitment demo plan P-DEMO-MONTHLY 6x" }],
+          }),
+        ),
+    );
+
+    await expect(ensurePlan(planInput)).rejects.toThrow(/could not be found/i);
   });
 });
 
@@ -555,6 +605,38 @@ describe("POST /api/paypal/subscriptions", () => {
     expect(planRequest.payment_preferences.setup_fee).toEqual({
       currency_code: "USD",
       value: "60.00",
+    });
+  });
+
+  it("takes the once-only shipping with the first charge, not on top of a promise", async () => {
+    // The screen says today is $39.99: one period, plus $5.00 shipping charged
+    // once, plus the $10.00 opening fee. The plan charged $34.99, because the
+    // fee was sent and the shipping was not — so PayPal's first charge was
+    // $5.00 less than the figure above the button.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 }))
+      .mockResolvedValueOnce(json({ id: "PROD-1" }))
+      .mockResolvedValueOnce(json({ id: "P-1" }))
+      .mockResolvedValueOnce(json({ id: "I-SUB-1", status: "APPROVAL_PENDING" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "shipping-example" }),
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    const planRequest = JSON.parse(fetchMock.mock.calls[2][1].body);
+    expect(planRequest.billing_cycles[0].pricing_scheme.fixed_price).toEqual({
+      currency_code: "USD",
+      value: "24.99",
+    });
+    expect(planRequest.payment_preferences.setup_fee).toEqual({
+      currency_code: "USD",
+      value: "15.00",
     });
   });
 });

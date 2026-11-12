@@ -1,10 +1,23 @@
 import { describe, it, expect } from "vitest";
-import { money, addMoney, multiplyMoney, formatMoney, fromDecimalString, zeroMoney } from "@/lib/money";
+import {
+  money,
+  addMoney,
+  subtractMoney,
+  multiplyMoney,
+  formatMoney,
+  fromDecimalString,
+  zeroMoney,
+} from "@/lib/money";
 
 describe("money", () => {
   it("adds in minor units without float drift", () => {
     expect(addMoney(money(10), money(20)).minor).toBe(30);
     expect(addMoney(money(1), money(2)).minor).toBe(3);
+  });
+
+  it("subtracts in minor units", () => {
+    expect(subtractMoney(money(3999), money(2499)).minor).toBe(1500);
+    expect(subtractMoney(money(2499), money(2499)).minor).toBe(0);
   });
 
   it("multiplies by an integer factor", () => {

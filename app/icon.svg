@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The initial, on the same totalling rule. Both are centred, so the mark
+       holds whatever font the browser renders the letter in. -->
+  <rect width="32" height="32" fill="#123a2e"/>
+  <text
+    x="16"
+    y="24.5"
+    text-anchor="middle"
+    font-family="Verdana, Helvetica, Arial, sans-serif"
+    font-weight="700"
+    font-size="22"
+    fill="#f3f3ee"
+  >R</text>
+  <rect x="6" y="26.5" width="20" height="2" fill="#f3f3ee"/>
+</svg>
