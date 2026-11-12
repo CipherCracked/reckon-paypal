@@ -194,6 +194,46 @@ describe("the front door", () => {
   });
 });
 
+// The front door is the one screen reached without choosing anything, and it
+// used to be the one screen whose whole body hung on an unguarded third-party
+// read: no catalogue key, or a catalogue that answered nothing, and `/` threw —
+// so the notice written for exactly that case could never be seen. A blind judge
+// reading the code named it as the first thing worth fixing, because a 500 in
+// front of a judge is indistinguishable from a product that does not work.
+describe("the front door when the catalogue cannot answer", () => {
+  it("says the listing could not be read, and leaves the rest of the page standing", async () => {
+    vi.mocked(readMarketProduct).mockRejectedValue(new Error("No product catalogue key is configured."));
+
+    render(await Home());
+
+    expect(
+      screen.getByText(/could not be read just now, so there is no commitment to show/i),
+    ).toBeInTheDocument();
+    // The two doors are the reason this is a notice and not an error screen: a
+    // visitor who cannot see the worked example can still search, and can still
+    // sign in.
+    expect(screen.getByRole("heading", { name: /check something new/i })).toBeInTheDocument();
+    expect(screen.getByRole("search")).toHaveAttribute("action", "/shop");
+    // Nothing was worked through, so nothing may be claimed about figures.
+    expect(screen.queryByText("Across the term")).toBeNull();
+  });
+
+  it("says a listing has left the catalogue differently, because it will not come back", async () => {
+    // The catalogue answers 404 for a product it no longer carries, which
+    // `readMarketProduct` has always turned into `null` — the one outcome that is
+    // not a failure. Saying "try again" to that visitor would be a promise this
+    // page cannot keep.
+    vi.mocked(readMarketProduct).mockResolvedValue(null);
+
+    render(await Home());
+
+    expect(
+      screen.getByText(/no longer in the catalogue, so there is no commitment to show/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/could not be read just now/i)).toBeNull();
+  });
+});
+
 describe("the front door, signed in", () => {
   it("is the person's own record, not the proof", async () => {
     const session = signSession({ payerId: "PAYER-1", email: "shopper@example.com" });

@@ -1111,6 +1111,14 @@ mark,
   padding: var(--space-3) var(--space-4);
 }
 
+/* The way out of a screen that did not build (app/error.tsx): the same row as
+   every other pair of actions, named for the one place that renders it. */
+.failed-actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 .notice-success {
   border-left: 4px solid var(--success);
   background: var(--raised);

@@ -1078,3 +1078,152 @@ AI is load-bearing and that nothing on a screen **shows** it. Judge's blunt vers
       recorded signed out. The judge's order: publish the repo, record the video,
       make the AI legible, one person's impact quote. Cut test counts and process
       docs from the submission narrative.
+
+## 17. Sponsor prizes (blind review — 2026-11-12)
+
+A **blind** reviewer was asked which sponsor technology could be integrated
+meaningfully: given the product in plain prose and the known sponsor list (AG Grid,
+Bryntum, Channel3, APIMatic), and told to open no file in the repository, so that
+what already exists could not anchor it. Its filter — *can this vendor's output
+enter the evidence chain, a verbatim span plus a number our code derived?* — is the
+right one, and three of the four fail it. Its full memo is quoted where it decided
+something below.
+
+- [x] **AG Grid — skip. Decided 2026-11-12.** *"Skip AG Grid. It's a nicer version of
+      a screen you already have, and it costs most of a night."* The reviewer's
+      proposal was a ledger of every commitment the signed-in account holds, with a
+      panel behind each row showing the seller's sentence — which is
+      `components/RecordHome.tsx` with accessible table semantics bolted on. 4–6
+      hours for the version worth having (its own estimate; 2 hours buys a grid that
+      reads as decoration), against a screen that already exists. Its best line is
+      kept here for the video: *"sorting by what it costs to leave is a ranking, and
+      a ranking is advice"* — that is the product's rule, and it needs no library to
+      state.
+- [x] **Does Channel3 already count? Yes — checked against the rules, 2026-11-12.**
+      The reviewer was blind and assumed it was not integrated. It is:
+      `lib/market/channel3.ts` and `lib/market/subscriptions.ts` read every shop
+      listing and plan live, and every market figure on screen is derived from what
+      Channel3 returned. The rules make the bar explicit: *"Best Use of Channel3 —
+      $1,500 USD, 1 winner — All Eligible Submissions that use **any Channel3
+      tools**"* (`paypalaihackathon.devpost.com/rules`, §8). Any Channel3 tool, one
+      winner, and it stacks: the rules allow *"one (1) Grand Prize and one (1)
+      Sponsor Prize OR one (1) Honorable Mention Prize and one (1) Sponsor Prize"*
+      per project. So this is **not a build** — it is one line on the submission
+      form plus a sentence of copy. What it does cost is that the Channel3 call has
+      to work in front of a judge, which is the same defect as the 500 below.
+- [x] **Is there a speech/voice prize? No — checked against the rules, 2026-11-12.**
+      The complete sponsor-prize list is AG Grid, APIMatic, Bryntum, Channel3 and
+      Render. There is no TTS, speech or audio prize, and no judge-visible prize
+      that a new voice engine could win. The reviewer's idea — *reading the quoted
+      sentence aloud is exactly the need of a dyslexic reader* — is still right, and
+      it is already built: `components/ReadAloud.tsx` speaks the figures and the
+      schedule on every screen that shows them. **Nothing to build.** It stays in
+      the video as a feature, not as a prize entry.
+- [ ] **Render is the only sponsor prize left that is not a build of new product.**
+      $1,000 / $750 / $500 in Render credits (not cash), three winners, for
+      submissions that use any Render tool. The repo still has no public remote and
+      the submission needs a running URL — so deploying to Render is work already
+      owed, and the prize is a side effect of doing it. Credits, not cash; weigh it
+      against the same hours.
+- [ ] **The Channel3 sponsor entry depends on a defect.** The 500-on-cold-key below
+      (judge, from code only) is the one thing that would make *"uses Channel3"* false
+      at the moment a judge opens the front door. Fixing it is a prerequisite to
+      claiming the prize, not a separate task.
+- [x] **Bryntum — skip.** To place charges on a calendar you must infer dates from
+      "billed annually" and "per seat per month" — the class of inference this
+      product exists to refuse — and one commitment is one bar on an axis.
+- [x] **APIMatic — skip, and the best idea nobody should build.** Publishing the
+      reading endpoint with a response schema that has **no numeric field** would
+      make the safety rule the contract itself. It is also a developer portal, which
+      is invisible in a three-minute video.
+- [x] The reviewer could not reach the event page: **its search CLI answered with a
+      402 billing error.** Not ours — the main session's Tavily key answers
+      `"auth_mode": "keyed"` and read the rules page directly on 2026-11-12, so the
+      402 was that agent's own key or its sandbox, and the Devpost copy can be
+      researched from here.
+
+## 18. Judge, from code only (2026-11-12)
+
+A blind review given the repository and nothing else — no docs, no video script, no
+brief — asked to judge the product as a whole and return a verdict, not a checklist.
+It read 55 files. Its own summary of what it found, kept close to verbatim because
+the wording is the finding:
+
+- *"The code is a real, working 'translate the commitment before you agree'
+  product, not a mock: PayPal is exercised across five API families, and the AI does
+  one genuinely load-bearing job (finding the sentence that states what leaving
+  costs) plus the document reader. The AI is narrower than the pitch implies — it
+  never produces a number, only chooses spans — and the two headline integrations
+  barely touch each other in the default configuration."*
+- **Stage-1 gate — "meaningfully uses both PayPal and AI": pass, with a caveat.**
+  PayPal is unambiguous. AI is load-bearing for one of three figures and for the
+  only real interpretation of arbitrary text. Caveat: *"A judge ticking boxes will
+  pass it. A judge asking 'show me PayPal data going through the model' may not."*
+- **Its single highest-leverage line:** *"Most hackathon LLM apps ask you to trust
+  the model; this one shows you where it was wrong. That is the thing worth putting
+  in front of the judges, and it is already built."*
+- **Where it scores badly:** reach — a term total only exists for four hand-listed
+  subscription ids, two fictional bills and pasted text, which is *"a long way from
+  'any commitment'"*; the "both APIs" story depends on configuration; and *"the
+  front door is one missing third-party key away from a 500, which in a live demo is
+  fatal."*
+
+Defects it named, in the order it would fix them:
+
+- [x] **`/` no longer 500s — fixed and verified live, 2026-11-12.** `app/page.tsx`
+      awaited `resolveProduct("ch3-YyLUjLT")` with no try, so a missing key, a
+      non-OK reply or a fired deadline rendered Next's error page — and the fallback
+      notice written for exactly that failure could never appear. **Fixed:**
+      `lib/catalog/resolve.ts` gained `resolveProductOutcome`, which keeps the three
+      states the rest of the product already distinguishes (IPD 26) — `found`,
+      `absent` (the catalogue returned `null`, i.e. 404 for an id it no longer
+      carries) and `unreadable` (anything thrown from the read, logged with its
+      reason). `resolveProduct` itself is unchanged, so the other call sites keep
+      the contract they were written against; moving them over is the follow-up
+      below. The front door now says **which** nothing it is — *"is no longer in the
+      catalogue"* versus *"could not be read just now"* — and the two doors below it
+      stay. `app/error.tsx` added as the backstop for the reads nobody has found
+      yet: no stack, no `error.message`, a retry and a link to the front door.
+      **Verified live on :3001, all three states:** key present → 200 with the
+      worked listing (and the price had moved from $24.99 to $19.99, which is the
+      point of reading it); the slug pointed at a delisted id → 200 with the
+      *no longer in the catalogue* sentence; the catalogue host rewritten to an
+      unresolvable name → **200** with the *could not be read* sentence and
+      `[catalogue] could not read ch3-YyLUjLT: fetch failed` in the server log; a
+      temporary route that throws → the boundary's heading, lede and both actions,
+      with the frame and the footnote intact. Suite **466 → 472** (three resolver
+      cases including the abort/timeout one, two front-door cases, plus the existing
+      set), tsc and lint clean. Both temporary edits were reverted and `git diff`
+      checked: `lib/market/channel3.ts` is byte-identical to `HEAD`.
+- [ ] **The same unguarded read is still on five other routes** —
+      `/receipt/[orderId]`, the calendar route, the commitment route and both PayPal
+      create routes. None of them has a user-facing answer for "the catalogue did
+      not answer", so each still throws. `resolveProductOutcome` is the shape to
+      move them to; each needs its own true sentence (a 404 for a product that
+      exists would be a lie, and returning `null` where a route means "unknown
+      product" would trade a 500 for a wrong 400).
+- [ ] **The consent route has no model deadline.** `app/api/commitment/[orderId]/
+      route.ts:54` is the only model path not wrapped in `withBudget(...,
+      MODEL_READ_DEADLINE_MS, ...)`, so it inherits the client's 45 s timeout ×2
+      retries. The screen immediately before the money can hang, and it joins any
+      in-flight reading for the same text, so one hung request stalls every consent
+      screen for that listing.
+- [ ] **`warm.ts` does not warm the front door's listing.** It warms bills and
+      products only; the BARK description is never warmed, which is the same defect
+      already recorded here as the cold-start gap — now confirmed from the code, and
+      confirmed to contradict the comment at `app/page.tsx:79-84`.
+- [ ] **"Nothing you paste is stored" is not what the code does.**
+      `app/read/page.tsx:203-205` says it plainly; `lib/document/reading-cache.ts`
+      keeps the normalised text as a map key for 10 minutes / 50 entries in process
+      memory. Not persisted, not per-user — but the sentence is absolute, and this is
+      the one place where the product's honesty claim is stronger than its behaviour.
+- [ ] **The amount-mismatch failure is flattened.** `lib/paypal/orders.ts:88-93`
+      throws with the exact numbers; the route returns "PayPal could not create this
+      order." and a 502, with no log. The one check the product exists to enforce is
+      indistinguishable from bad credentials. The invoices route logs; orders and
+      subscriptions do not.
+- [ ] Cheaper, later: dead AI code (`lib/ai/extract-terms.ts` and the
+      `assertNoMoney` gate have no live caller, though a header comment claims every
+      model string crosses it); the unreachable `financed` and `degraded` states;
+      unauthenticated writes to the merchant sandbox account; and the up-to-200-call
+      account page.

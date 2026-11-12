@@ -174,6 +174,51 @@ export async function resolveProduct(slug: string): Promise<ResolvedProduct | nu
 }
 
 /**
+ * What a lookup concluded, with the three states kept apart.
+ *
+ * `resolveProduct` answers `null` for a slug no source knows and lets a failed
+ * read throw, which is the right contract for a screen that has something else
+ * to say. It is the wrong contract for a screen that has nothing else to say:
+ * an uncaught throw during a render is a 500, and a 500 tells a visitor the page
+ * is broken when the truth is narrower — the catalogue did not answer.
+ *
+ * The distinction is the one the product already draws everywhere else (IPD 26):
+ * *this listing is not there* and *I could not look* are different sentences,
+ * and a page that renders one of them as white space with a stack trace is
+ * saying neither.
+ */
+export type ProductLookup =
+  | { kind: "found"; product: ResolvedProduct }
+  | { kind: "absent" }
+  | { kind: "unreadable" };
+
+/**
+ * `resolveProduct`, with its failure turned into an answer.
+ *
+ * Everything the catalogue read can do wrong arrives here as one outcome: no key
+ * configured, a non-OK reply, and a deadline that fired all surface as a throw
+ * from `readMarketProduct`, and `readMarketProduct` has already reserved `null`
+ * for the one case that is not a failure — a product id the catalogue no longer
+ * lists. So `null` becomes `absent` and a throw becomes `unreadable`, without
+ * this function having to know which of the three happened.
+ */
+export async function resolveProductOutcome(slug: string): Promise<ProductLookup> {
+  try {
+    const product = await resolveProduct(slug);
+    return product ? { kind: "found", product } : { kind: "absent" };
+  } catch (error) {
+    // Logged because the operator's view of this is otherwise a page that says
+    // "could not be read" for a missing key, an expired key and a dead DNS
+    // alike. The visitor gets the same sentence; the log gets the reason.
+    console.warn(
+      `[catalogue] could not read ${slug}:`,
+      error instanceof Error ? error.message : error,
+    );
+    return { kind: "unreadable" };
+  }
+}
+
+/**
  * Every product the file knows, each resolved independently: one product
  * answering from PayPal and two falling back is a normal state, not a partial
  * failure, because each card carries its own source.

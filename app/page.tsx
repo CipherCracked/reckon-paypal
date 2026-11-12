@@ -6,7 +6,7 @@ import { Page } from "@/components/Page";
 import { QuotedText } from "@/components/QuotedText";
 import { RecordHome } from "@/components/RecordHome";
 import { SignInCard } from "@/components/SignInCard";
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import {
@@ -70,7 +70,15 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   // The worked subscription is a real listing, read live like every other real
   // product. Its price moves, and a hardcoded one would be the invented figure
   // this entry exists to replace.
-  const subscription = await resolveProduct("ch3-YyLUjLT");
+  //
+  // The lookup cannot throw. The front door is the one screen a visitor reaches
+  // without having chosen anything, and it was the only screen whose entire body
+  // hung on an unguarded third-party read: with no catalogue key configured, or
+  // the catalogue down, `/` rendered Next's error page — and the notice below,
+  // written for exactly that situation, could never appear. The three outcomes
+  // are kept apart so the page can say which one happened.
+  const worked = await resolveProductOutcome("ch3-YyLUjLT");
+  const subscription = worked.kind === "found" ? worked.product : null;
 
   // The third figure is the seller's, so it is read from the seller's words
   // whenever the terms left it unanswered (IPD 19) — the same rule as consent.
@@ -216,9 +224,16 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
           </div>
         </section>
       ) : (
+        // Two different nothings, in two different sentences. A listing that has
+        // left the catalogue does not come back on a reload, and telling that
+        // visitor to try again would be a promise the page cannot keep; a
+        // catalogue that did not answer might. Everything else on the page —
+        // the two doors below — is untouched by either, which is why this is a
+        // notice and not an error screen.
         <p className="notice" role="status">
-          The live listing this screen works through could not be read just now, so there is no
-          commitment to show. Search the shop for a real one in the meantime.
+          {worked.kind === "absent"
+            ? "The live listing this screen works through is no longer in the catalogue, so there is no commitment to show. Search the shop for a real one in the meantime."
+            : "The live listing this screen works through could not be read just now, so there is no commitment to show. Search the shop for a real one in the meantime."}
         </p>
       )}
 
