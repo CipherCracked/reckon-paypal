@@ -6,10 +6,6 @@ and what it costs to leave — before a shopper agrees to it.
 Built for the PayPal AI Hackathon 2026. PayPal supplies the money; a language model supplies only
 the words.
 
-**The one-page brief** — what it does, where the numbers come from, what it refuses, and what is
-not real — is [`docs/judge-brief.html`](docs/judge-brief.html). Open it directly; it has no build
-step and no dependencies.
-
 ## What it does
 
 The home page answers one question, not a catalogue: **what it costs, before you agree to it.** It
