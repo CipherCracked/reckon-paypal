@@ -20,3 +20,15 @@
  * presence of a quotation.
  */
 export const READ_BY_MODEL = "Read by the model, checked against your text.";
+
+/**
+ * The mark for the other thing the model does (IPD 46).
+ *
+ * *Written*, not *read*: on the receipt the model is handed figures the server
+ * has already verified against PayPal's record, and asked to put them into a
+ * sentence. Nothing in that sentence was found in a source; the check is that
+ * every numeral in it is one that was handed over. A mark saying "read" would
+ * claim the figures came out of a text, which is the reader page's claim and not
+ * this one.
+ */
+export const WRITTEN_FROM_RECORD = "Written by the model, checked against PayPal's figures.";

@@ -9,11 +9,13 @@ import {
   type ExitOutcome,
 } from "@/lib/commitment/published-exit";
 import { describeSources } from "@/lib/commitment/sources";
+import { plainWordsFacts, takenLine } from "@/lib/commitment/taken";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
 import { zeroMoney, type Money } from "@/lib/money";
 import { paypalBaseUrl } from "@/lib/paypal/client";
 import { isSettled, retrieveOrder, retrieveSubscription } from "@/lib/paypal/retrieve";
+import { retrievePaymentsTaken } from "@/lib/paypal/transactions";
 
 export const dynamic = "force-dynamic";
 
@@ -79,6 +81,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
 
   let scheduled: boolean;
   let status: string;
+  let startedAt: string | null = null;
   let nextBillingTime: string | null = null;
   let statusChangeTime: string | null = null;
   let paypalAmount: Money | null = null;
@@ -108,6 +111,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
     if (scheduled) {
       const subscription = await retrieveSubscription(orderId);
       status = subscription.status;
+      startedAt = subscription.startedAt;
       nextBillingTime = subscription.nextBillingTime;
       statusChangeTime = subscription.statusChangeTime;
       paypalAmount = subscription.amount;
@@ -211,8 +215,22 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
     );
   }
 
-  const paypalLabel =
-    scheduled && planTerms
+  // What PayPal's own record says it has taken, for an agreement that has a
+  // term to run through (IPD 45). Read after the record is known to stand, so a
+  // page that will not be shown never spends a second call on it.
+  //
+  // The term count is what the agreement was for — the same number the figure
+  // above is built from — so "1 of 6" and $149.94 cannot disagree.
+  const payments = scheduled ? await retrievePaymentsTaken(orderId, startedAt) : null;
+  const termCount = terms?.recurrence?.count ?? terms?.installment?.count ?? null;
+  const taken = payments ? takenLine(payments, termCount, translation?.acrossTerm ?? null) : null;
+  // The sentence is asked for only when every fact it may state is known and
+  // agrees with the figures above it (IPD 46). Otherwise it is not asked for.
+  const plainWords = payments
+    ? plainWordsFacts(payments, termCount, translation?.acrossTerm ?? null)
+    : null;
+
+  const paypalLabel = scheduled && planTerms
       ? "the PayPal plan for this payment"
       : !scheduled && paypalAmount
         ? "PayPal's copy of this order"
@@ -277,6 +295,8 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
           // opening fee, which is not charged again.
           scheduled ? { date: nextDate, amount: translation?.perPeriod ?? null } : null
         }
+        taken={taken}
+        plainWordsId={plainWords ? orderId : null}
         standing={standing}
         manageUrl={manageUrl()}
         calendarHref={

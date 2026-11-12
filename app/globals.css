@@ -2016,6 +2016,25 @@ html[data-text-scale="larger"] {
   font-weight: 700;
 }
 
+/* Two standing lines in a row are one part of the record: the past and the
+   future. Only the pair is boxed, so the rule between them is an inner line
+   rather than two borders meeting. */
+.record-standing + .record-standing {
+  border-top: none;
+}
+
+/* The model's sentence sits under the exact line it explains and borrows its
+   colour: it is a second telling, not a second fact (IPD 46). */
+.record-words {
+  color: var(--ink-muted);
+}
+
+/* The sentence is tucked under the line above it, so the standing line that
+   follows is still the pair's lower edge. */
+.record-words + .record-standing {
+  border-top: none;
+}
+
 /* A failure, said as a failure. Empty and broken are not the same sentence
    (IPD 26), so they are not the same colour either. */
 .notice-error {

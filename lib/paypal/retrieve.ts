@@ -23,6 +23,12 @@ export type OrderRecord = {
 export type SubscriptionRecord = {
   id: string;
   status: string;
+  /**
+   * When PayPal says the agreement started. It is the only honest lower bound
+   * for a transaction read: a payment for this agreement cannot precede it
+   * (ITD 38).
+   */
+  startedAt: string | null;
   /** ISO timestamp of the next charge, when PayPal states one. */
   nextBillingTime: string | null;
   /**
@@ -85,6 +91,7 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
         id: string;
         status: string;
         plan_id?: string;
+        start_time?: string;
         status_change_time?: string;
         billing_info?: { next_billing_time?: string };
       }>(`/v1/billing/subscriptions/${encodeURIComponent(id)}`, { method: "GET", signal }),
@@ -98,6 +105,7 @@ export async function retrieveSubscription(id: string): Promise<SubscriptionReco
   return {
     id: subscription.id,
     status: subscription.status,
+    startedAt: subscription.start_time ?? null,
     nextBillingTime: subscription.billing_info?.next_billing_time ?? null,
     statusChangeTime: subscription.status_change_time ?? null,
     // Today's charge as the plan states it, so `setup_fee` is included and the

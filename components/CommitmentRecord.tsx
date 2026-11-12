@@ -1,6 +1,8 @@
 import { CancelSubscription } from "@/components/CancelSubscription";
 import { FigureGrid } from "@/components/FigureGrid";
 import { ReadAloud } from "@/components/ReadAloud";
+import { RecordWords } from "@/components/RecordWords";
+import type { TakenLine } from "@/lib/commitment/taken";
 import { formatMoney, type Money } from "@/lib/money";
 import type { FigureSource, RenderedFigure } from "@/lib/commitment/present";
 
@@ -40,6 +42,18 @@ export type CommitmentRecordData = {
   exitSource: FigureSource | null;
   /** `null` when there is no further charge. */
   nextCharge: RecordNextCharge;
+  /**
+   * What PayPal's own record says it has taken, when this record has an
+   * agreement behind it (IPD 45). A one-time order has no term to run through,
+   * so it has no line: *Charged today* is the whole of its history.
+   */
+  taken?: TakenLine | null;
+  /**
+   * The agreement whose payments PayPal holds. When set, the model is asked for
+   * a plain-language sentence about the line above it, after the page renders
+   * (IPD 46). Absent means nothing is asked for.
+   */
+  plainWordsId?: string | null;
   /** `null` for a one-time payment, which has nothing to run or to end. */
   standing: RecordStanding | null;
   manageUrl: string;
@@ -84,6 +98,7 @@ function spokenRecord(record: CommitmentRecordData): string {
     figure("Charged today", record.paidToday),
     figure("Across the term", record.acrossTerm),
     figure("Cost to leave", record.exit),
+    ...(record.taken ? [record.taken.spoken] : []),
     next,
   ].join(" ");
 }
@@ -151,6 +166,18 @@ export function CommitmentRecord(record: CommitmentRecordData) {
           for it.
         </p>
       ) : null}
+
+      {record.taken ? (
+        // The past before the future: what PayPal has taken, then what it will.
+        // A line rather than a fourth figure because the fact is a count and an
+        // amount, and a tile has room for only one of them (IPD 45).
+        <p className="record-standing" data-taken={record.taken.kind}>
+          <span className="record-standing-label">Taken so far</span> {record.taken.text}
+        </p>
+      ) : null}
+
+      {/* Arrives after the page, and only when there is a fact to explain. */}
+      {record.plainWordsId ? <RecordWords subscriptionId={record.plainWordsId} /> : null}
 
       <p className="record-standing">
         <span className="record-standing-label">Next charge</span> {nextCharge}

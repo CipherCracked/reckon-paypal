@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { findMoneyLike, assertNoMoney, MoneyInModelOutputError } from "@/lib/ai/guard";
+import {
+  assertNoMoney,
+  assertOnlyKnownNumerals,
+  findMoneyLike,
+  findUnknownNumeral,
+  MoneyInModelOutputError,
+  UnknownNumeralError,
+} from "@/lib/ai/guard";
 import type { ExtractedTerms } from "@/lib/ai/types";
 
 const valid: ExtractedTerms = {
@@ -40,5 +47,64 @@ describe("assertNoMoney", () => {
   it("throws when a label carries an amount", () => {
     const bad = { ...valid, labels: { ...valid.labels, item: "Coffee, $12.00 a bag" } };
     expect(() => assertNoMoney(bad)).toThrow(/labels\.item/);
+  });
+});
+
+describe("findUnknownNumeral", () => {
+  const facts = [1, 6, 24.99, 149.94, 124.95];
+
+  it("passes a sentence that uses only the figures the server handed over", () => {
+    expect(
+      findUnknownNumeral(
+        "PayPal has taken $24.99 so far, and $124.95 is still to come.",
+        facts,
+      ),
+    ).toBeNull();
+  });
+
+  it("passes a sentence that writes a count in words", () => {
+    expect(findUnknownNumeral("You have made one of six payments so far.", facts)).toBeNull();
+  });
+
+  it("refuses an invented amount", () => {
+    expect(findUnknownNumeral("You are nearly there at $99.00.", facts)).toBe("$99.00");
+  });
+
+  it("refuses an invented count", () => {
+    expect(findUnknownNumeral("You have made 2 of 6 payments.", facts)).toBe("2");
+  });
+
+  it("refuses an invented count written in words", () => {
+    expect(findUnknownNumeral("You have made five payments so far.", facts)).toBe("five");
+  });
+
+  it("reads a hyphenated number as the number it is", () => {
+    expect(findUnknownNumeral("The agreement runs for twenty-four months.", [24])).toBeNull();
+    expect(findUnknownNumeral("The agreement runs for twenty-four months.", [6])).toBe(
+      "twenty-four",
+    );
+  });
+
+  it("compares a thousands-separated amount as the number it is", () => {
+    expect(findUnknownNumeral("You have paid $1,499.40 in all.", [1499.4])).toBeNull();
+  });
+
+  it("leaves ordinary words alone", () => {
+    expect(
+      findUnknownNumeral("PayPal's record lists one completed payment.", [1]),
+    ).toBeNull();
+  });
+});
+
+describe("assertOnlyKnownNumerals", () => {
+  it("throws with the fragment it could not place", () => {
+    expect(() => assertOnlyKnownNumerals("You owe $12.00 more.", [24.99])).toThrow(
+      UnknownNumeralError,
+    );
+    expect(() => assertOnlyKnownNumerals("You owe $12.00 more.", [24.99])).toThrow(/\$12\.00/);
+  });
+
+  it("passes when every figure was supplied", () => {
+    expect(() => assertOnlyKnownNumerals("You have 1 of 6 payments left.", [1, 6])).not.toThrow();
   });
 });

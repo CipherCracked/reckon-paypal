@@ -79,6 +79,30 @@ describe("CommitmentRecord", () => {
     expect(screen.getByText("Charged today")).toBeInTheDocument();
   });
 
+  it("states what PayPal's record says it has taken, before what is next", () => {
+    // The past and the future are the two facts about the agreement, and the
+    // record reads in that order: what has happened, then what happens next.
+    render(
+      <CommitmentRecord
+        {...base}
+        taken={{ kind: "some", text: "$24.99 — 1 of 6 payments.", spoken: "" }}
+        nextCharge={{ date: new Date("2026-12-07T00:00:00Z"), amount: money(1200) }}
+      />,
+    );
+
+    expect(screen.getByText("Taken so far")).toBeInTheDocument();
+    expect(screen.getByText(/\$24\.99 — 1 of 6 payments\./)).toBeInTheDocument();
+    expect(screen.getByText("Taken so far").compareDocumentPosition(screen.getByText("Next charge"))).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+
+  it("says nothing about what was taken on a record with no agreement behind it", () => {
+    render(<CommitmentRecord {...base} nextCharge={null} calendarHref={null} />);
+
+    expect(screen.queryByText("Taken so far")).toBeNull();
+  });
+
   it("says there is no further charge for a single payment", () => {
     render(<CommitmentRecord {...base} nextCharge={null} calendarHref={null} />);
 
@@ -257,6 +281,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
+      startedAt: null,
       statusChangeTime: null,
       amount: money(1200),
       terms: {
@@ -285,6 +310,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
+      startedAt: null,
       statusChangeTime: null,
       amount: money(16500),
       terms: {
@@ -312,6 +338,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "APPROVAL_PENDING",
       nextBillingTime: null,
+      startedAt: null,
       statusChangeTime: null,
       amount: null,
       terms: null,
@@ -329,6 +356,7 @@ describe("GET /api/receipt/:id/calendar", () => {
       id: "I-SUB-1",
       status: "ACTIVE",
       nextBillingTime: "2026-12-07T00:00:00Z",
+      startedAt: null,
       statusChangeTime: null,
       amount: null,
       terms: null,

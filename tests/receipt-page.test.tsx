@@ -1,8 +1,9 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import ReceiptPage from "@/app/receipt/[orderId]/page";
 import { readMarketProduct } from "@/lib/market/channel3";
 import { retrieveSubscription } from "@/lib/paypal/retrieve";
+import { retrievePaymentsTaken } from "@/lib/paypal/transactions";
 import { money } from "@/lib/money";
 import { recordedProduct } from "./fixtures/channel3-listings";
 import { clearPublishedExitCache } from "@/lib/commitment/published-exit";
@@ -13,6 +14,11 @@ vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/paypal/retrieve")>();
   return { ...actual, retrieveSubscription: vi.fn(), retrieveOrder: vi.fn() };
 });
+
+vi.mock("@/lib/paypal/transactions", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/paypal/transactions")>()),
+  retrievePaymentsTaken: vi.fn(),
+}));
 
 vi.mock("@/lib/market/channel3", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/market/channel3")>()),
@@ -46,6 +52,7 @@ beforeEach(() => {
   vi.mocked(retrieveSubscription).mockResolvedValue({
     id: "I-SUB-1",
     status: "ACTIVE",
+    startedAt: "2026-11-10T20:47:51Z",
     nextBillingTime: "2026-12-07T00:00:00Z",
     statusChangeTime: null,
     amount: money(2499),
@@ -57,6 +64,49 @@ beforeEach(() => {
       recurrence: { count: 6, period: "month" },
       exit: { kind: "unknown" },
     },
+  });
+  vi.mocked(retrievePaymentsTaken).mockReset();
+  vi.mocked(retrievePaymentsTaken).mockResolvedValue({
+    kind: "read",
+    count: 1,
+    amount: money(2499),
+  });
+
+  // The record asks for the model's sentence after the page renders. These
+  // tests are about the page, so the answer is "nothing to add".
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ sentence: null }) }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+describe("what the record says PayPal has taken", () => {
+  it("states the count and the money from PayPal's own record", async () => {
+    render(await renderReceipt());
+
+    expect(screen.getByText("Taken so far")).toBeInTheDocument();
+    expect(screen.getByText(/\$24\.99 — 1 of 6 payments\./)).toBeInTheDocument();
+  });
+
+  it("asks about the agreement, starting when PayPal says it started", async () => {
+    await renderReceipt();
+
+    expect(retrievePaymentsTaken).toHaveBeenCalledWith("I-SUB-1", "2026-11-10T20:47:51Z");
+  });
+
+  it("says it could not read the record, never that nothing was taken", async () => {
+    vi.mocked(retrievePaymentsTaken).mockResolvedValue({ kind: "unavailable" });
+
+    render(await renderReceipt());
+
+    expect(
+      screen.getByText(/not read — paypal's payment record could not be read just now/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/lists no completed payment/i)).toBeNull();
   });
 });
 
