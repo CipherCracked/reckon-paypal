@@ -1178,9 +1178,8 @@ Defects it named, in the order it would fix them:
       states the rest of the product already distinguishes (IPD 26) — `found`,
       `absent` (the catalogue returned `null`, i.e. 404 for an id it no longer
       carries) and `unreadable` (anything thrown from the read, logged with its
-      reason). `resolveProduct` itself is unchanged, so the other call sites keep
-      the contract they were written against; moving them over is the follow-up
-      below. The front door now says **which** nothing it is — *"is no longer in the
+      reason). `resolveProduct` itself is unchanged; the other five call sites were
+      moved to `resolveProductOutcome` the same day (below). The front door now says **which** nothing it is — *"is no longer in the
       catalogue"* versus *"could not be read just now"* — and the two doors below it
       stay. `app/error.tsx` added as the backstop for the reads nobody has found
       yet: no stack, no `error.message`, a retry and a link to the front door.
@@ -1195,35 +1194,178 @@ Defects it named, in the order it would fix them:
       cases including the abort/timeout one, two front-door cases, plus the existing
       set), tsc and lint clean. Both temporary edits were reverted and `git diff`
       checked: `lib/market/channel3.ts` is byte-identical to `HEAD`.
-- [ ] **The same unguarded read is still on five other routes** —
+- [x] **Fixed 2026-11-12 — the same unguarded read was on five other routes** —
       `/receipt/[orderId]`, the calendar route, the commitment route and both PayPal
-      create routes. None of them has a user-facing answer for "the catalogue did
-      not answer", so each still throws. `resolveProductOutcome` is the shape to
-      move them to; each needs its own true sentence (a 404 for a product that
-      exists would be a lie, and returning `null` where a route means "unknown
-      product" would trade a 500 for a wrong 400).
-- [ ] **The consent route has no model deadline.** `app/api/commitment/[orderId]/
-      route.ts:54` is the only model path not wrapped in `withBudget(...,
-      MODEL_READ_DEADLINE_MS, ...)`, so it inherits the client's 45 s timeout ×2
-      retries. The screen immediately before the money can hang, and it joins any
-      in-flight reading for the same text, so one hung request stalls every consent
-      screen for that listing.
-- [ ] **`warm.ts` does not warm the front door's listing.** It warms bills and
-      products only; the BARK description is never warmed, which is the same defect
-      already recorded here as the cold-start gap — now confirmed from the code, and
-      confirmed to contradict the comment at `app/page.tsx:79-84`.
-- [ ] **"Nothing you paste is stored" is not what the code does.**
-      `app/read/page.tsx:203-205` says it plainly; `lib/document/reading-cache.ts`
-      keeps the normalised text as a map key for 10 minutes / 50 entries in process
-      memory. Not persisted, not per-user — but the sentence is absolute, and this is
-      the one place where the product's honesty claim is stronger than its behaviour.
-- [ ] **The amount-mismatch failure is flattened.** `lib/paypal/orders.ts:88-93`
-      throws with the exact numbers; the route returns "PayPal could not create this
-      order." and a 502, with no log. The one check the product exists to enforce is
-      indistinguishable from bad credentials. The invoices route logs; orders and
-      subscriptions do not.
+      create routes. All five now use `resolveProductOutcome`, each with its own true
+      answer: **503** *"the catalogue could not be read just now"* (with "nothing has
+      been charged") where the route has to refuse, **404** only for a product that
+      is genuinely absent. The receipt page is the interesting one: the record is the
+      one screen a shopper keeps, so it still renders and states which absence it
+      is — no listing supplied, listing gone, or catalogue unreadable (three
+      constants, selected by `lookup.kind`). Tests in five suites, including a new
+      `tests/receipt-page.test.tsx` that drives the page with the catalogue throwing.
+- [x] **Fixed 2026-11-12 — the consent route had no model deadline.** `readExit`
+      now wraps `resolveExitTerm` in `withBudget(…, MODEL_READ_DEADLINE_MS, …)` with
+      `retries: 0`, answering `unreadable` with its note when the budget fires. A
+      fake-timer test drives a reading that never resolves to a 200 with the
+      honest note rather than a hang.
+- [x] **Fixed 2026-11-12 — `warm.ts` did not warm the front door's listing.** It
+      now reads each `LISTED_TERMS` id live (`ch3-<id>`) and feeds those
+      descriptions to `readPublishedExit` **before** the file's, since in a
+      sequential warm-up order decides what is ready first and YyLUjLT is the front
+      door. A catalogue that does not answer is swallowed, so the file's texts are
+      still warmed. Three tests in `tests/warm.test.ts`; the existing "one at a
+      time" test now waits for the catalogue reads that precede the first model
+      call, its guarantee unchanged.
+- [x] **Fixed 2026-11-12 — "Nothing you paste is stored" was not what the code
+      does.** The hint now says *"The reading is kept in memory for ten minutes so
+      the same words are not sent twice. Nothing is written to a database."* — the
+      reading cache's actual lifetime and bound. A test in `tests/read-page.test.tsx`
+      pins both halves (the lifetime stated, the absolute claim gone).
+- [ ] **The sibling sentence has the same shape.** The frame still says *"Sandbox
+      store: no real money moves and nothing you do is stored."* Nothing is
+      persisted, but the same ten-minute reading cache sits behind "nothing … is
+      stored". Fixing it is a wording decision in `components/Page.tsx` plus
+      `tests/home.test.tsx`, and it is the store-wide claim rather than the reader's
+      own, so it deserves its own pass rather than a rushed rephrase on deadline day.
+- [x] **Fixed 2026-11-12 — the amount-mismatch failure was flattened.**
+      `lib/paypal/orders.ts` still throws with the exact numbers; the orders and
+      subscriptions routes now log that error the way the invoices route does, so
+      `"PayPal returned $58.95, but $59.00 was requested."` reaches the log instead
+      of being indistinguishable from bad credentials behind a bare 502. Tests pin
+      the log for both the mismatch and a PayPal 422.
 - [ ] Cheaper, later: dead AI code (`lib/ai/extract-terms.ts` and the
       `assertNoMoney` gate have no live caller, though a header comment claims every
       model string crosses it); the unreachable `financed` and `degraded` states;
       unauthenticated writes to the merchant sandbox account; and the up-to-200-call
       account page.
+
+## 19. The substance problem (owner, 2026-11-12)
+
+The owner: *"I am not feeling the proud feeling when I look at the product. I feel
+our AI integration and channel3 integration is shoddy. Our shop looks amateur and
+paypal is not used meaningfully."* The verification chain is genuinely strong; the
+weakness is **reach and surface**. Every point below is from code and from the live
+catalogue, not from impression.
+
+### What is actually there
+
+- **AI does one small job.** Every AI path is the same call —
+  `record_quotations`, which copies spans that the server then checks literally
+  (`lib/ai/read-document.ts:53`, `lib/document/read.ts:117`). Nothing else reasons
+  with a model. It runs on `nvidia/nemotron-3.5-lightning:free` with reasoning off
+  (hence the 40 s cold readings and all the cache/deadline machinery), and
+  `lib/ai/extract-terms.ts` is a dead second AI path with tests still attached.
+  The best work — refusing a span the document does not contain — is a collapsed
+  disclosure on `/read` only, and cannot be triggered on demand for a demo.
+- **Channel3 is a search box with a hardcoded ceiling.** `searchMarket` and
+  `readMarketProduct` only. Unused and documented: `/v1/browse` + categories,
+  price/brand/website/availability filters, variants, similar products,
+  **`/v1/lookup` (any product URL → product)**, and **price history**
+  (`/v0/price-tracking/history/{id}`) plus price-change webhooks. Worse than
+  unused, the recurring analysis is gated on four ids (`lib/market/subscriptions.ts:27`,
+  `lib/catalog/resolve.ts:111`, `app/product/[slug]/page.tsx:68`). **Checked live
+  2026-11-12:** `POST /v1/search {"query":"monthly subscription box"}` returned six
+  real subscription listings in its first six results — a $199 Beauty Box and a $55
+  Mystery Box among them. The app calls four of those six one-time purchases that
+  say *"Paid once, so there is nothing to cancel"* (`lib/market/channel3.ts:83`).
+- **PayPal is broad but stateless.** Orders v2 create/capture, Subscriptions v1
+  with plans and catalog products, Invoicing v2, Log in with PayPal. Missing: **no
+  webhooks** (nothing ever arrives from PayPal — a failed payment or a cancellation
+  is found only on the next page load), **no transaction history**
+  (`/v1/reporting/transactions` unused, so the record can never say what has been
+  taken so far), **no JS SDK** (`@paypal/react-paypal-js` unused — the shopper gets
+  a bare approve-URL redirect), and the capture response's payer/funding detail is
+  discarded. The AI never reasons over anything PayPal holds; it reads seller copy
+  that may happen to be stored at PayPal.
+
+### Why it reads amateur — the five tells
+
+1. The shop's answer is trivial for nearly all of its own stock: one-time purchase →
+   "nothing to cancel". The screen the search leads into is where the product is
+   least interesting.
+2. The shop is a single-column list of 96px thumbnails inside the 46rem reading
+   column (`app/shop/page.tsx:72`, no `wide`), defaulting to `"headphones"` (`:17`):
+   no categories, no filters, no reason to browse.
+3. The vendor is explained to the shopper: *"It matches on more than spelling…"*
+   (`app/shop/page.tsx:40`), *"the catalogue's figure, not this page's"*
+   (`components/MarketProduct.tsx:60`), *"Prices, images and retailer links come from
+   Channel3"* (`:165`). Three apologies for the data layer.
+4. No screen shows AI doing something a person could not have coded. The figures are
+   arithmetic; the model produced one hidden input; the front door shows no AI at all.
+5. PayPal appears as a redirect and a POST — no PayPal UI, no live state, no history.
+
+### Recommendations, in the order they buy the most
+
+- [ ] **R1 — Read the term from any listing, not four ids.** Add `termLength` and
+      `period` quotation fields to the reader's schema; the model returns a span, the
+      verifier checks it literally (`verifyQuotations`), and a new parser reads
+      "6 month" / "12-month" / "3 Month" from the *verified* span. A listing with no
+      term statement stays one-time and keeps saying so. `LISTED_TERMS` becomes a
+      regression fixture and a tie-breaker, not the gate. **Why:** kills the ceiling,
+      makes the AI load-bearing on the flagship question, and turns the whole
+      catalogue into the product. **Effort ~1 day, low risk** — same pipeline, one
+      new field. Tests: the four curated listings still resolve, plus two
+      catalogue-found subscriptions that were never curated, plus one listing whose
+      term sentence has been rewritten (must stay one-time).
+- [ ] **R2 — Make PayPal the authority on what has actually happened.** Read
+      `/v1/reporting/transactions` (or the subscription's transactions) and state
+      *Taken so far · 3 of 6 · $74.97*, computed from PayPal's records rather than
+      by arithmetic over the plan. Then one model sentence over those facts, with a
+      guard that every numeral it writes exists in the verified set. **Why:** the
+      only place PayPal and the model genuinely meet — PayPal owns the facts, the
+      model owns the language, the server owns the check. **Effort ~1 day, medium
+      risk:** verify sandbox transaction lag before building the record around it.
+- [ ] **R3 — Make the shop a shop.** `/v1/browse` + categories; a **subscriptions
+      shelf** (the search that surfaced six live subscriptions is the shelf's
+      data); price/brand/website filters; card grid at `wide`; a real default with no
+      arbitrary query; and delete the three vendor apologies in favour of one line —
+      *prices read live from the retailer's own listing*. Add `/v1/lookup` so "check
+      any product" accepts a pasted product URL. **Effort ~1 day, low risk.**
+      **Started 2026-11-12: decomposition only — `docs/browsable-shop/intro.md`
+      (five root questions, no decisions). The tree is the checkpoint.**
+      **Decided 2026-11-12 — `docs/browsable-shop/`: IPD 33 (the shop opens on the
+      catalogue's 16 root categories; search is the shortcut beneath), IPD 34
+      (categories navigate, price is the only narrowing, "Show 30 more" until the
+      catalogue's 150 ceiling, all state in the URL), IPD 35 (a card is a picture,
+      brand, title and price; one sourcing line replaces three vendor sentences),
+      IPD 36 (a pasted product link is a second field on the shop), ITD 30 (browse /
+      categories / lookup in `channel3.ts`, paging + caching + named failures),
+      ITD 31 (shelf and grid at `Page wide`), ITD 32 (a link is read back before it
+      is followed). **Subscriptions shelf deferred to R1** — the shop cannot yet
+      tell a subscription from a one-time purchase, and a shelf that guesses is the
+      invented merchandising every other decision refuses. **Not implemented.**
+- [ ] **The subscriptions shelf, deferred from R3 and waiting on R1.** IPD 33
+      refuses it for a stated reason: the shop cannot tell a subscription from a
+      one-time purchase until R1 can read a term out of any listing, so a
+      "Subscriptions" shelf today would be a shelf of four curated ids wearing a
+      category's name. **Do this first after R1 lands** — the catalogue already
+      surfaces six subscriptions in one search, and the shelf is the screen that
+      makes the product's own subject browsable.
+- [ ] **R4 — In-page checkout with `@paypal/react-paypal-js`.** Create the order
+      server-side as today, render PayPal's own button and amount, capture in
+      `onApprove`, then land on the receipt. **Why:** judges recognise a real PayPal
+      integration by its UI, and the redirect is the thing that reads as 2010.
+      **Effort ~½ day, medium risk** (sandbox quirks).
+- [ ] **R5 — Webhooks, filmed with the sandbox simulator.** A signature-verified
+      `/api/paypal/webhooks`, keeping only `{subscription_id, event_type, at}` in a
+      bounded in-memory map — the same lifetime class as the reading cache — and
+      saying so, because the product's promise is that nothing is stored. Film
+      `BILLING.SUBSCRIPTION.PAYMENT.FAILED` changing the record. **Effort ~4 h.**
+- [ ] **R6 — Use a real model for the demo, and show the check.** `AI_MODEL` is
+      config, not code. Pair it with the refusal panel being reachable on screen
+      (the gap already recorded in §16) and one visible *read by the model, checked
+      against the text* mark on the figure it produced. **Effort ~2 h.**
+- [ ] **R7 — Let the document be asked a question.** "Can I cancel in month 3?" →
+      an answer built only from a verified span, or *not stated*. **Why:** turns the
+      AI from an extraction step into an interface, and the audience has follow-up
+      questions. **Effort ~1 day, medium risk.**
+
+**Not doing:** payouts, disputes, image search, a generic chat wrapper, or more
+copy. None of them buy a judged criterion here.
+
+**If only hours remain:** R1, then R6, then the cheap half of R3 (grid at full
+width, no default query, delete the vendor copy, one shelf heading). That removes
+the ceiling, the "cheap model" tell and the amateur look in that order. R2 is the
+one to fight for if any time can be bought — it is the only item that makes
+PayPal+AI one story rather than two adjacent integrations.
