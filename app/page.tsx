@@ -92,10 +92,15 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   // A listing that has gone from the catalogue leaves the entry with nothing
   // honest to work through. It says so below rather than falling back to a
   // figure from the file, which would be about a different product.
+  //
+  // A listing whose term produced no schedule (IPD 40) leaves the entry with no
+  // figures either, and the notice below says the same thing: the commitment
+  // this screen works through could not be read. The exit question is still put
+  // to the seller's words, because the description is still there.
   const exitOutcome = subscription
     ? await withBudget(
         resolveExitTerm(
-          subscription.terms.exit,
+          subscription.terms?.exit ?? { kind: "unknown" },
           subscription.description,
           subscription.descriptionLabel,
           { retries: 0 },
@@ -109,9 +114,10 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
         } satisfies ExitOutcome,
       )
     : null;
-  const terms = subscription && exitOutcome
-    ? { ...subscription.terms, exit: exitOutcome.exit }
-    : null;
+  const terms =
+    subscription?.terms && exitOutcome
+      ? { ...subscription.terms, exit: exitOutcome.exit }
+      : null;
 
   const translation = terms ? computeCommitment(terms) : null;
   // The seller's sentence and the figure it produced travel together, so the
@@ -120,9 +126,12 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
   // sentence the same way the exit figure carries its own (ITD 19). Both spans
   // are printed beside the paragraph they were cut out of, so a reader can find
   // them without being told the mechanism (IPD 30).
+  //
+  // The sentence is on `termState`, which is where the resolver says what the
+  // listing said; the schedule's numbers are on `terms` (IPD 40).
   const termSource =
-    subscription?.termQuote
-      ? { label: "the term the listing states", span: subscription.termQuote }
+    subscription?.termState.kind === "stated"
+      ? { label: "the term the listing states", span: subscription.termState.quote }
       : null;
 
   const figures =
@@ -178,7 +187,7 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
                 <blockquote className="entry-words">
                   <QuotedText
                     text={subscription.description}
-                    spans={[subscription.termQuote, exitOutcome.quoted?.span]}
+                    spans={[termSource?.span, exitOutcome.quoted?.span]}
                   />
                 </blockquote>
               ) : (

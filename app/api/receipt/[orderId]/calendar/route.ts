@@ -30,8 +30,9 @@ export async function GET(request: Request, context: RouteContext) {
   const product = outcome.kind === "found" ? outcome.product : null;
 
   // A financed purchase is scheduled monthly too, so it has a next charge.
-  // Anything paid once has none.
-  if (!product || product.terms.shape === "one_time") {
+  // Anything paid once has none — and a listing with no schedule at all has
+  // nothing this route may put a date on (IPD 40, ITD 34).
+  if (!product || !product.terms || product.terms.shape === "one_time") {
     return new Response("This purchase has no next charge to remind you about.", { status: 404 });
   }
 

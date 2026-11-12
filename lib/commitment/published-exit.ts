@@ -5,20 +5,23 @@ import { parseAmount } from "@/lib/document/parse";
 import { verifyQuotations } from "@/lib/document/verify";
 import { SELLER_SAYS_NOTHING, SELLER_UNREADABLE } from "./absence";
 import type { FigureSource } from "./present";
+import { termFromSpans, type TermFinding } from "./published-term";
 import type { ExitTerms } from "./types";
 
 /**
- * What it costs to leave, read from the seller's own published words (IPD 19).
+ * The seller's own published words: what it costs to leave (IPD 19) and how long
+ * the listing runs (IPD 37), read from one text.
  *
- * PayPal has no field for this figure — a plan's `payment_preferences` governs
- * failed payments, not walking away — so the only source left is the sentence a
- * seller wrote. The reading is the document reader reused unchanged: the model
- * copies spans, the server verifies them against the text, and the parser takes
- * the amount out of a verified span (ITD 18).
+ * PayPal has no field for the exit figure — a plan's `payment_preferences`
+ * governs failed payments, not walking away — and the catalogue has no field for
+ * the term, so the only source left is the sentence a seller wrote. The reading
+ * is the document reader reused unchanged: the model copies spans, the server
+ * verifies them against the text, and each derivation takes the value out of a
+ * verified span (ITD 18, ITD 33).
  *
- * The three outcomes are deliberately not two. A seller who published nothing
- * about leaving and a seller whose words could not be read are different facts,
- * and the screen says which one happened. Neither is zero.
+ * The three exit outcomes are deliberately not two. A seller who published
+ * nothing about leaving and a seller whose words could not be read are different
+ * facts, and the screen says which one happened. Neither is zero.
  */
 export type ExitFinding =
   | { kind: "stated"; exit: ExitTerms; quote: string }
@@ -68,25 +71,47 @@ export function exitFromSpans(
 }
 
 /**
+ * What a listing's own words say, read once for every question this product
+ * asks of them (ITD 33, ITD 35).
+ *
+ * The exit figure and the term come from the same text, and a model charges the
+ * same for one span as for five. Reading the listing once and deriving both
+ * facts from that reading halves the wait on the first visitor and the quota
+ * spent on every listing, with no fact lost: each derivation sees the same
+ * verified spans it would have seen alone.
+ *
+ * The two questions keep their own meaning checks — `exitFromSpans` here,
+ * `termFromSpans` in `published-term.ts` — because "the span is really in the
+ * text" says nothing about what the span means.
+ */
+export type ListingReading = {
+  term: TermFinding;
+  exit: ExitFinding;
+};
+
+/**
  * The same seller text is read on every render of a screen that shows it — a
  * bill page re-reads it each time it opens. The reading is a fact about the
  * seller's published words, not about the reader, so remembering it for a few
  * minutes changes nothing on the screen and spares every render after the first
  * a model round-trip. Nothing about a person is kept.
  *
+ * The key is the text itself, so an edited listing is a different listing and is
+ * read again; a cache keyed by product id would keep serving the old words.
+ *
  * The maps live on `globalThis` because Next compiles the start-up hook and the
  * page into separate module graphs: a module-level map here would be two maps,
  * and the warm-up would fill one that no page ever reads.
  */
-type ExitCache = {
-  findings: Map<string, { finding: ExitFinding; at: number }>;
+type ReadingCache = {
+  readings: Map<string, { reading: ListingReading; at: number }>;
   /** Readers that arrive while a reading is still running wait on it. */
-  inFlight: Map<string, Promise<ExitFinding>>;
+  inFlight: Map<string, Promise<ListingReading>>;
 };
 
-const store = globalThis as unknown as { __publishedExit?: ExitCache };
-const cache: ExitCache = (store.__publishedExit ??= {
-  findings: new Map(),
+const store = globalThis as unknown as { __publishedReading?: ReadingCache };
+const cache: ReadingCache = (store.__publishedReading ??= {
+  readings: new Map(),
   inFlight: new Map(),
 });
 
@@ -94,23 +119,31 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 
 /** Test hook: the cache is module state, like the PayPal token cache. */
 export function clearPublishedExitCache(): void {
-  cache.findings.clear();
+  cache.readings.clear();
   cache.inFlight.clear();
 }
 
 /**
- * Reads a seller's published text for the exit figure. Text is short — a
- * product description, an invoice's terms — so nothing here is sized for a
- * document.
+ * The reading of this text, if one is remembered. Never starts a reading.
+ *
+ * A request that is about to move money, and the receipt behind it, cannot spend
+ * most of a minute on a model (ITD 34). They ask this instead, get the reading or
+ * nothing, and say which they got — an unread listing is never sold as though it
+ * had been read.
  */
-export async function readPublishedExit(
-  text: string,
-  options: ReadOptions = {},
-): Promise<ExitFinding> {
-  const source = text.trim();
-  if (source.length === 0) return { kind: "silent" };
+export function peekListing(text: string): ListingReading | null {
+  return cache.readings.get(text.trim())?.reading ?? null;
+}
 
-  const remembered = cache.findings.get(source);
+/**
+ * Reads a seller's published text. Text is short — a product description, an
+ * invoice's terms — so nothing here is sized for a document.
+ */
+export async function readListing(text: string, options: ReadOptions = {}): Promise<ListingReading> {
+  const source = text.trim();
+  if (source.length === 0) return { term: { kind: "silent" }, exit: { kind: "silent" } };
+
+  const remembered = cache.readings.get(source);
   if (remembered) {
     if (Date.now() - remembered.at >= CACHE_TTL_MS) {
       // The TTL bounds memory, not truth: a reading of a sentence that has not
@@ -120,10 +153,26 @@ export async function readPublishedExit(
       // next one a "could not be read".
       void startReading(source, options);
     }
-    return remembered.finding;
+    return remembered.reading;
   }
 
   return startReading(source, options);
+}
+
+/** What it costs to leave, answered from the listing's one reading. */
+export async function readPublishedExit(
+  text: string,
+  options: ReadOptions = {},
+): Promise<ExitFinding> {
+  return (await readListing(text, options)).exit;
+}
+
+/** How long the listing runs, answered from that same reading. */
+export async function readPublishedTerm(
+  text: string,
+  options: ReadOptions = {},
+): Promise<TermFinding> {
+  return (await readListing(text, options)).term;
 }
 
 /**
@@ -136,7 +185,7 @@ export async function readPublishedExit(
 const READING_CEILING_MS = 3 * 60 * 1000;
 
 /** One reading per text at a time; callers that arrive mid-read join it. */
-function startReading(source: string, options: ReadOptions): Promise<ExitFinding> {
+function startReading(source: string, options: ReadOptions): Promise<ListingReading> {
   const pending = cache.inFlight.get(source);
   if (pending) return pending;
 
@@ -159,29 +208,33 @@ function startReading(source: string, options: ReadOptions): Promise<ExitFinding
   return reading;
 }
 
-/** One attempt at one text: read it, verify the spans, remember the finding. */
-async function readOnce(source: string, options: ReadOptions): Promise<ExitFinding> {
+/** One attempt at one text: read it, verify the spans, remember the reading. */
+async function readOnce(source: string, options: ReadOptions): Promise<ListingReading> {
   let result;
   try {
     result = await requestQuotations(source, options);
   } catch (error) {
-    const finding: ExitFinding = {
-      kind: "unreadable",
-      reason:
-        error instanceof ModelError
-          ? error.message
-          : "The seller's published terms could not be read.",
-    };
+    const reason =
+      error instanceof ModelError
+        ? error.message
+        : "The seller's published terms could not be read.";
     // Deliberately not remembered. A timeout or a dropped connection is a fact
     // about one attempt, not about the seller — caching it would turn one slow
     // minute into ten minutes of "could not be read" on every screen that shows
     // this text (ITD 20). The next render tries again.
-    return finding;
+    return {
+      term: { kind: "unreadable", reason },
+      exit: { kind: "unreadable", reason },
+    };
   }
 
-  const finding = exitFromSpans(result.quotations, normaliseText(source));
-  cache.findings.set(source, { finding, at: Date.now() });
-  return finding;
+  const normalised = normaliseText(source);
+  const reading: ListingReading = {
+    term: termFromSpans(result.quotations, normalised),
+    exit: exitFromSpans(result.quotations, normalised),
+  };
+  cache.readings.set(source, { reading, at: Date.now() });
+  return reading;
 }
 
 /**

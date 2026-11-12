@@ -85,7 +85,12 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   let planTerms: CommitmentTerms | null = null;
 
   try {
-    if (resolved) {
+    // The shape comes from the listing only when the listing produced a schedule
+    // (IPD 40). A listing whose term nobody has read, or whose term cannot be
+    // scheduled, still has a PayPal object behind this id — and the record is a
+    // statement about PayPal, so PayPal answers rather than the record going
+    // blank because a reading did not happen.
+    if (resolved?.terms) {
       const recurring = resolved.terms.shape === "recurring";
       const financed = resolved.terms.shape === "financed";
       // Both are scheduled by PayPal and both come back as a subscription id.
@@ -142,11 +147,18 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   //
   // Without the listing there is nothing to read, and that absence is stated
   // rather than papered over with a figure from somewhere else.
+  //
+  // A listing that produced no schedule still has its description, so the exit
+  // question is still put to the seller's words: the two questions are asked of
+  // one text and one of them not having an answer says nothing about the other.
   const exitOutcome: ExitOutcome = resolved
     ? await withBudget(
-        resolveExitTerm(resolved.terms.exit, resolved.description, resolved.descriptionLabel, {
-          retries: 0,
-        }),
+        resolveExitTerm(
+          resolved.terms?.exit ?? { kind: "unknown" },
+          resolved.description,
+          resolved.descriptionLabel,
+          { retries: 0 },
+        ),
         MODEL_READ_DEADLINE_MS,
         {
           kind: "unreadable",
@@ -169,7 +181,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   if (scheduled) {
     terms = planTerms
       ? { ...planTerms, exit }
-      : resolved?.terms.shape === "financed"
+      : resolved?.terms?.shape === "financed"
         ? { ...resolved.terms, exit }
         : null;
   } else {
@@ -211,7 +223,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // is the case this exists for: its figures are the seller's instalment terms,
   // checked against what PayPal took.
   const publishedLabel =
-    scheduled && !planTerms && resolved?.terms.shape === "financed"
+    scheduled && !planTerms && resolved?.terms?.shape === "financed"
       ? "the seller's published instalment terms, with today's charge agreeing with PayPal"
       : null;
 
@@ -231,7 +243,8 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
   // out of a twelve-month arrangement has been failed by the screen that sold it
   // to them. What the button cannot do is settle the debt: the confirmation says
   // that in the same breath as what it can do.
-  const agreement: AgreementKind = resolved?.terms.shape === "financed" ? "payment plan" : "subscription";
+  const agreement: AgreementKind =
+    resolved?.terms?.shape === "financed" ? "payment plan" : "subscription";
   const standing: RecordStanding | null =
     scheduled && status === "ACTIVE"
       ? { kind: "running", subscriptionId: orderId, agreement }

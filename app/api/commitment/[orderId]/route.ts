@@ -2,6 +2,7 @@ import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
 import { resolveProductOutcome } from "@/lib/catalog/resolve";
+import { noScheduleSentence } from "@/lib/catalog/term-state";
 import {
   EXIT_UNREADABLE_NOTE,
   resolveExitTerm,
@@ -56,6 +57,14 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const resolved = outcome.product;
+
+  // A listing whose term has not been read, cannot be read, or cannot be
+  // scheduled has no figures to show — and the screen before the money may not
+  // be given a shape this route guessed (IPD 40, ITD 34). The resolution was
+  // cache-only, so this is also the case where nobody read the seller's words.
+  if (!resolved.terms) {
+    return Response.json({ error: noScheduleSentence(resolved.termState) }, { status: 503 });
+  }
 
   const { name, description, descriptionLabel, sources } = resolved;
 

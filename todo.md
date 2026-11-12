@@ -1338,6 +1338,41 @@ catalogue, not from impression.
       survive only as a checked fixture for the front door. **ITD 35** the reading
       is cached by text and streamed into the page. The tests to write are named in
       ITD 34.
+      **Built 2026-11-12, from the bottom up — the reading layer only, no screen
+      changed yet (suite 543 → 571, `tsc` clean).** `parseStatedLength` and
+      `parseCadence` in `lib/document/parse.ts` (8 tests in
+      `tests/listed-term.test.ts`) read a count and a unit from a span and answer
+      monthly / other / nothing for a cadence. `termFromSpans` in
+      `lib/commitment/published-term.ts` (14 tests in
+      `tests/published-term.test.ts`) turns verified spans into `stated`,
+      `unschedulable` (unit, cadence), `ongoing`, `silent` or `unreadable`, and
+      gates on a duration **and** an agreement word with coverage/publication
+      words refusing the span — a warranty and a wall calendar are the two the
+      tests pin. `termLength` is in `FIELDS` with a description that names those
+      traps; **only one new field was needed** — `period` already meant cadence,
+      so the original wording above was half wrong. The `globalThis` cache now
+      holds `{ term, exit }` per text, `readListing` is the one model call, and
+      `readPublishedExit`/`readPublishedTerm` are wrappers (6 tests in
+      `tests/published-reading.test.ts`). **Built 2026-11-12, the screens and the
+      routes on top (suite 571 → 595, `tsc` clean).** `resolveProduct` answers a
+      `termState` on every product and a nullable `terms` on every listing (ITD
+      34); `noScheduleSentence` gives the four money routes one refusal each, and
+      every one of them says *Nothing has been charged* (`tests/term-state.test.ts`).
+      The product page opens on the catalogue's answer and streams
+      `components/ListedCommitment.tsx` into a Suspense boundary that says
+      *reading this listing's words for its term* (IPD 39); the panel is IPD 40's
+      five states — figures and the way to agree for a schedulable term, the
+      merchant's sentence and the price with no button for an unschedulable or
+      endless one, the one-time sentence now earned by the reading, and *could not
+      read* with a retry. 11 tests in `tests/listed-commitment.test.tsx`, two of
+      them counting model calls: the term and the exit are one reading, not two.
+      `listingText` is the single place a listing's read text is built, so the
+      start-up warm-up fills the key the resolver asks for — otherwise the panel
+      would pay for a second 40 s. The entry and the receipt take a null `terms`
+      without losing their figures: both fall back to what PayPal holds, because a
+      record is PayPal's statement and not the catalogue's. `MARKET_EXIT_NOTE`
+      finally renders — it was attached to a figure note that only draws for an
+      *absent* amount, and a one-time purchase's cost to leave is $0.00.
 - [ ] **R2 — Make PayPal the authority on what has actually happened.** Read
       `/v1/reporting/transactions` (or the subscription's transactions) and state
       *Taken so far · 3 of 6 · $74.97*, computed from PayPal's records rather than

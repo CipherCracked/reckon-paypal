@@ -1,5 +1,6 @@
 import { computeCommitment } from "@/lib/commitment/compute";
 import { resolveProductOutcome } from "@/lib/catalog/resolve";
+import { noScheduleSentence } from "@/lib/catalog/term-state";
 import { createPayPalOrder } from "@/lib/paypal/orders";
 import { PayPalError } from "@/lib/paypal/client";
 
@@ -39,6 +40,13 @@ export async function POST(request: Request) {
   }
 
   const product = outcome.product;
+
+  // Nothing can be charged without terms, and the resolution this route makes is
+  // cache-only: a listing whose words nobody has read yet has no shape this
+  // request may assume (IPD 40, ITD 34).
+  if (!product.terms) {
+    return Response.json({ error: noScheduleSentence(product.termState) }, { status: 503 });
+  }
 
   // A commitment paid over time is a subscription, not an order: capturing it
   // as a one-time payment would charge one period and call it the whole term.

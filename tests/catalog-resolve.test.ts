@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { ModelError } from "@/lib/ai/client";
+import { requestQuotations } from "@/lib/ai/read-document";
 import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
 import { resolveCatalogue, resolveProduct, resolveProductCard, resolveProductOutcome } from "@/lib/catalog/resolve";
+import { clearPublishedExitCache } from "@/lib/commitment/published-exit";
 import { MarketError, readMarketProduct, type MarketProduct } from "@/lib/market/channel3";
 import { money } from "@/lib/money";
 import { recordedProduct } from "./fixtures/channel3-listings";
@@ -13,6 +16,11 @@ vi.mock("@/lib/paypal/catalog", () => ({
 vi.mock("@/lib/market/channel3", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/lib/market/channel3")>();
   return { ...actual, readMarketProduct: vi.fn() };
+});
+
+vi.mock("@/lib/ai/read-document", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/ai/read-document")>();
+  return { ...actual, requestQuotations: vi.fn() };
 });
 
 const card = {
@@ -50,12 +58,26 @@ function oneTimeListing(id: string): MarketProduct {
   };
 }
 
+/** A listing the map never curated, which states its own term. */
+function statedListing(id: string): MarketProduct {
+  return {
+    ...oneTimeListing(id),
+    title: "BarkBox 6-Month Subscription",
+    description: "A 6-Month Subscription, delivered monthly.",
+  };
+}
+
 beforeEach(() => {
   vi.mocked(readProductCardFromPayPal).mockReset();
   vi.mocked(readProductFromPayPal).mockReset();
   vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(requestQuotations).mockReset();
   vi.mocked(readProductCardFromPayPal).mockResolvedValue(null);
   vi.mocked(readProductFromPayPal).mockResolvedValue(null);
+  // A model that was asked and found nothing to point at. Tests that care about
+  // the reading set their own answer.
+  vi.mocked(requestQuotations).mockResolvedValue({ quotations: [], summary: "" });
+  clearPublishedExitCache();
 });
 
 describe("reading a listing from PayPal (IPD 20)", () => {
@@ -111,7 +133,7 @@ describe("reading a commitment from PayPal", () => {
   it("falls back to the file's terms and labels this page's description", async () => {
     const resolved = await resolveProduct("noise-cancelling-headphones");
 
-    expect(resolved?.terms.itemPrice).toEqual(money(4799));
+    expect(resolved?.terms?.itemPrice).toEqual(money(4799));
     expect(resolved?.sources.published).toBe("the terms shown on this page");
     expect(resolved?.descriptionLabel).toBe("the description shown on this page");
   });
@@ -124,22 +146,91 @@ describe("reading a real listing", () => {
     const resolved = await resolveProduct("ch3-YyLUjLT");
 
     expect(resolved?.listed).toBe(true);
-    expect(resolved?.terms.shape).toBe("recurring");
-    expect(resolved?.terms.itemPrice).toEqual(money(2499));
-    expect(resolved?.terms.recurrence).toEqual({ count: 6, period: "month" });
-    expect(resolved?.terms.exit).toEqual({ kind: "unknown" });
+    expect(resolved?.terms?.shape).toBe("recurring");
+    expect(resolved?.terms?.itemPrice).toEqual(money(2499));
+    expect(resolved?.terms?.recurrence).toEqual({ count: 6, period: "month" });
+    expect(resolved?.terms?.exit).toEqual({ kind: "unknown" });
+    expect(resolved?.termState).toEqual({ kind: "stated", quote: "6 month BarkBox plan" });
     expect(resolved?.sources.published).toContain("the price Channel3 lists at bark.co");
     expect(resolved?.sources.published).toContain("6 month BarkBox plan");
   });
 
-  it("keeps a listing the map does not curate as a one-time purchase", async () => {
+  it("schedules a listing the map never curated, because its words say so", async () => {
+    vi.mocked(readMarketProduct).mockResolvedValue(statedListing("prd00050"));
+    vi.mocked(requestQuotations).mockResolvedValue({
+      quotations: [{ field: "termLength", quote: "BarkBox 6-Month Subscription" }],
+      summary: "",
+    });
+
+    const resolved = await resolveProduct("ch3-prd00050", { term: "wait" });
+
+    expect(resolved?.terms?.shape).toBe("recurring");
+    expect(resolved?.terms?.recurrence).toEqual({ count: 6, period: "month" });
+    expect(resolved?.termState).toEqual({
+      kind: "stated",
+      quote: "BarkBox 6-Month Subscription",
+    });
+    expect(resolved?.sources.published).toContain("BarkBox 6-Month Subscription");
+  });
+
+  it("says a listing that states no term is paid once", async () => {
     vi.mocked(readMarketProduct).mockResolvedValue(oneTimeListing("prd00050"));
 
-    const resolved = await resolveProduct("ch3-prd00050");
+    const resolved = await resolveProduct("ch3-prd00050", { term: "wait" });
 
-    expect(resolved?.terms.shape).toBe("one_time");
-    expect(resolved?.terms.itemPrice).toEqual(money(1999));
+    expect(resolved?.terms?.shape).toBe("one_time");
+    expect(resolved?.terms?.itemPrice).toEqual(money(1999));
+    expect(resolved?.termState).toEqual({ kind: "silent" });
     expect(resolved?.sources.published).toBe("the price Channel3 lists at shop.example");
+  });
+
+  it("refuses a schedule the money path cannot express", async () => {
+    vi.mocked(readMarketProduct).mockResolvedValue({
+      ...oneTimeListing("prd00050"),
+      title: "Coffee Club",
+      description: "A 12-month Coffee Club membership, billed quarterly.",
+    });
+    vi.mocked(requestQuotations).mockResolvedValue({
+      quotations: [
+        { field: "termLength", quote: "12-month Coffee Club membership" },
+        { field: "period", quote: "billed quarterly" },
+      ],
+      summary: "",
+    });
+
+    const resolved = await resolveProduct("ch3-prd00050", { term: "wait" });
+
+    expect(resolved?.terms).toBeNull();
+    expect(resolved?.termState).toEqual({
+      kind: "unschedulable",
+      reason: "cadence",
+      quote: "12-month Coffee Club membership",
+    });
+    expect(resolved?.sources.published).toBe("the price Channel3 lists at shop.example");
+  });
+
+  it("keeps a curated listing schedulable when a listing states no term but its sentence is still there", async () => {
+    // The model answered and pointed at nothing; the fixture's sentence is still
+    // in the live record, so the fixture is not stale — it is what was missed.
+    vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("DAaHyQc"));
+
+    const resolved = await resolveProduct("ch3-DAaHyQc", { term: "wait" });
+
+    expect(resolved?.terms?.recurrence).toEqual({ count: 3, period: "month" });
+    expect(resolved?.termState).toEqual({ kind: "stated", quote: "3 Month Subscription" });
+  });
+
+  it("keeps a curated listing schedulable when the reading could not happen", async () => {
+    // A model that is down is not the merchant's silence, and the front door
+    // opens on a fixture listing: the checked fixture answers rather than the
+    // demo losing its figures.
+    vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
+    vi.mocked(requestQuotations).mockRejectedValue(new ModelError("No model is configured."));
+
+    const resolved = await resolveProduct("ch3-YyLUjLT", { term: "wait" });
+
+    expect(resolved?.terms?.recurrence).toEqual({ count: 6, period: "month" });
+    expect(resolved?.termState).toEqual({ kind: "stated", quote: "6 month BarkBox plan" });
   });
 
   it("answers nothing when the catalogue no longer lists the product", async () => {
@@ -148,14 +239,17 @@ describe("reading a real listing", () => {
     await expect(resolveProduct("ch3-YyLUjLT")).resolves.toBeNull();
   });
 
-  it("answers nothing when a curated listing no longer states the quoted term", async () => {
+  it("does not quote a curated sentence the merchant has rewritten", async () => {
     const listing = recordedProduct("YyLUjLT");
     vi.mocked(readMarketProduct).mockResolvedValue({
       ...listing,
       description: "A box for dogs. No plan length is stated here.",
     });
 
-    await expect(resolveProduct("ch3-YyLUjLT")).resolves.toBeNull();
+    const resolved = await resolveProduct("ch3-YyLUjLT", { term: "wait" });
+
+    expect(resolved?.termState).toEqual({ kind: "silent" });
+    expect(resolved?.terms?.shape).toBe("one_time");
   });
 
   it("answers nothing when the listing has no offer anyone can buy", async () => {
@@ -166,6 +260,45 @@ describe("reading a real listing", () => {
     });
 
     await expect(resolveProduct("ch3-YyLUjLT")).resolves.toBeNull();
+  });
+});
+
+describe("a money route that cannot wait for a reading", () => {
+  it("says the listing has not been read, and asks no model", async () => {
+    vi.mocked(readMarketProduct).mockResolvedValue(statedListing("prd00050"));
+
+    const resolved = await resolveProduct("ch3-prd00050");
+
+    expect(resolved?.terms).toBeNull();
+    expect(resolved?.termState).toEqual({ kind: "notRead" });
+    expect(requestQuotations).not.toHaveBeenCalled();
+  });
+
+  it("takes the reading the product page already made", async () => {
+    vi.mocked(readMarketProduct).mockResolvedValue(statedListing("prd00050"));
+    vi.mocked(requestQuotations).mockResolvedValue({
+      quotations: [{ field: "termLength", quote: "BarkBox 6-Month Subscription" }],
+      summary: "",
+    });
+
+    await resolveProduct("ch3-prd00050", { term: "wait" });
+    const again = await resolveProduct("ch3-prd00050");
+
+    expect(again?.terms?.recurrence).toEqual({ count: 6, period: "month" });
+    expect(again?.termState).toEqual({
+      kind: "stated",
+      quote: "BarkBox 6-Month Subscription",
+    });
+    expect(requestQuotations).toHaveBeenCalledTimes(1);
+  });
+
+  it("still answers a curated listing from the fixture, with no reading at all", async () => {
+    vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
+
+    const resolved = await resolveProduct("ch3-YyLUjLT");
+
+    expect(resolved?.terms?.recurrence).toEqual({ count: 6, period: "month" });
+    expect(requestQuotations).not.toHaveBeenCalled();
   });
 });
 

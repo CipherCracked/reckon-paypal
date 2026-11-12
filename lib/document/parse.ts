@@ -67,6 +67,140 @@ export function parsePeriod(quote: string): "month" | "year" | null {
   return month ? "month" : "year";
 }
 
+/**
+ * The length of an agreement, read out of a span that states one (IPD 38).
+ *
+ * Separate from `parsePeriod`, which answers "how often" for a document and must
+ * stay as it is. A listing states "how long", and the two can appear in the same
+ * sentence — "12-month subscription, billed monthly".
+ *
+ * Only the parts of the vocabulary the catalogue actually publishes are read:
+ * digits and the spelled numbers a merchant writes by hand ("Six Month"). A
+ * count that could be either half of a range is refused, because "1 of 12" says
+ * twelve payments but not twelve of anything a span can be multiplied by.
+ */
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  "twenty-one": 21,
+  "twenty one": 21,
+  "twenty-two": 22,
+  "twenty two": 22,
+  "twenty-three": 23,
+  "twenty three": 23,
+  "twenty-four": 24,
+  "twenty four": 24,
+};
+
+/** Longest first, so "twenty-four" is not read as "twenty" and a leftover. */
+const NUMBER_PATTERN = Object.keys(NUMBER_WORDS)
+  .sort((a, b) => b.length - a.length)
+  .join("|");
+
+const LENGTH_UNITS: Record<string, StatedUnit> = {
+  month: "month",
+  months: "month",
+  year: "year",
+  years: "year",
+  week: "week",
+  weeks: "week",
+  day: "day",
+  days: "day",
+};
+
+export type StatedUnit = "month" | "year" | "week" | "day";
+
+export type StatedLength = { count: number; unit: StatedUnit };
+
+function numberValue(raw: string): number | null {
+  const digits = Number(raw);
+  if (Number.isInteger(digits) && digits > 0) return digits;
+  return NUMBER_WORDS[raw.toLowerCase()] ?? null;
+}
+
+/**
+ * The length a span states, or nothing when it states one ambiguously.
+ *
+ * `null` is the safe answer: a span the parser cannot read with certainty is a
+ * span the term layer treats as absent, and an absent term is a price rather
+ * than a schedule with the wrong number in it.
+ */
+export function parseStatedLength(quote: string): StatedLength | null {
+  // "1 of 12 months" states a position, not a length.
+  if (/\b\d+\s+of\s+\d+\b/i.test(quote)) return null;
+
+  const pattern = new RegExp(
+    `\\b(${NUMBER_PATTERN}|\\d{1,3})\\s*[- ]?\\s*(months?|years?|weeks?|days?)\\b`,
+    "gi",
+  );
+
+  const counts = new Set<number>();
+  const units = new Set<StatedUnit>();
+  for (const match of quote.matchAll(pattern)) {
+    const count = numberValue(match[1]);
+    const unit = LENGTH_UNITS[match[2].toLowerCase()];
+    if (count === null || !unit) continue;
+    counts.add(count);
+    units.add(unit);
+  }
+
+  // Two different counts, or two different units, is not one length.
+  if (counts.size !== 1 || units.size !== 1) return null;
+
+  return { count: [...counts][0], unit: [...units][0] };
+}
+
+const EVERY_PERIOD = new RegExp(
+  `\\bevery\\s+(${NUMBER_PATTERN}|\\d{1,3})\\s+(months?|weeks?|days?|years?)\\b`,
+  "i",
+);
+
+const NON_MONTHLY =
+  /\b(quarterly|quarter|annual|annually|yearly|per\s+year|each\s+year|every\s+year|per\s+annum|weekly|biweekly|bi-weekly|fortnightly|daily|per\s+week|per\s+day|every\s+week|every\s+day)\b/i;
+
+const MONTHLY = /\b(monthly|per\s+month|each\s+month|every\s+month|month[- ]to[- ]month|a\s+month)\b/i;
+
+/**
+ * Whether a span says the charges fall due monthly, on some other schedule, or
+ * not at all (IPD 38).
+ *
+ * The answer is deliberately coarse. A monthly schedule is the only one this
+ * product can build, so every other period — quarterly, annually, every 90 days,
+ * every two weeks — is the same answer to the caller: stated, and not monthly.
+ * "Every three months" is not read as "quarterly", because that is arithmetic
+ * the merchant did not write.
+ */
+export function parseCadence(quote: string): "month" | "other" | null {
+  const every = EVERY_PERIOD.exec(quote);
+  if (every) {
+    const count = numberValue(every[1]);
+    const unit = LENGTH_UNITS[every[2].toLowerCase()];
+    return count === 1 && unit === "month" ? "month" : "other";
+  }
+
+  if (NON_MONTHLY.test(quote)) return "other";
+  if (MONTHLY.test(quote)) return "month";
+  return null;
+}
+
 const MONTH_NAMES = [
   "january",
   "february",

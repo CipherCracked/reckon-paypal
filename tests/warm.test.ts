@@ -4,6 +4,7 @@ import { readPublishedExit } from "@/lib/commitment/published-exit";
 import { warmPublishedExits } from "@/lib/commitment/warm";
 import { bills } from "@/lib/catalog/bills";
 import { products } from "@/lib/catalog/products";
+import { listingText } from "@/lib/catalog/resolve";
 import { readMarketProduct } from "@/lib/market/channel3";
 import { recordedProduct } from "./fixtures/channel3-listings";
 
@@ -89,7 +90,7 @@ describe("warming the exit readings at start-up", () => {
 });
 
 describe("warming the listings the front door leads to", () => {
-  it("reads the live catalogue's description, not only the ones in the file", async () => {
+  it("reads the live catalogue's words, not only the ones in the file", async () => {
     // The curated listings are not in lib/catalog — they are read live from the
     // catalogue. Without this the front door's own listing was never warmed, and
     // the first shopper to open it paid the model's forty seconds out of the one
@@ -103,7 +104,9 @@ describe("warming the listings the front door leads to", () => {
     await warmPublishedExits();
 
     expect(readMarketProduct).toHaveBeenCalledWith("ch3-YyLUjLT");
-    expect(readPublishedExit).toHaveBeenCalledWith(listing.description);
+    // The key the resolver asks for: its title and its description as one text.
+    // The description alone would warm a reading no page reads (IPD 37).
+    expect(readPublishedExit).toHaveBeenCalledWith(listingText(listing));
   });
 
   it("reads the front door's listing before the file's, because order is what decides", async () => {
@@ -115,7 +118,7 @@ describe("warming the listings the front door leads to", () => {
 
     await warmPublishedExits();
 
-    expect(vi.mocked(readPublishedExit).mock.calls[0][0]).toBe(listing.description);
+    expect(vi.mocked(readPublishedExit).mock.calls[0][0]).toBe(listingText(listing));
   });
 
   it("still warms the file's texts when the catalogue does not answer", async () => {

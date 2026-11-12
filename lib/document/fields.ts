@@ -19,6 +19,8 @@ export const FIELDS = [
   "exitFee",
   /** A statement that leaving costs nothing. */
   "freeToLeave",
+  /** How long the agreement runs — the term a listing states in its own words. */
+  "termLength",
   /** When the money is owed. */
   "dueDate",
 ] as const;
@@ -33,6 +35,8 @@ export const FIELD_DESCRIPTIONS: Record<FieldName, string> = {
   oneTimeExtra: "A charge made once, on top of the repeating amount — setup, delivery, activation.",
   exitFee: "What it costs to cancel or leave the agreement early.",
   freeToLeave: "Words stating that cancelling costs nothing.",
+  termLength:
+    "Words stating how long the agreement runs — a 6-month subscription, a 12 month plan. Not a warranty period, a delivery estimate or a magazine issue.",
   dueDate: "The date by which money must be paid.",
 };
 

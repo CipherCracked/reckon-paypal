@@ -1,4 +1,5 @@
 import { resolveProductOutcome } from "@/lib/catalog/resolve";
+import { noScheduleSentence } from "@/lib/catalog/term-state";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 import { addMoney, zeroMoney, type Money } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
@@ -70,6 +71,12 @@ export async function POST(request: Request) {
   }
 
   const product = outcome.product;
+
+  // A plan needs a term. A listing whose words nobody has read yet, or whose
+  // term cannot be scheduled, has none this request may assume (IPD 40, ITD 34).
+  if (!product.terms) {
+    return Response.json({ error: noScheduleSentence(product.termState) }, { status: 503 });
+  }
 
   const plan = planFor(product.terms);
   if (!plan) {

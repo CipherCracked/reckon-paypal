@@ -52,7 +52,7 @@ const FIELD_GUIDE = (Object.keys(FIELD_DESCRIPTIONS) as FieldName[])
 
 const SYSTEM_PROMPT = [
   "You are given a document a person has pasted in. Your only job is to point at the parts of it that",
-  "state what the person must pay.",
+  "state what the person must pay, how long the agreement runs and how often it charges.",
   "",
   "Copy each span EXACTLY as it appears, including every currency symbol, number and word. Do not",
   "paraphrase, do not tidy punctuation, do not fix spelling, do not convert units. If you cannot copy a",
@@ -120,7 +120,7 @@ export async function requestQuotations(
 ): Promise<DocumentReading> {
   const answer = await callTool({
     system: SYSTEM_PROMPT,
-    user: `The document follows, between the markers. Point at what it asks the reader to pay.\n\n<<<DOCUMENT\n${text}\nDOCUMENT>>>`,
+    user: `The document follows, between the markers. Point at what it asks the reader to pay, how long it runs and how often it charges.\n\n<<<DOCUMENT\n${text}\nDOCUMENT>>>`,
     tool: QUOTATIONS_TOOL,
     retries: options.retries,
   });

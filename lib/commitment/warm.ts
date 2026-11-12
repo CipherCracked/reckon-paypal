@@ -1,6 +1,7 @@
 import { isModelConfigured } from "@/lib/ai/client";
 import { bills } from "@/lib/catalog/bills";
 import { products } from "@/lib/catalog/products";
+import { listingText } from "@/lib/catalog/resolve";
 import { readPublishedExit } from "@/lib/commitment/published-exit";
 import { readMarketProduct } from "@/lib/market/channel3";
 import { LISTED_TERMS } from "@/lib/market/subscriptions";
@@ -14,6 +15,11 @@ import { LISTED_TERMS } from "@/lib/market/subscriptions";
  * means a listing's exit reading could not be warmed until now — including the
  * front door's, the one screen a shopper sees first.
  *
+ * The text is built by `listingText`, the same way the resolver builds it,
+ * because the reading is remembered by the string it was read from (IPD 37).
+ * A warm-up that read the description alone would fill a key no page asks for,
+ * and the front door's term would arrive cold on every start.
+ *
  * A catalogue that does not answer is not an error here: the page's own read
  * will say so when someone asks, and a warm-up that threw would take the
  * file's texts down with it.
@@ -23,7 +29,7 @@ async function listedTexts(): Promise<string[]> {
   for (const id of Object.keys(LISTED_TERMS)) {
     try {
       const record = await readMarketProduct(`ch3-${id}`);
-      if (record) texts.push(record.description);
+      if (record) texts.push(listingText(record));
     } catch {
       // No key, or the catalogue is down. The next listing is still worth
       // trying, and the page reports the failure itself.

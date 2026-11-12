@@ -1,19 +1,8 @@
-import Link from "next/link";
-import { CommitmentView } from "@/components/CommitmentView";
-import { computeCommitment } from "@/lib/commitment/compute";
-import { presentFigures } from "@/lib/commitment/present";
-import { describeSchedule } from "@/lib/commitment/schedule";
-import { describeSources } from "@/lib/commitment/sources";
-import {
-  cheapestInStock,
-  marketTerms,
-  MARKET_EXIT_NOTE,
-  offerSpread,
-  type MarketProduct,
-} from "@/lib/market/channel3";
+import type { ReactNode } from "react";
+import { offerSpread, type MarketProduct as MarketRecord } from "@/lib/market/channel3";
 import { formatMoney, type Money } from "@/lib/money";
 
-function extremes(offers: MarketProduct["offers"]): { low: Money; high: Money; count: number } | null {
+function extremes(offers: MarketRecord["offers"]): { low: Money; high: Money; count: number } | null {
   const prices = offers
     .filter((offer) => offer.availability === "InStock")
     .map((offer) => offer.price);
@@ -26,22 +15,26 @@ function extremes(offers: MarketProduct["offers"]): { low: Money; high: Money; c
 /**
  * A real product, with its real offers.
  *
- * The figures are computed here from the cheapest in-stock price and shown
- * before the button, the same rule as every other screen. The offer table is
- * the comparison the catalogue makes possible: one product, several retailers,
- * several prices — stated as a fact, never as advice about which to take.
+ * This is the catalogue's half of the page: the name, the photograph, the
+ * seller's copy and every retailer quoting a price. It is read in a few hundred
+ * milliseconds and is worth showing immediately, so the commitment is passed in
+ * as `children` and streams into the place under the offers when the listing's
+ * words have been read (IPD 39).
+ *
+ * The offer table is the comparison the catalogue makes possible: one product,
+ * several retailers, several prices — stated as a fact, never as advice about
+ * which to take.
  */
-export function MarketProduct({ product, slug }: { product: MarketProduct; slug: string }) {
-  const offer = cheapestInStock(product.offers);
+export function MarketProduct({
+  product,
+  children,
+}: {
+  product: MarketRecord;
+  /** The commitment panel, or the wait for it. */
+  children: ReactNode;
+}) {
   const spread = offerSpread(product.offers);
   const range = extremes(product.offers);
-
-  const terms = offer ? marketTerms(offer) : null;
-  const translation = terms ? computeCommitment(terms) : null;
-  const figures =
-    terms && translation
-      ? presentFigures(terms, translation, { unstatedAt: "checkout" })
-      : null;
 
   const offers = [...product.offers].sort(
     (a, b) =>
@@ -127,40 +120,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
         ) : null}
       </section>
 
-      {offer && terms && figures && translation ? (
-        <>
-          <CommitmentView
-            figures={figures}
-            breakdown={translation.breakdown}
-            labels={{ item: "The listed price", shipping: "Shipping", tax: "Sales tax" }}
-            summary=""
-            schedule={describeSchedule(terms, { unstatedAt: "checkout" })}
-            unstatedAt="checkout"
-            figureNotes={{ exit: MARKET_EXIT_NOTE }}
-            sourceNote={describeSources({
-              published: `the price ${offer.domain} lists`,
-              // The figure's own note already says the listing states no
-              // cancellation terms. "Nobody published it" would be a claim about
-              // every retailer, not about the one source this page read.
-              absent: null,
-            })}
-          />
-
-          <p className="market-buy-note">
-            The check uses the cheapest in-stock offer: {formatMoney(offer.price)} at{" "}
-            {offer.domain}. If that offer leaves the catalogue, this page says so rather than
-            charging a price nobody is offering.
-          </p>
-
-          <Link className="button-primary" href={`/consent/pending?slug=${encodeURIComponent(slug)}`}>
-            Check this commitment
-          </Link>
-        </>
-      ) : (
-        <p className="notice">
-          No in-stock offer to check right now, so there is no price to put in front of you.
-        </p>
-      )}
+      {children}
 
       <p className="market-source">
         Prices, photos and retailer links are the retailers&apos; own, read live when this page
