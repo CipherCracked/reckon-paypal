@@ -13,6 +13,7 @@
     "check-model": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --env-file=.env.local scripts/check-model.ts"
   },
   "dependencies": {
+    "@paypal/react-paypal-js": "^10.6.1",
     "next": "15.5.29",
     "openai": "^7.53.0",
     "react": "19.1.0",

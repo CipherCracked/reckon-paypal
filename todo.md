@@ -1538,6 +1538,25 @@ catalogue, not from impression.
       `createSubscription`'s hand-our-own-id shape holds in the sandbox; what
       amount PayPal's button prints beside ours; how long `ACTIVE` takes after
       approval; and whether the hours are worth it before the video exists.
+      **Built 2026-11-12 — the screen and its SDK component, suite 675 → 687,
+      `tsc`, `lint` and `next build` clean.** `@paypal/react-paypal-js@10.6.1`
+      installed (the repo's first vendor client SDK); `components/PayPalButton.tsx`
+      owns `PayPalProvider` (`environment` is required by the SDK and derived
+      server-side from `paypalBaseUrl()`, which the ITD now records) and picks
+      one of the two buttons by shape; `ConsentScreen` imports it through
+      `next/dynamic` with `ssr: false`, puts it in the slot the primary button
+      had, and passes the two create callbacks that call the existing routes.
+      One-time approval still captures before the receipt; a subscription goes
+      straight to it. A script that cannot load calls the existing `pay()` and
+      the link takes over — the fallback is today's path. Twelve tests cover the
+      wiring, the four sentences and the focus move; the suite stubs that one
+      module, so the button's own rendering is unproven here by design.
+      **Verified:** the page carries PayPal's public client id and **zero**
+      occurrences of the secret; `next build` puts the SDK behind the dynamic
+      boundary (first-load JS 113 kB, as before); `/consent/[orderId]` answers
+      200. **Not verified:** nobody has looked at it in a browser — no extension
+      is connected here — so the sandbox approval click (user-owned anyway) and
+      the blocked-script fallback are the two live checks still owed.
 - [ ] **R5 — Webhooks, filmed with the sandbox simulator.** A signature-verified
       `/api/paypal/webhooks`, keeping only `{subscription_id, event_type, at}` in a
       bounded in-memory map — the same lifetime class as the reading cache — and

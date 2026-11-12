@@ -3,6 +3,7 @@ import { ConsentScreen } from "@/components/ConsentScreen";
 import { Page } from "@/components/Page";
 import { findProduct } from "@/lib/catalog/products";
 import { isMarketSlug } from "@/lib/market/channel3";
+import { paypalEnvironment } from "@/lib/paypal/client";
 
 type PageProps = {
   params: Promise<{ orderId: string }>;
@@ -47,6 +48,11 @@ export default async function ConsentPage({ params, searchParams }: PageProps) {
       <ConsentScreen
         orderId={token ?? orderId}
         slug={slug ?? ""}
+        // The client id is public by design and is the only PayPal value the
+        // browser is ever given; the secret is read in `lib/paypal/client.ts`
+        // and has no path to this prop boundary (ITD 39).
+        clientId={process.env.PAYPAL_CLIENT_ID ?? ""}
+        environment={paypalEnvironment()}
         // PayPal sends the shopper back with ?approved=1&token=<order id>
         // once they have approved the payment.
         returning={approved === "1"}

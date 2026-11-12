@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { useState } from "react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConsentScreen } from "@/components/ConsentScreen";
 import { GET } from "@/app/api/commitment/[orderId]/route";
@@ -34,6 +35,78 @@ vi.mock("@/lib/market/channel3", async (importOriginal) => {
   return { ...actual, readMarketProduct: vi.fn() };
 });
 
+// PayPal's own button cannot render in jsdom: the SDK loads a browser script and
+// mounts a control into a container it owns (ITD 40). So the suite stops at that
+// module's boundary and asserts what the screen hands it and how it reacts. The
+// stub keeps the same props the real component takes, and exposes each outcome
+// as a button so a test can drive it.
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
+
+vi.mock("@/components/PayPalButton", () => ({
+  default: (props: {
+    shape: string;
+    clientId: string;
+    environment: string;
+    disabled?: boolean;
+    createOrder?: () => Promise<{ orderId: string }>;
+    createSubscription?: () => Promise<{ subscriptionId: string }>;
+    onApproved: (id: string) => void;
+    onCancelled: () => void;
+    onFailed: () => void;
+    onUnavailable: () => void;
+  }) => {
+    const [created, setCreated] = useState("");
+    return (
+      <div
+        data-testid="paypal-control"
+        data-shape={props.shape}
+        data-client-id={props.clientId}
+        data-environment={props.environment}
+        data-disabled={String(Boolean(props.disabled))}
+      >
+        <p data-testid="created">{created}</p>
+        <button
+          type="button"
+          onClick={() => {
+            void props.createOrder?.().then((made) => setCreated(made.orderId));
+          }}
+        >
+          stub create order
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            void props.createSubscription?.().then((made) => setCreated(made.subscriptionId));
+          }}
+        >
+          stub create subscription
+        </button>
+        <button type="button" onClick={() => props.onApproved("ORDER-1")}>
+          stub approve order
+        </button>
+        <button type="button" onClick={() => props.onApproved("I-SUB-1")}>
+          stub approve subscription
+        </button>
+        <button type="button" onClick={() => props.onCancelled()}>
+          stub cancel
+        </button>
+        <button type="button" onClick={() => props.onFailed()}>
+          stub fail
+        </button>
+        <button type="button" onClick={() => props.onUnavailable()}>
+          stub unavailable
+        </button>
+      </div>
+    );
+  },
+}));
+
+const CLIENT_ID = "CLIENT-ID-FOR-THE-PAGE";
+
 const terms: CommitmentTerms = {
   shape: "recurring",
   itemPrice: money(2499),
@@ -46,6 +119,7 @@ const terms: CommitmentTerms = {
 const translation = computeCommitment(terms);
 
 const payload = {
+  shape: "recurring",
   translation,
   figures: presentFigures(terms, translation, { unstatedAt: "checkout" }),
   labels: { item: "Each delivery", shipping: "Shipping", tax: "Sales tax" },
@@ -131,7 +205,249 @@ describe("consent screen", () => {
     expect(document.activeElement?.textContent).toBe("Where these figures come from");
   });
 
-  it("sends a one-time purchase to PayPal's approval page before capturing", async () => {
+  it("puts PayPal's own button where the primary button stood", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    const control = await screen.findByTestId("paypal-control");
+
+    // The shape is the figure's shape, not the button's: one control, told which
+    // kind of approval it is standing in front of (IPD 48).
+    expect(control).toHaveAttribute("data-shape", "recurring");
+    expect(control).toHaveAttribute("data-client-id", CLIENT_ID);
+    expect(control).toHaveAttribute("data-environment", "sandbox");
+    // Two controls for one act is the defect IPD 28 removed; the old button is
+    // not beside PayPal's.
+    expect(screen.queryByRole("button", { name: /pay now/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /approve subscription with paypal/i })).toBeNull();
+  });
+
+  it("keeps the plain button when no client id reached the page", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" />);
+    await screen.findByText("Charged today");
+
+    // Without a client id there is no script to load, so the screen is today's
+    // screen rather than a payment slot that cannot ever fill (IPD 50).
+    expect(screen.queryByTestId("paypal-control")).toBeNull();
+    expect(
+      screen.getByRole("button", { name: /approve subscription with paypal/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("asks our own route for the order, so the amount agreement stays on the server", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "one_time" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          orderId: "ORDER-9",
+          approveUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-9",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub create order/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+    // What PayPal is handed is our order id — not an amount the browser chose.
+    expect(await screen.findByTestId("created")).toHaveTextContent("ORDER-9");
+  });
+
+  it("asks our own route for the subscription, and hands PayPal a plan it already made", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "recurring" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          subscriptionId: "I-SUB-7",
+          status: "APPROVAL_PENDING",
+          approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /stub create subscription/i }),
+    );
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+    expect(await screen.findByTestId("created")).toHaveTextContent("I-SUB-7");
+  });
+
+  it("offers the link path when PayPal's script cannot load", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "one_time" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          orderId: "ORDER-1",
+          approveUrl: "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub unavailable/i }));
+
+    // The fallback is today's path rather than a second implementation: the
+    // same route, the same approval link, the same return handling (IPD 50).
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+    expect(
+      await screen.findByRole("link", { name: /approve the payment with paypal/i }),
+    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1");
+  });
+
+  it("offers the link path for a repeating purchase when the script cannot load", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "recurring" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          subscriptionId: "I-SUB-1",
+          status: "APPROVAL_PENDING",
+          approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="I-SUB-1" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub unavailable/i }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+    expect(
+      await screen.findByRole("link", { name: /approve .* with paypal/i }),
+    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/webapps/billing/x");
+  });
+
+  it("goes straight to the receipt when a subscription is approved here", async () => {
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: /stub approve subscription/i }),
+    );
+
+    // A subscription is approved, never captured: the receipt is the record and
+    // it re-reads PayPal before claiming anything (ITD 39).
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith("/receipt/I-SUB-1?slug=ch3-YyLUjLT"),
+    );
+  });
+
+  it("captures before the receipt when a one-time payment is approved here", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "one_time" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ status: "COMPLETED", amount: { currency: "USD", minor: 2499 } }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub approve order/i }));
+
+    // Approval is not payment: the capture is what moves the money, and it
+    // happens on our server before the shopper is sent anywhere (ITD 39).
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/orders/ORDER-1/capture", {
+        method: "POST",
+      }),
+    );
+    await waitFor(() => expect(push).toHaveBeenCalledWith("/receipt/ORDER-1?slug=ch3-YyLUjLT"));
+  });
+
+  it("says nothing was charged when the button itself reports a failure", async () => {
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub fail/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /PayPal could not complete this payment\. Nothing has been charged\./i,
+    );
+  });
+
+  it("says nothing was charged when the shopper closes PayPal's window", async () => {
+    render(<ConsentScreen orderId="pending" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(await screen.findByRole("button", { name: /stub cancel/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      /You left PayPal before approving\. Nothing has been charged\./i,
+    );
+  });
+
+  it("moves focus to the button's resting place when the shopper says the amount matches", async () => {
+    render(<ConsentScreen orderId="ORDER-1" slug="ch3-YyLUjLT" clientId={CLIENT_ID} />);
+    await screen.findByText("Charged today");
+    // Wait for the control, so the focus move has somewhere to land.
+    await screen.findByTestId("paypal-control");
+
+    await userEvent.click(screen.getByRole("button", { name: /^yes$/i }));
+
+    // The button is PayPal's and may not be focusable; the container is ours,
+    // and it is the honest target (IPD 49).
+    expect(document.activeElement?.className).toContain("consent-actions");
+  });
+
+  it("sends a one-time purchase to PayPal's approval page when the shopper pays with the plain button", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce({
@@ -160,6 +476,38 @@ describe("consent screen", () => {
     expect(
       await screen.findByRole("link", { name: /approve the payment with paypal/i }),
     ).toHaveAttribute("href", "https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1");
+  });
+
+  it("sends a repeating purchase to PayPal's subscription approval, not to a capture", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ ...payload, shape: "recurring" }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          subscriptionId: "I-SUB-1",
+          status: "APPROVAL_PENDING",
+          approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
+        }),
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<ConsentScreen orderId="I-SUB-1" slug="ch3-YyLUjLT" />);
+    await screen.findByText("Charged today");
+
+    await userEvent.click(screen.getByRole("button", { name: /approve subscription with paypal/i }));
+
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/subscriptions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+    });
+    expect(
+      await screen.findByRole("link", { name: /approve .* with paypal/i }),
+    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/webapps/billing/x");
   });
 
   it("captures the order when the shopper comes back from approving", async () => {
@@ -194,38 +542,6 @@ describe("consent screen", () => {
     expect(
       await screen.findByText(/you left paypal before approving\. nothing has been charged\./i),
     ).toBeInTheDocument();
-  });
-
-  it("sends a repeating purchase to PayPal's subscription approval, not to a capture", async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({ ...payload, shape: "recurring" }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          subscriptionId: "I-SUB-1",
-          status: "APPROVAL_PENDING",
-          approveUrl: "https://www.sandbox.paypal.com/webapps/billing/x",
-        }),
-      });
-    vi.stubGlobal("fetch", fetchMock);
-
-    render(<ConsentScreen orderId="I-SUB-1" slug="ch3-YyLUjLT" />);
-    await screen.findByText("Charged today");
-
-    await userEvent.click(screen.getByRole("button", { name: /approve subscription/i }));
-
-    expect(fetchMock).toHaveBeenLastCalledWith("/api/paypal/subscriptions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
-    });
-    expect(
-      await screen.findByRole("link", { name: /approve .* with paypal/i }),
-    ).toHaveAttribute("href", "https://www.sandbox.paypal.com/webapps/billing/x");
   });
 });
 

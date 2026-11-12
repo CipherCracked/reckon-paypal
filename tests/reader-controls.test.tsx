@@ -24,6 +24,12 @@ vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
   return { ...actual, retrieveInvoice: vi.fn() };
 });
 
+// The screen navigates with the router after an in-page approval; these tests
+// render it outside the app shell, so the router is a stub that goes nowhere.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+}));
+
 const terms: CommitmentTerms = {
   shape: "recurring",
   itemPrice: money(1100),

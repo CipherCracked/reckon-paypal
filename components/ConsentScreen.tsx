@@ -1,5 +1,7 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CommitmentView } from "@/components/CommitmentView";
 import { PaceControl } from "@/components/PaceControl";
@@ -9,6 +11,18 @@ import type { CommitmentShape, CommitmentTranslation } from "@/lib/commitment/ty
 import { describeSources } from "@/lib/commitment/sources";
 import { DEFAULT_PREFERENCES, readPreferences, savePreference } from "@/lib/preferences";
 import { formatMoney } from "@/lib/money";
+
+// The SDK is loaded after the figures, never before them: this screen's first
+// job is to be read, and PayPal's script is the button's business (IPD 50,
+// ITD 40). The boundary is one component, and the suite stubs that one module.
+const PayPalButton = dynamic(() => import("@/components/PayPalButton"), {
+  ssr: false,
+  loading: () => (
+    <p className="commitment-hint" role="status">
+      Preparing PayPal&rsquo;s button
+    </p>
+  ),
+});
 
 export type CommitmentPayload = {
   shape: CommitmentShape;
@@ -43,19 +57,33 @@ type PaymentState =
   | { status: "pending"; message: string }
   | { status: "failed"; message: string };
 
+/**
+ * Said where the button should have been, when PayPal's script does not arrive.
+ * A statement about the script, not about the shopper — which is why it is the
+ * only state that also offers the link (IPD 50).
+ */
+const BUTTON_UNAVAILABLE =
+  "PayPal’s button could not be loaded here, so the approval can be opened at PayPal’s own page.";
+
 export function ConsentScreen({
   orderId,
   slug,
+  clientId = "",
+  environment = "sandbox",
   returning = false,
   cancelled = false,
 }: {
   orderId: string;
   slug: string;
+  /** PayPal's public client id, decided by the page (ITD 39). Empty means no script. */
+  clientId?: string;
+  environment?: "sandbox" | "production";
   /** True when the shopper has just come back from approving at PayPal. */
   returning?: boolean;
   /** True when the shopper backed out at PayPal without approving. */
   cancelled?: boolean;
 }) {
+  const router = useRouter();
   const [state, setState] = useState<LoadState>({ status: "loading" });
   // Only the pacing preference is this screen's business: the text size belongs
   // to the frame and is set there (IPD 24), so this screen never writes it.
@@ -66,8 +94,12 @@ export function ConsentScreen({
       : { status: "idle" },
   );
   const captured = useRef(false);
-  /** Where "Yes" sends the shopper: the next step, not the place they stood. */
-  const payButton = useRef<HTMLButtonElement>(null);
+  /**
+   * Where "Yes" sends the shopper: the resting place of the payment control.
+   * A container of ours rather than PayPal's own element, because the SDK's DOM
+   * is a promise we cannot make (IPD 49).
+   */
+  const payButton = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setState({ status: "loading" });
@@ -125,7 +157,7 @@ export function ConsentScreen({
           status: "failed",
           message: body.error ?? "PayPal could not complete this payment. Nothing was charged twice.",
         });
-        return;
+        return "failed" as const;
       }
 
       if (body.status === "ALREADY_CAPTURED") {
@@ -133,7 +165,7 @@ export function ConsentScreen({
           status: "paid",
           note: "This payment had already been completed. You have been charged once.",
         });
-        return;
+        return "complete" as const;
       }
 
       // Only PayPal's own COMPLETED means the money moved. A capture can come
@@ -144,7 +176,7 @@ export function ConsentScreen({
           status: "paid",
           note: "Payment complete. PayPal has charged the amount shown above.",
         });
-        return;
+        return "complete" as const;
       }
 
       setPayment({
@@ -152,11 +184,13 @@ export function ConsentScreen({
         message:
           "PayPal has accepted this payment but has not completed it yet. It will appear in your PayPal activity when it does.",
       });
+      return "pending" as const;
     } catch {
       setPayment({
         status: "failed",
         message: "We could not reach PayPal. No payment has been taken.",
       });
+      return "failed" as const;
     }
   }, []);
 
@@ -168,7 +202,101 @@ export function ConsentScreen({
     void captureApprovedOrder(orderId);
   }, [returning, orderId, captureApprovedOrder]);
 
-  async function pay() {
+  const goToRecord = useCallback(
+    (id: string) => {
+      router.push(`/receipt/${encodeURIComponent(id)}?slug=${encodeURIComponent(slug)}`);
+    },
+    [router, slug],
+  );
+
+  /**
+   * What PayPal is handed, when the shopper presses its button.
+   *
+   * The order is made by our route, with the amount the figures printed — the
+   * browser chooses nothing (ITD 39). A refusal is the screen's sentence, and
+   * the promise is rejected so PayPal's window does not open on nothing.
+   */
+  const createOrder = useCallback(async () => {
+    setPayment({ status: "paying" });
+
+    try {
+      const response = await fetch("/api/paypal/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const body = (await response.json()) as { orderId?: string; error?: string };
+
+      if (!response.ok || !body.orderId) {
+        setPayment({
+          status: "failed",
+          message: body.error ?? "PayPal could not set up this payment. Nothing was charged.",
+        });
+        throw new Error("No order was created.");
+      }
+
+      return { orderId: body.orderId };
+    } catch (error) {
+      setPayment((current) =>
+        current.status === "failed"
+          ? current
+          : { status: "failed", message: "We could not reach PayPal. No payment has been taken." },
+      );
+      throw error;
+    }
+  }, [slug]);
+
+  const createSubscription = useCallback(async () => {
+    setPayment({ status: "paying" });
+
+    try {
+      const response = await fetch("/api/paypal/subscriptions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug }),
+      });
+      const body = (await response.json()) as { subscriptionId?: string; error?: string };
+
+      if (!response.ok || !body.subscriptionId) {
+        setPayment({
+          status: "failed",
+          message: body.error ?? "PayPal could not start this subscription. Nothing was charged.",
+        });
+        throw new Error("No subscription was created.");
+      }
+
+      return { subscriptionId: body.subscriptionId };
+    } catch (error) {
+      setPayment((current) =>
+        current.status === "failed"
+          ? current
+          : { status: "failed", message: "We could not reach PayPal. No payment has been taken." },
+      );
+      throw error;
+    }
+  }, [slug]);
+
+  /**
+   * Approval happened here. A subscription is never captured — the receipt
+   * re-reads PayPal and states what it reports — while a one-time payment is
+   * only complete once the server has captured it (ITD 39).
+   */
+  const approvedHere = useCallback(
+    async (id: string) => {
+      if (state.status !== "ready") return;
+
+      if (state.payload.shape === "one_time") {
+        const outcome = await captureApprovedOrder(id);
+        if (outcome === "complete") goToRecord(id);
+        return;
+      }
+
+      goToRecord(id);
+    },
+    [state, captureApprovedOrder, goToRecord],
+  );
+
+  async function pay(fallback = false) {
     if (state.status !== "ready") return;
     const { shape } = state.payload;
     setPayment({ status: "paying" });
@@ -198,8 +326,9 @@ export function ConsentScreen({
         setPayment({
           status: "approve",
           url: body.approveUrl,
-          message:
-            shape === "financed"
+          message: fallback
+            ? BUTTON_UNAVAILABLE
+            : shape === "financed"
               ? "PayPal needs you to approve this payment plan."
               : "PayPal needs you to approve this repeating payment.",
           linkLabel:
@@ -230,7 +359,9 @@ export function ConsentScreen({
       setPayment({
         status: "approve",
         url: body.approveUrl,
-        message: "PayPal needs you to approve this payment. You will come straight back here.",
+        message: fallback
+          ? BUTTON_UNAVAILABLE
+          : "PayPal needs you to approve this payment. You will come straight back here.",
         linkLabel: "Approve the payment with PayPal",
       });
     } catch {
@@ -340,28 +471,56 @@ export function ConsentScreen({
         fits any checkout, not just this one.
       </p>
 
-      <div className="consent-actions">
-        <button
-          ref={payButton}
-          type="button"
-          className="button-primary"
-          onClick={() => void pay()}
-          disabled={
-            returning ||
-            payment.status === "paying" ||
-            payment.status === "paid" ||
-            payment.status === "pending" ||
-            payment.status === "approve"
-          }
-        >
-          {payment.status === "paying"
-            ? "Paying…"
-            : payload.shape === "recurring"
-              ? "Approve subscription with PayPal"
-              : payload.shape === "financed"
-                ? "Approve payment plan with PayPal"
-                : "Pay now"}
-        </button>
+      <div className="consent-actions" ref={payButton} tabIndex={-1}>
+        {payment.status === "approve" ? null : clientId ? (
+          <PayPalButton
+            shape={payload.shape}
+            clientId={clientId}
+            environment={environment}
+            disabled={
+              returning ||
+              payment.status === "paying" ||
+              payment.status === "paid" ||
+              payment.status === "pending"
+            }
+            createOrder={createOrder}
+            createSubscription={createSubscription}
+            onApproved={(id) => void approvedHere(id)}
+            onCancelled={() =>
+              setPayment({
+                status: "cancelled",
+                message: "You left PayPal before approving. Nothing has been charged.",
+              })
+            }
+            onFailed={() =>
+              setPayment({
+                status: "failed",
+                message: "PayPal could not complete this payment. Nothing has been charged.",
+              })
+            }
+            onUnavailable={() => void pay(true)}
+          />
+        ) : (
+          <button
+            type="button"
+            className="button-primary"
+            onClick={() => void pay()}
+            disabled={
+              returning ||
+              payment.status === "paying" ||
+              payment.status === "paid" ||
+              payment.status === "pending"
+            }
+          >
+            {payment.status === "paying"
+              ? "Paying…"
+              : payload.shape === "recurring"
+                ? "Approve subscription with PayPal"
+                : payload.shape === "financed"
+                  ? "Approve payment plan with PayPal"
+                  : "Pay now"}
+          </button>
+        )}
       </div>
 
       {payment.status === "approve" ? (

@@ -17,6 +17,18 @@ export function paypalBaseUrl(): string {
   return (configured || "https://api-m.sandbox.paypal.com").replace(/\/$/, "");
 }
 
+/**
+ * Which PayPal world the browser's button loads from.
+ *
+ * The SDK does not read this from the client id — a live id passed with
+ * `environment="sandbox"` still loads the sandbox script — so it is stated
+ * here, derived from the API base the server already calls. Sandbox and live
+ * cannot then be pointed at different worlds by accident (ITD 39).
+ */
+export function paypalEnvironment(): "sandbox" | "production" {
+  return paypalBaseUrl().includes("sandbox") ? "sandbox" : "production";
+}
+
 type CachedToken = { value: string; expiresAt: number };
 
 let tokenCache: CachedToken | null = null;

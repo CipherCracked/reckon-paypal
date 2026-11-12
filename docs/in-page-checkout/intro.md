@@ -1,6 +1,6 @@
 # In-Page Checkout — Problem Decomposition
 
-**Status:** Decided (2026-11-12) — four IPDs, two ITDs, nothing built
+**Status:** Built (2026-11-12) — four IPDs, two ITDs, the screen and one SDK component. Not yet seen in a browser and not yet approved in the sandbox.
 **Date:** 2026-11-12
 **Raised by:** the owner's queue item R4 — *In-page checkout with `@paypal/react-paypal-js`*, from the audit that produced §19. Ranked #2 by value after R2, and the last item in that queue with no decisions behind it.
 
