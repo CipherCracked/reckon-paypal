@@ -12,10 +12,10 @@ step and no dependencies.
 
 ## What it does
 
-The home page is the question, not a catalogue: **what are you being asked to pay?** It works one
-real commitment through in full — the three figures and the arithmetic behind them, before anything
-is clicked — and then offers the two things a person came here to do: see what this store already
-holds for them, or check something new.
+The home page answers one question, not a catalogue: **what it costs, before you agree to it.** It
+works one real commitment through in full — the three figures and the arithmetic behind them, before
+anything is clicked — and then offers the two things a person came here to do: see what this store
+already holds for them, or check something new.
 
 Signed in, the same address is that person's record: every subscription PayPal holds under their
 account, the same three figures on each row, and a link from the row to the full receipt. Nothing is
@@ -24,14 +24,17 @@ stored — the list is rebuilt from PayPal on every visit.
 | You have | The screen | What it does |
 |---|---|---|
 | a product to check | `/shop` → the listing | three figures from the live catalogue's price and the term its listing states, then PayPal's own button in the page (its hosted approval page where the script cannot load) |
-| a subscription | the same | the same three figures, then the subscription's approval page; the receipt offers **Cancel this subscription** |
+| a subscription | the same | the same three figures, then PayPal's subscribe button in the page (its hosted approval page where the script cannot load); the receipt offers **Cancel this subscription** |
 | a bill | `/read` → *ask PayPal to issue a bill* | **creates a real PayPal invoice**, then opens the bill screen, which re-reads it from PayPal |
 | a document | `/read` | paste the text; three figures, each beside the sentence or arithmetic it came from |
 
-The shop (`/shop`) is the way in to real products: a search over a live catalogue, with each
-listing's real price, its retailers and the spread between their offers. One demo entry remains in
-`lib/catalog/` for the shape the catalogue cannot supply — a one-time purchase with no listing to
-read — plus the bill owed by a date and the pasted document.
+The shop (`/shop`) is the way in to real products: it opens on the catalogue's own root categories,
+narrows by price band, pages thirty results at a time, searches in the shopper's own words, and turns
+any pasted product URL into a product page. Every card carries the retailers' real price. The
+subscriptions shelf (`/shop/subscriptions`) is the same catalogue filtered to listings whose own copy
+says they charge again. One demo entry remains in `lib/catalog/` for the shape the catalogue cannot
+supply — a one-time purchase with no listing to read — beside the bill owed by a date and the
+documents you can paste.
 
 Before the payment is taken, every path shows the same three figures, in the order that matters most
 to the decision:
@@ -62,6 +65,12 @@ After a completed payment the shopper can keep a record: `/receipt/{paypal-id}?s
 order or subscription back from PayPal, refuses to render unless it is settled, and offers a calendar
 entry for the next charge. Nothing about the purchase is stored — the record survives because the
 shopper keeps it and PayPal holds the agreement.
+
+**And the record says what PayPal has taken.** Above *Next charge*, one standing line reads *Taken
+so far $24.99 — 1 of 6 payments*, summed from this agreement's own completed transactions at PayPal.
+Beneath it, when a model is configured, a plain sentence says what that means: it is written from a
+fresh read of PayPal, and any figure in it the server did not compute itself is refused before it
+reaches the page.
 
 **A way back when the link is lost.** Signing in with your own PayPal account turns the home page
 into your record: the subscriptions this store holds under that account, each with the same three
@@ -94,12 +103,12 @@ cancelled still produces its record, with what was paid and a dated statement of
 
 ## Why the numbers can be trusted
 
-1. **Every figure shows what it was worked out from.** Where a product has a PayPal id configured,
-   the price and the term come from the billing plan PayPal holds; otherwise they come from the
-   published terms in `lib/catalog/` — and the screen says which, on the screen, every time. Each
-   figure carries either the seller's sentence it was read out of or the arithmetic that produced
-   it. A source that cannot answer (no plan, no fixed price, no end to the term) is a fallback with
-   its own label, never a blank and never a guess.
+1. **Every figure shows what it was worked out from.** Three sources answer, and the screen names the
+   one that did: a live listing's term is read from the seller's own words; a product with a PayPal
+   id configured has its price and term read from the billing plan PayPal holds; the demo entry falls
+   back to the published terms in `lib/catalog/`. Each figure carries either the seller's sentence it
+   was read out of or the arithmetic that produced it. A source that cannot answer (no plan, no fixed
+   price, no end to the term) is a fallback with its own label, never a blank and never a guess.
 2. **Our code does every calculation**, in integer minor units (`lib/money.ts`,
    `lib/commitment/compute.ts`). No floating point touches money and no model is asked for a figure.
 3. **The model never supplies a figure.** Its extraction schema has no monetary field, and every
@@ -117,9 +126,9 @@ cancelled still produces its record, with what was paid and a dated statement of
 
 - **PayPal** is where the money moves, and the only place it moves. Orders API v2 creates and
   captures the one-time purchase. Subscriptions v1 with Billing Plans carries the recurring product
-  **and the financed one**: a financed purchase becomes a plan of twelve monthly charges with the
-  origination fee as its `setup_fee`, so PayPal holds the schedule the screen promises rather than
-  just today's instalment. The plan's price and term are read back from PayPal wherever a screen
+  **and the financed one**: a document that states instalments becomes a plan with one charge per
+  instalment it states, and what falls due on day one as its `setup_fee`, so PayPal holds the schedule
+  the screen promised rather than just today's payment. The plan's price and term are read back from PayPal wherever a screen
   shows them; Invoicing v2 creates and sends the bill. All three have been exercised in the sandbox
   on their create, read and capture/approve paths, and a subscription has been approved **and
   cancelled** live — the cancel reported from PayPal's own answer, not from the request succeeding.
@@ -142,7 +151,7 @@ cp env.example .env.local   # then fill it in
 npm run dev
 ```
 
-`env.example` lists thirteen variables — four required, nine optional:
+`env.example` lists twelve variables — four required, eight optional:
 
 | Variable | Purpose |
 |---|---|
@@ -152,16 +161,15 @@ npm run dev
 | `AI_BASE_URL` | Base URL of an endpoint serving `POST {AI_BASE_URL}/chat/completions` |
 | `AI_MODEL` | Model id to ask for |
 | `AI_API_KEY` | Optional. Bearer token; omit it for a model on this machine |
-| `PAYPAL_PRODUCT_COFFEE_SUBSCRIPTION` | Optional. A catalog product id whose billing plan holds the price and term |
-| `PAYPAL_PRODUCT_HEADPHONES` | Optional. Same, for the one-time product |
-| `PAYPAL_PRODUCT_MATTRESS` | Optional. Same, for the financed product |
+| `AI_REASONING_EFFORT` | Optional. `none` by default, so a reasoning model does not spend minutes thinking about a job that is copying |
+| `PAYPAL_PRODUCT_HEADPHONES` | Optional. A catalog product id whose billing plan holds the price and term |
 | `CHANNEL3_API_KEY` | Optional. Server-side key for the live product catalogue behind `/shop` |
 | `SESSION_SECRET` | Optional. Signs the `/account` sign-in cookie (16+ characters). Absent, that page says it cannot check |
 | `APP_ORIGIN` | Optional. The public origin, for a deployment behind a rewriting proxy. `/account` otherwise uses the address the browser is on |
 | `PAYPAL_RETURN_ORIGIN` | Optional. The origin registered as the app's return URL at PayPal. A sign-in starts and ends here, and a browser on another spelling of the same machine is moved here first. Empty, `localhost` is moved to `127.0.0.1` on the same port |
 
-The three `PAYPAL_PRODUCT_*` ids are empty by default. With them set, the consent screen reads the
-price and term from the plan and says so; with them empty it computes from the published terms in
+That id is empty by default. With it set, the consent screen reads the price and term from the plan
+and says so; with it empty it computes from the published terms in
 `lib/catalog/` and says that instead. Starting a subscription creates its product and billing plan
 at PayPal on first use and reuses them afterwards (`lib/paypal/subscriptions.ts`); the purchases and
 bills create their own PayPal objects as they are used.
@@ -254,9 +262,10 @@ See [`docs/demo-script.md`](docs/demo-script.md) for the screens a three-minute 
 
 ## Scope and limits
 
-No accounts, no profiles, no database, no stored session. The demo is USD only. The shop searches a
-live product catalogue (Channel3); the three demo entries remain in `lib/catalog/` for the
-commitment shapes the catalogue does not carry, and every screen says which source answered.
+No accounts, no profiles, no database, no stored session. The demo is USD only. The shop browses a
+live product catalogue (Channel3); one demo entry remains in `lib/catalog/` for the shape the
+catalogue cannot carry — a one-time purchase with no listing to read — and every screen says which
+source answered.
 Documents are pasted as text — there is no PDF parsing — and a third-party bill is read, never paid.
 
 The check needs only two things: the amount being charged, and the terms the seller publishes. That
