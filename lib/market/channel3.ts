@@ -1,22 +1,26 @@
 import type { CommitmentTerms } from "@/lib/commitment/types";
-import { DETAIL_READ_DEADLINE_MS, withinDeadline } from "@/lib/deadline";
-import { fromDecimalString, type Money } from "@/lib/money";
+import { DETAIL_READ_DEADLINE_MS, LOOKUP_DEADLINE_MS, withinDeadline } from "@/lib/deadline";
+import { fromDecimalString, money, type Money } from "@/lib/money";
 
 /**
  * The live product catalogue.
  *
- * Everything the shop shows about a real product comes from here: a search, or
- * one product read back by id. Nothing in this file invents a field — a product
- * with no price, no in-stock offer or no image is returned as such, and the
- * screen says what is missing rather than filling it in.
+ * Everything the shop shows about a real product comes from here: a category
+ * shelf, a page of a category, a search, one product read back by id, or a
+ * product URL looked up. Nothing in this file invents a field — a product with
+ * no price, no in-stock offer or no image is returned as such, and the screen
+ * says what is missing rather than filling it in.
  *
  * The key is read from the server environment and never travels to the browser:
  * every caller of this module is a server component or a route handler.
  */
 
 const API = "https://api.trychannel3.com";
-const SEARCH_LIMIT = 12;
+/** The catalogue's own ceiling for one page of search or browse results. */
+const PAGE_LIMIT = 30;
 const CACHE_MS = 5 * 60_000;
+/** A taxonomy does not change between two page loads the way a price does. */
+const CATEGORY_CACHE_MS = 60 * 60_000;
 const CACHE_MAX = 48;
 
 export type MarketOffer = {
@@ -39,6 +43,42 @@ export type MarketProduct = {
   rating: { value: number; count: number } | null;
   offers: MarketOffer[];
 };
+
+/** One page of the catalogue, as search and browse both answer. */
+export type MarketPage = {
+  products: MarketProduct[];
+  /**
+   * The catalogue's own token for the next page, passed back untouched. Its
+   * format is not ours to understand; it is opaque and it belongs in the URL.
+   */
+  nextToken: string | null;
+};
+
+/** A top-level category: the word a shopper clicks and the slug the link carries. */
+export type MarketCategory = {
+  slug: string;
+  title: string;
+  hasChildren: boolean;
+};
+
+/** What the shop's URL says about a page of results. */
+export type MarketPageQuery = {
+  /** A price band key as it appears in the URL; an unknown one means "any". */
+  price?: string | null;
+  /** The opaque `next_page_token` from the page the shopper was on. */
+  after?: string | null;
+};
+
+/**
+ * What came of a pasted link. Three outcomes, because the shop says three
+ * different things: the address is not a product page, the catalogue has never
+ * seen it, or here is the product. Anything worse than that — silence, a
+ * timeout, a 500 — is the catalogue failing, and throws.
+ */
+export type MarketLookup =
+  | { outcome: "found"; product: MarketProduct }
+  | { outcome: "not-a-product" }
+  | { outcome: "not-found" };
 
 /** Thrown when the catalogue cannot answer, so a caller can tell silence from failure. */
 export class MarketError extends Error {
@@ -150,11 +190,68 @@ export function offerSpread(offers: MarketOffer[]): Money | null {
 }
 
 /* ------------------------------------------------------------------ */
+/* The price boundary                                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The catalogue takes dollars and cents as a number; every amount in this app
+ * is an integer number of cents. This is the only place the two meet, because a
+ * band boundary off by one cent is invisible until a product priced at exactly
+ * fifty dollars lands on the wrong page.
+ */
+export function cataloguePrice(amount: Money): number {
+  return Number((amount.minor / 100).toFixed(2));
+}
+
+export type PriceBandKey = "any" | "under-50" | "50-200" | "over-200";
+
+/** A narrowing a shopper can click: the words, and the bounds the catalogue gets. */
+export type PriceBand = {
+  key: PriceBandKey;
+  label: string;
+  /** Inclusive, in cents. `null` is an open end. */
+  min: Money | null;
+  max: Money | null;
+};
+
+/**
+ * Three bands, because a person who is avoiding arithmetic should not be asked
+ * for two numbers. The bounds are inclusive at the catalogue and exclusive
+ * where the shopper reads them: $50.00 is in "$50–$200", not "Under $50".
+ */
+export const PRICE_BANDS: PriceBand[] = [
+  { key: "any", label: "Any price", min: null, max: null },
+  { key: "under-50", label: "Under $50", min: null, max: money(4999) },
+  { key: "50-200", label: "$50–$200", min: money(5000), max: money(20000) },
+  { key: "over-200", label: "Over $200", min: money(20001), max: null },
+];
+
+/** The band a URL names; anything unrecognised is "any", so a bad link still works. */
+export function priceBand(key: string | null | undefined): PriceBand {
+  return PRICE_BANDS.find((band) => band.key === key) ?? PRICE_BANDS[0];
+}
+
+/** Only the ends a band actually has, so the catalogue is not told the rest. */
+function priceFilter(band: PriceBand): Record<string, number> | null {
+  if (band.min === null && band.max === null) return null;
+  return {
+    ...(band.min === null ? {} : { min_price: cataloguePrice(band.min) }),
+    ...(band.max === null ? {} : { max_price: cataloguePrice(band.max) }),
+  };
+}
+
+/* ------------------------------------------------------------------ */
 /* Reading the catalogue                                               */
 /* ------------------------------------------------------------------ */
 
-const searches = new Map<string, { at: number; products: MarketProduct[] }>();
+/**
+ * One cache per thing that can be asked for, keyed by the request that asked
+ * for it — so a page is exactly as cacheable as the link that produced it.
+ */
+const pages = new Map<string, { at: number; page: MarketPage }>();
 const products = new Map<string, { at: number; product: MarketProduct }>();
+const lookups = new Map<string, { at: number; lookup: MarketLookup }>();
+let categories: { at: number; categories: MarketCategory[] } | null = null;
 
 function fresh<T extends { at: number }>(entry: T | undefined): T | null {
   return entry && Date.now() - entry.at < CACHE_MS ? entry : null;
@@ -174,7 +271,11 @@ function apiKey(): string {
   return key;
 }
 
-async function request(path: string, init: RequestInit): Promise<unknown> {
+async function request(
+  path: string,
+  init: RequestInit,
+  deadline: number = DETAIL_READ_DEADLINE_MS,
+): Promise<unknown> {
   const response = await withinDeadline(
     (signal) =>
       fetch(`${API}${path}`, {
@@ -186,7 +287,7 @@ async function request(path: string, init: RequestInit): Promise<unknown> {
           ...(init.headers as Record<string, string> | undefined),
         },
       }),
-    DETAIL_READ_DEADLINE_MS,
+    deadline,
   );
 
   if (!response.ok) {
@@ -249,6 +350,37 @@ function offerFrom(raw: unknown): MarketOffer | null {
   };
 }
 
+/**
+ * The picture a card shows: the catalogue's cut-out when it made one — it is
+ * trimmed for exactly this grid — and its own photograph otherwise. Both must
+ * be https, because a mixed-content image is one the shop cannot show at all.
+ */
+function imageOf(record: Record<string, unknown>): string | null {
+  return httpsUrl(record.cleaned_url) ?? httpsUrl(record.url);
+}
+
+function imageFrom(images: unknown, title: string): { url: string; alt: string } | null {
+  const candidates = Array.isArray(images)
+    ? images.filter(
+        (image): image is Record<string, unknown> => !!image && typeof image === "object",
+      )
+    : [];
+
+  const chosen =
+    candidates.find((image) => image.is_main_image === true && imageOf(image) !== null) ??
+    candidates.find((image) => imageOf(image) !== null);
+  if (!chosen) return null;
+
+  const url = imageOf(chosen);
+  if (!url) return null;
+
+  return {
+    url,
+    alt:
+      typeof chosen.alt_text === "string" && chosen.alt_text.trim() ? chosen.alt_text : title,
+  };
+}
+
 function productFrom(raw: unknown): MarketProduct | null {
   if (!raw || typeof raw !== "object") return null;
   const record = raw as Record<string, unknown>;
@@ -259,16 +391,6 @@ function productFrom(raw: unknown): MarketProduct | null {
   const offers = Array.isArray(record.offers)
     ? record.offers.map(offerFrom).filter((offer): offer is MarketOffer => offer !== null)
     : [];
-
-  const images = Array.isArray(record.images) ? record.images : [];
-  const main =
-    images.find((image) => {
-      const candidate = image as Record<string, unknown>;
-      return candidate?.is_main_image === true && httpsUrl(candidate.url) !== null;
-    }) ?? images.find((image) => httpsUrl((image as Record<string, unknown>)?.url) !== null);
-
-  const imageRecord = main as Record<string, unknown> | undefined;
-  const imageUrl = imageRecord ? httpsUrl(imageRecord.url) : null;
 
   const brandRecord = Array.isArray(record.brands) ? (record.brands[0] as Record<string, unknown>) : null;
   const brand = brandRecord && typeof brandRecord.name === "string" ? brandRecord.name : null;
@@ -285,15 +407,7 @@ function productFrom(raw: unknown): MarketProduct | null {
     title,
     description: typeof record.description === "string" ? record.description : "",
     brand,
-    image: imageUrl
-      ? {
-          url: imageUrl,
-          alt:
-            imageRecord && typeof imageRecord.alt_text === "string" && imageRecord.alt_text.trim()
-              ? imageRecord.alt_text
-              : title,
-        }
-      : null,
+    image: imageFrom(record.images, title),
     rating:
       ratingValue !== null && ratingCount !== null
         ? { value: ratingValue, count: ratingCount }
@@ -307,32 +421,165 @@ function buyable(product: MarketProduct): boolean {
   return cheapestInStock(product.offers) !== null;
 }
 
+/** A page that says nothing exists, without asking the catalogue. */
+function emptyPage(): MarketPage {
+  return { products: [], nextToken: null };
+}
+
 /**
- * Searches the live catalogue. Throws `MarketError` when it cannot answer, so
- * the shop says so instead of rendering an empty shelf as if nothing existed.
+ * One page of the catalogue, from either endpoint that answers pages.
+ *
+ * The cache key is the request itself: two visitors who clicked the same link
+ * share one catalogue call, and a different price band or page is a different
+ * entry. The token in the answer is handed back exactly as the catalogue sent
+ * it — its format is not ours, and the URL carries it verbatim.
  */
-export async function searchMarket(query: string): Promise<MarketProduct[]> {
-  const text = query.trim().slice(0, 120);
-  if (!text) return [];
+async function pageCall(path: string, body: Record<string, unknown>): Promise<MarketPage> {
+  const key = `${path}:${JSON.stringify(body)}`;
+  const cached = fresh(pages.get(key));
+  if (cached) return cached.page;
 
-  const cached = fresh(searches.get(text));
-  if (cached) return cached.products;
-
-  const body = await request("/v1/search", {
-    method: "POST",
-    body: JSON.stringify({ query: text, limit: SEARCH_LIMIT }),
-  });
-
-  const record = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const answer = await request(path, { method: "POST", body: JSON.stringify(body) });
+  const record = answer && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
   const parsed = Array.isArray(record.products)
     ? record.products.map(productFrom).filter((product): product is MarketProduct => product !== null)
     : [];
 
-  const buyableNow = parsed.filter(buyable);
-  searches.set(text, { at: Date.now(), products: buyableNow });
-  trim(searches);
+  const page: MarketPage = {
+    products: parsed.filter(buyable),
+    nextToken:
+      typeof record.next_page_token === "string" && record.next_page_token
+        ? record.next_page_token
+        : null,
+  };
 
-  return buyableNow;
+  pages.set(key, { at: Date.now(), page });
+  trim(pages);
+
+  return page;
+}
+
+/**
+ * Searches the live catalogue. Throws `MarketError` when it cannot answer, so
+ * the shop says so instead of rendering an empty shelf as if nothing existed.
+ */
+export async function searchMarket(
+  query: string,
+  options: MarketPageQuery = {},
+): Promise<MarketPage> {
+  const text = query.trim().slice(0, 120);
+  if (!text) return emptyPage();
+
+  const filter = priceFilter(priceBand(options.price));
+  const body: Record<string, unknown> = { query: text, limit: PAGE_LIMIT };
+  if (filter) body.filters = { price: filter };
+  if (options.after) body.page_token = options.after;
+
+  return pageCall("/v1/search", body);
+}
+
+/**
+ * One page of a category. A root category browses its whole subtree, which is
+ * what lets a shelf of sixteen words stand in front of a catalogue this size;
+ * the catalogue refuses an unscoped browse, so the category is not optional.
+ */
+export async function browseMarket(
+  category: string,
+  options: MarketPageQuery = {},
+): Promise<MarketPage> {
+  const slug = category.trim().slice(0, 120);
+  if (!slug) return emptyPage();
+
+  const filter = priceFilter(priceBand(options.price));
+  const body: Record<string, unknown> = {
+    filters: { category_ids: [slug], ...(filter ? { price: filter } : {}) },
+    limit: PAGE_LIMIT,
+  };
+  if (options.after) body.page_token = options.after;
+
+  return pageCall("/v1/browse", body);
+}
+
+/**
+ * The catalogue's sixteen top-level categories, by name.
+ *
+ * Sorted here rather than in the screen: a shelf that reorders itself between
+ * visits is a shelf a person has to re-read. The catalogue's own order is
+ * arbitrary; a taxonomy does not change, so it is cached for an hour.
+ */
+export async function readCategories(): Promise<MarketCategory[]> {
+  if (categories && Date.now() - categories.at < CATEGORY_CACHE_MS) return categories.categories;
+
+  const answer = await request("/v1/categories?roots_only=true", { method: "GET" });
+  const record = answer && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+  const items = Array.isArray(record.items) ? record.items : [];
+
+  const roots = items
+    .map((item): MarketCategory | null => {
+      if (!item || typeof item !== "object") return null;
+      const entry = item as Record<string, unknown>;
+      const slug = typeof entry.slug === "string" ? entry.slug : null;
+      const title = typeof entry.title === "string" ? entry.title : null;
+      if (!slug || !title) return null;
+      return { slug, title, hasChildren: entry.has_children === true };
+    })
+    .filter((root): root is MarketCategory => root !== null)
+    .sort((a, b) => a.title.localeCompare(b.title));
+
+  categories = { at: Date.now(), categories: roots };
+  return roots;
+}
+
+/** The longest product address worth sending anywhere. */
+const MAX_ADDRESS = 2048;
+
+/**
+ * Resolves a product URL a shopper pasted.
+ *
+ * The three outcomes are the three sentences the shop says. `not-a-product` is
+ * the catalogue's 422 — a real page that is not a listing — and is also what a
+ * junk address gets without spending a request. Anything else is the catalogue
+ * failing, which throws, because "we could not ask" is not "your link is bad".
+ */
+export async function lookupProduct(address: string): Promise<MarketLookup> {
+  const url = address.trim();
+  if (url.length === 0 || url.length > MAX_ADDRESS) return { outcome: "not-a-product" };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return { outcome: "not-a-product" };
+  }
+  if (parsed.protocol !== "https:") return { outcome: "not-a-product" };
+
+  const cached = fresh(lookups.get(url));
+  if (cached) return cached.lookup;
+
+  let lookup: MarketLookup;
+  try {
+    const answer = await request(
+      "/v1/lookup",
+      { method: "POST", body: JSON.stringify({ url }) },
+      LOOKUP_DEADLINE_MS,
+    );
+    const record = answer && typeof answer === "object" ? (answer as Record<string, unknown>) : {};
+    const product = productFrom(record.product);
+    lookup = product ? { outcome: "found", product } : { outcome: "not-found" };
+  } catch (error) {
+    if (error instanceof MarketError && error.status === 422) {
+      lookup = { outcome: "not-a-product" };
+    } else if (error instanceof MarketError && error.status === 404) {
+      lookup = { outcome: "not-found" };
+    } else {
+      throw error;
+    }
+  }
+
+  lookups.set(url, { at: Date.now(), lookup });
+  trim(lookups);
+
+  return lookup;
 }
 
 /** Reads one product by its slug; `null` means the catalogue does not list it. */

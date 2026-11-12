@@ -26,6 +26,21 @@ export const READ_DEADLINE_MS = 2_000;
 export const DETAIL_READ_DEADLINE_MS = 8_000;
 
 /**
+ * How long the catalogue may take to resolve a product URL.
+ *
+ * A lookup is the one catalogue call whose latency belongs to the retailer, not
+ * to the catalogue: a URL it has never met means fetching that shop's page.
+ * Measured on 2026-11-12, twice each — 3.4 s for a product page, 7 s and 13.5 s
+ * for pages that turned out not to be product pages. The detail deadline
+ * reported those as no answer at all, and the shopper was told to try again
+ * about a link that was about to say exactly what was wrong with it. Twenty
+ * seconds covers the measured worst case; a lookup is the slowest thing this
+ * product asks anyone to wait for, and it is asked only of a person who pasted
+ * an address and pressed a button.
+ */
+export const LOOKUP_DEADLINE_MS = 20_000;
+
+/**
  * How long a model read may hold a page render.
  *
  * The model is much slower than PayPal's reads — measured at roughly 47 seconds

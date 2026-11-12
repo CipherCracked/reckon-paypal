@@ -9,7 +9,6 @@ import {
   marketTerms,
   offerSpread,
   readMarketProduct,
-  searchMarket,
   type MarketOffer,
 } from "@/lib/market/channel3";
 import { computeCommitment } from "@/lib/commitment/compute";
@@ -264,36 +263,9 @@ describe("reading a product back", () => {
   });
 });
 
-describe("searching the catalogue", () => {
-  it("keeps only products someone can actually buy", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      reply({
-        products: [
-          rawProduct("prd00010", [rawOffer("shop.example", 19.99)]),
-          rawProduct("prd00011", [rawOffer("shop.example", 19.99, "OutOfStock")]),
-          rawProduct("prd00012", []),
-        ],
-      }),
-    );
-
-    const found = await searchMarket("query-one");
-
-    expect(found.map((p) => p.id)).toEqual(["prd00010"]);
-  });
-
-  it("remembers an answer rather than paying for it twice", async () => {
-    vi.mocked(fetch).mockResolvedValue(
-      reply({ products: [rawProduct("prd00013", [rawOffer("shop.example", 19.99)])] }),
-    );
-
-    await searchMarket("query-two");
-    await searchMarket("query-two");
-
-    expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it("asks nothing when the query is empty, and nothing for whitespace", async () => {
-    await expect(searchMarket("   ")).resolves.toEqual([]);
-    expect(fetch).not.toHaveBeenCalled();
-  });
-});
+/*
+ * Searching the catalogue moved to `tests/market-browse.test.ts`, along with
+ * browse, categories and lookup: a search now answers a page with a token, and
+ * the rules it shares with browse (buyable only, cached by request) are stated
+ * once for both.
+ */

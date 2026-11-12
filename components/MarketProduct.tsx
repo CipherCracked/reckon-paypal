@@ -57,7 +57,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
         {product.rating ? (
           <p className="market-rating">
             Rated {product.rating.value} out of 5 from {product.rating.count.toLocaleString("en-US")}{" "}
-            ratings — the catalogue&apos;s figure, not this page&apos;s.
+            ratings.
           </p>
         ) : null}
       </header>
@@ -81,7 +81,7 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
                   description is the retailer's own copy and the hardest text on
                   the site; labelling it keeps it evidence rather than claiming
                   the plain-language voice every other sentence uses. */}
-              <p className="field-hint">The manufacturer&apos;s description, in their words.</p>
+              <p className="field-hint">The seller&apos;s description.</p>
               <p className="market-description">{product.description}</p>
             </>
           ) : null}
@@ -138,8 +138,8 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
             unstatedAt="checkout"
             figureNotes={{ exit: MARKET_EXIT_NOTE }}
             sourceNote={describeSources({
-              published: `the price Channel3 lists at ${offer.domain}`,
-              // The figure's own note already says the catalogue carries no
+              published: `the price ${offer.domain} lists`,
+              // The figure's own note already says the listing states no
               // cancellation terms. "Nobody published it" would be a claim about
               // every retailer, not about the one source this page read.
               absent: null,
@@ -162,9 +162,9 @@ export function MarketProduct({ product, slug }: { product: MarketProduct; slug:
         </p>
       )}
 
-      <p className="scope-note">
-        This demo does not sell or ship this product. The retailer links open the shop&apos;s own
-        page.
+      <p className="market-source">
+        Prices, photos and retailer links are the retailers&apos; own, read live when this page
+        opened.
       </p>
     </article>
   );

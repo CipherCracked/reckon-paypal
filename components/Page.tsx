@@ -62,7 +62,7 @@ export function Page({
           it, in a different sentence each time, until a page about three figures
           was mostly a page about what the page was not. */}
       <p className="footnote">
-        Sandbox store: no real money moves and nothing you do is stored.
+        Sandbox store: no real money moves, nothing ships, and nothing you do is stored.
       </p>
     </div>
   );

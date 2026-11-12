@@ -140,9 +140,12 @@ describe("the front door", () => {
     render(await Home());
 
     // IPD 29: the sandbox and the absence of storage are said in one place, in
-    // one sentence, rather than in each screen's own words.
+    // one sentence, rather than in each screen's own words. IPD 35 moved
+    // "nothing ships" here too, out of the product page's own apology.
     expect(
-      screen.getAllByText(/sandbox store: no real money moves and nothing you do is stored/i),
+      screen.getAllByText(
+        /sandbox store: no real money moves, nothing ships, and nothing you do is stored/i,
+      ),
     ).toHaveLength(1);
   });
 

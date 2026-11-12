@@ -1334,7 +1334,24 @@ catalogue, not from impression.
       ITD 31 (shelf and grid at `Page wide`), ITD 32 (a link is read back before it
       is followed). **Subscriptions shelf deferred to R1** — the shop cannot yet
       tell a subscription from a one-time purchase, and a shelf that guesses is the
-      invented merchandising every other decision refuses. **Not implemented.**
+      invented merchandising every other decision refuses.
+      **Built 2026-11-12.** `lib/market/channel3.ts` gained `readCategories`,
+      `browseMarket`, `searchMarket` paging and `lookupProduct` (with the price-band
+      boundary and four caches); `components/CategoryShelf.tsx`, `PriceBands.tsx`,
+      `MarketCard.tsx`, `MarketLinkLookup.tsx` and `lib/market/links.ts` are new;
+      `app/shop/page.tsx` and its CSS are rewritten at `Page wide`. Live-verified
+      against the real catalogue: 16 alphabetical shelf categories, `?category=…`
+      browsing, a band that holds its price edge, `Show 30 more`, a pasted product
+      URL redirecting `307` to its page, a pasted non-product page saying so. Suite
+      484 → **543**, `tsc` and `lint` clean. Two findings are in the ITDs:
+      `LOOKUP_DEADLINE_MS` is 20 s because 8 s reported measured 7–13.5 s answers as
+      no answer at all (ITD 30, 32), and `app/shop/loading.tsx` was **refused** —
+      a route-level Suspense boundary turned the redirect into a truncated 200,
+      verified live (ITD 32). Screenshots at 1440 and 390, light and dark, caught
+      two composition defects, both fixed and recorded in ITD 31 / IPD 33: a
+      browsed department opened on a paragraph and two forms with the first tile
+      below the fold (now ~710px, inside the first screen), and the page ran two
+      rhythm systems so every boundary cost 64px.
 - [ ] **The subscriptions shelf, deferred from R3 and waiting on R1.** IPD 33
       refuses it for a stated reason: the shop cannot tell a subscription from a
       one-time purchase until R1 can read a term out of any listing, so a

@@ -1439,12 +1439,172 @@ html[data-text-scale="larger"] {
   font: inherit;
 }
 
-.market-list {
+/* The shop (IPD 33–36): a shelf of the catalogue's own departments, four price
+   words, and a grid of tiles. It takes the frame's width because a catalogue is
+   scanned rather than read, and a 96px row inside a 46rem column was neither. */
+.market-shelf {
+  margin-top: var(--space-2);
+}
+
+.market-shelf ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+@media (min-width: 40rem) {
+  .market-shelf ul {
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  }
+}
+
+.market-shelf a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--raised);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.market-shelf a:hover,
+.market-shelf a:focus-visible {
+  border-color: var(--line-strong);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The link field: a sentence with a field under it, never a second search. */
+.market-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.market-link label {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.market-link-row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.market-link-row input {
+  flex: 1 1 18rem;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+/* A phone is not a reason to stack a field above its own button where the pair
+   fits. The shop's form spans the frame, so at 390px there is room for both on
+   one line and it reads as a control rather than as a form; the basis decides
+   it, because the row wraps on the sum of the bases. The front door's copy sits
+   inside a card, where the same pair genuinely does not fit — an input's own
+   intrinsic minimum is about 200px, and 300px of card minus the button is less
+   than that — so it keeps stacking, which is the honest answer there. */
+@media (max-width: 39.99rem) {
+  .page > .market-search .market-search-row input,
+  .market-link-row input {
+    flex-basis: 9rem;
+  }
+}
+
+/* Inside the frame's own rhythm, a form that also carries a vertical margin
+   doubles the space between blocks — 40px of column gap plus 24px of margin is
+   64px, twice on a phone, which is most of a screen spent between things. The
+   front door's search keeps its margins, because there it sits inside a card
+   that supplies no rhythm of its own. */
+.page > .market-search,
+.page > .market-shelf {
+  margin: 0;
+}
+
+.market-results {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.market-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.market-heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.market-heading h2 {
+  font-size: var(--text-xl);
+}
+
+.market-back {
+  font-size: var(--text-sm);
+  color: var(--ink-muted);
+}
+
+.market-bands ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.market-bands a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+}
+
+.market-bands a:hover,
+.market-bands a:focus-visible {
+  border-color: var(--line-strong);
+}
+
+.market-bands a[aria-current="page"] {
+  border-color: var(--ink);
+  background: var(--sunken);
+  font-weight: 600;
+}
+
+.market-grid {
   list-style: none;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
   padding: 0;
-  margin: var(--space-4) 0;
+  margin: 0;
+}
+
+@media (min-width: 40rem) {
+  .market-grid {
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  }
 }
 
 .market-card {
@@ -1455,9 +1615,10 @@ html[data-text-scale="larger"] {
 
 .market-card-link {
   display: flex;
-  gap: var(--space-4);
-  padding: var(--space-4);
-  align-items: center;
+  flex-direction: column;
+  gap: 2px;
+  height: 100%;
+  padding: var(--space-3);
   text-decoration: none;
   color: inherit;
 }
@@ -1469,24 +1630,18 @@ html[data-text-scale="larger"] {
 }
 
 .market-thumb {
-  width: 96px;
-  height: 96px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
   object-fit: contain;
   background: var(--sunken);
   border-radius: var(--radius-sm);
-  flex: 0 0 auto;
+  margin-bottom: var(--space-2);
 }
 
 .market-thumb-empty {
   display: block;
   border: 1px dashed var(--line);
-}
-
-.market-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 
 .market-brand {
@@ -1507,6 +1662,32 @@ html[data-text-scale="larger"] {
 .market-note {
   color: var(--ink-muted);
   font-size: var(--text-sm);
+}
+
+.market-more {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+}
+
+.market-more:hover,
+.market-more:focus-visible {
+  background: var(--sunken);
+}
+
+/* The one line the shop and every product page carry (IPD 35). It is the same
+   standing fact the frame states once: the data is the retailer's and it is
+   live. Three per-screen apologies used to say it in three ways. */
+.market-source {
+  font-size: var(--text-xs);
+  color: var(--ink-muted);
 }
 
 .market-product {

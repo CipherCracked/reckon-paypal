@@ -1,151 +1,316 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { CategoryShelf } from "@/components/CategoryShelf";
+import { MarketCard } from "@/components/MarketCard";
+import { MarketLinkLookup } from "@/components/MarketLinkLookup";
 import { MarketSearch } from "@/components/MarketSearch";
 import { Page } from "@/components/Page";
+import { PriceBands } from "@/components/PriceBands";
 import {
-  cheapestInStock,
+  MarketError,
+  browseMarket,
+  lookupProduct,
   marketSlug,
   matchingCount,
-  offerSpread,
+  priceBand,
+  readCategories,
+  readMarketProduct,
   searchMarket,
+  type MarketCategory,
+  type MarketPage,
   type MarketProduct,
 } from "@/lib/market/channel3";
-import { formatMoney } from "@/lib/money";
+import { shopHref } from "@/lib/market/links";
 
-/** Prices are live, so the listing is read rather than built. */
+/** Prices are live, so what is on the screen is read rather than built. */
 export const dynamic = "force-dynamic";
 
-const DEFAULT_QUERY = "headphones";
-/** How many results one search can return — the catalogue's own limit. */
-const SEARCH_LIMIT = 12;
+type PageProps = {
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    price?: string;
+    after?: string;
+    link?: string;
+  }>;
+};
 
-type PageProps = { searchParams: Promise<{ q?: string }> };
+const SOURCING =
+  "Prices, photos and retailer links are the retailers' own, read live when this page opened.";
+
+const UNREACHABLE = "The live product catalogue could not be reached just now. Try again in a moment.";
+const NO_KEY =
+  "This deployment has no product catalogue key configured, so there is nothing live to show. See the README for the one variable it needs.";
+const STOPPED =
+  "The catalogue shows at most 150 of these. Choose a narrower category, or search for the thing by name.";
+
+/* ------------------------------------------------------------------ */
+/* Where a pasted link goes                                            */
+/* ------------------------------------------------------------------ */
+
+const NOT_A_PRODUCT =
+  "That address is not a product page. Try the page the product itself is sold on, rather than a category or a home page.";
+const NOT_FOUND = "The catalogue has no product at that address. The listing may be gone.";
+const DID_NOT_ANSWER = "The catalogue did not answer in time. Try that link again in a moment.";
+const CANNOT_OPEN =
+  "That link resolved to a product this page cannot open. Nothing was shown rather than something wrong.";
+
+/** True when the address points at this app rather than at a shop. */
+function pointsBackHere(address: URL): boolean {
+  const own = [process.env.APP_ORIGIN, process.env.PAYPAL_RETURN_ORIGIN].filter(
+    (origin): origin is string => Boolean(origin && origin.trim()),
+  );
+
+  return own.some((origin) => {
+    try {
+      return new URL(origin).host === address.host;
+    } catch {
+      return false;
+    }
+  });
+}
 
 /**
- * What the count line may say.
+ * Turns a pasted address into a product page, or into the sentence that says
+ * why it did not (ITD 32).
  *
- * "12 products for ‘zzzqqq’" was a claim the page could not support: the
- * catalogue returns its nearest results for a query it cannot answer, and a
- * full page of them reads as twelve matches. This counts the results that
- * actually contain the shopper's words and says which kind of answer this is.
+ * The redirect is the last step, never the second: sending someone to a product
+ * page is a promise that the page exists, so the product is read back by id
+ * first — the same read the product page would make a moment later — and only a
+ * product that came back is followed. Anything that goes wrong is a sentence on
+ * the shop with the address still in the field.
+ */
+async function resolveLink(address: string): Promise<string> {
+  let parsed: URL;
+  try {
+    parsed = new URL(address);
+  } catch {
+    return NOT_A_PRODUCT;
+  }
+  if (parsed.protocol !== "https:") return NOT_A_PRODUCT;
+  if (pointsBackHere(parsed)) return NOT_A_PRODUCT;
+
+  let looked;
+  try {
+    looked = await lookupProduct(address);
+  } catch {
+    return DID_NOT_ANSWER;
+  }
+
+  if (looked.outcome === "not-a-product") return NOT_A_PRODUCT;
+  if (looked.outcome === "not-found") return NOT_FOUND;
+
+  const slug = marketSlug(looked.product.id);
+  let opened: MarketProduct | null;
+  try {
+    opened = await readMarketProduct(slug);
+  } catch {
+    return DID_NOT_ANSWER;
+  }
+  if (!opened) return CANNOT_OPEN;
+
+  redirect(`/product/${slug}`);
+  return CANNOT_OPEN;
+}
+
+/* ------------------------------------------------------------------ */
+/* What the page says about the answer it has                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The count line (IPD 35).
+ *
+ * The catalogue matches on more than spelling, so a query it cannot answer can
+ * still come back full. This says which kind of answer arrived — every result
+ * uses the shopper's words, none of them do, or some do — without explaining
+ * the catalogue's engine to the person reading.
  */
 function resultLine(count: number, matched: number, query: string): string {
   const results = `${count} result${count === 1 ? "" : "s"}`;
-  const maybeMore = count >= SEARCH_LIMIT ? " One search shows at most 12." : "";
 
   if (matched === count) {
-    return `${results} for “${query}” — every one uses your words.${maybeMore}`;
+    return `${results} for “${query}” — every one uses your words.`;
   }
-
   if (matched === 0) {
-    return `Nothing the catalogue returned uses “${query}”. It matches on more than spelling, so these are its nearest results.${maybeMore}`;
+    return `Nothing here uses “${query}”. These are the closest listings the catalogue has.`;
   }
-
-  return `${matched} of the ${results} for “${query}” use your words; the rest may match something else.${maybeMore}`;
+  return `${matched} of the ${results} for “${query}” use your words; the rest may match something else.`;
 }
 
+function failureSentence(error: unknown, deep: boolean): string {
+  if (deep && error instanceof MarketError && error.status === 422) return STOPPED;
+  return process.env.CHANNEL3_API_KEY?.trim() ? UNREACHABLE : NO_KEY;
+}
+
+/* ------------------------------------------------------------------ */
+/* The shop                                                            */
+/* ------------------------------------------------------------------ */
 
 /**
- * The shop is a search over a live catalogue, not a shelf we wrote.
+ * The shop opens on the catalogue's own shelf (IPD 33).
  *
- * It deliberately shows no commitment figures: this screen is for choosing, and
- * the figures belong where money is agreed. What it does show is the one thing
- * a listing can say honestly — the price range across the retailers that list
- * the same product.
+ * Sixteen departments, the search beneath them for a person who already knows
+ * the name, and a field for a link someone sent. Every choice is in the URL, so
+ * back, reload and a copied link all behave. Nothing here is merchandising we
+ * wrote: the departments, the products, the prices and the photos are the
+ * catalogue's, read when the page opened.
  */
 export default async function Shop({ searchParams }: PageProps) {
-  const { q } = await searchParams;
-  const query = q?.trim() || DEFAULT_QUERY;
+  const params = await searchParams;
+  const query = params.q?.trim() ?? "";
+  const categorySlug = params.category?.trim() ?? "";
+  const bandKey = params.price ?? "any";
+  const after = params.after ?? null;
+  const link = params.link?.trim() ?? "";
 
-  let products: MarketProduct[] = [];
+  const linkFailure = link ? await resolveLink(link) : null;
+
+  const browsing = Boolean(query || categorySlug);
+
+  // The taxonomy is only needed where it is shown: on the shelf, and to name
+  // the department a deep link points at.
+  let roots: MarketCategory[] | null = null;
+  let shelfFailure = false;
+  if (!query) {
+    try {
+      roots = await readCategories();
+    } catch {
+      shelfFailure = true;
+    }
+  }
+
+  const category = roots?.find((root) => root.slug === categorySlug) ?? null;
+  const categoryTitle = category?.title ?? categorySlug;
+
+  let result: MarketPage | null = null;
   let failure: string | null = null;
 
-  try {
-    products = await searchMarket(query);
-  } catch {
-    failure =
-      process.env.CHANNEL3_API_KEY?.trim()
-        ? "The live product catalogue could not be reached just now. Search again in a moment."
-        : "This deployment has no product catalogue key configured, so there is nothing live to show. See the README for the one variable it needs.";
+  if (query || categorySlug) {
+    try {
+      result = query
+        ? await searchMarket(query, { price: bandKey, after })
+        : await browseMarket(categorySlug, { price: bandKey, after });
+    } catch (error) {
+      failure = failureSentence(error, Boolean(after));
+    }
   }
+
+  const heading = query ? `Results for “${query}”` : categoryTitle;
+  const products = result?.products ?? [];
 
   return (
     <Page
       back={{ href: "/", label: "Back to the start" }}
       eyebrow="The shop"
-      title="Search real products"
-      lede="Every product below is a real listing, with its real price, read from the live catalogue when this page loaded. Pick one to see what the purchase asks of you before you agree to it."
+      title="Browse real products"
+      /*
+       * A browsed department opens on its products, not on a paragraph about the
+       * shop. The first phone screenshot of this screen had a heading, a lede,
+       * two forms and two buttons above the first tile, and the paragraph also
+       * claimed the prices were read live when this page opened — which the
+       * standing line at the foot already says (IPD 35). The shelf keeps a lede
+       * because on the shelf the paragraph is all there is to say what the
+       * sixteen tiles are; a department's own heading does that job itself.
+       */
+      lede={
+        browsing
+          ? undefined
+          : "Every listing is a real product at a real price. Pick one to see what agreeing to it would cost."
+      }
+      wide
     >
-      <MarketSearch query={query} />
-
-      {failure ? (
+      {browsing ? null : shelfFailure ? (
         <p className="notice" role="status">
-          {failure}
-        </p>
-      ) : products.length === 0 ? (
-        <p className="notice" role="status">
-          Nothing in the catalogue matched &ldquo;{query}&rdquo;. That is the catalogue&apos;s
-          answer, not a guess at something close.
+          {failureSentence(new MarketError("unreachable"), false)}
         </p>
       ) : (
-        <>
-          <p className="scope-note" role="status">
-            {resultLine(products.length, matchingCount(products, query), query)}
-          </p>
-
-          <ul className="market-list">
-            {products.map((product) => (
-              <MarketCard key={product.id} product={product} />
-            ))}
-          </ul>
-        </>
+        <CategoryShelf categories={roots ?? []} />
       )}
 
-      <p className="scope-note">
-        Prices, images and retailer links come from Channel3 and change without notice. Nothing here
-        is an offer to sell, and nothing ships.
-      </p>
+      <MarketSearch query={query || undefined} />
+
+      {browsing ? (
+        <section className="market-results" aria-labelledby="market-heading">
+          <div className="market-toolbar">
+            <div className="market-heading">
+              {categorySlug ? (
+                <Link className="market-back" href={shopHref()}>
+                  All categories
+                </Link>
+              ) : null}
+              <h2 id="market-heading">{heading}</h2>
+            </div>
+            <PriceBands params={{ q: query, category: categorySlug }} price={bandKey} />
+          </div>
+
+          <div aria-live="polite">
+            {failure ? (
+              <p className="notice" role="status">
+                {failure}
+              </p>
+            ) : products.length === 0 ? (
+              <p className="notice" role="status">
+                {emptySentence(query, categoryTitle, bandKey)}
+              </p>
+            ) : (
+              <p className="scope-note" role="status">
+                {query
+                  ? resultLine(products.length, matchingCount(products, query), query)
+                  : `${products.length} result${products.length === 1 ? "" : "s"} in ${categoryTitle}, each with a price someone can pay.`}
+              </p>
+            )}
+          </div>
+
+          {products.length > 0 ? (
+            <ul className="market-grid">
+              {products.map((product) => (
+                <MarketCard key={product.id} product={product} />
+              ))}
+            </ul>
+          ) : null}
+
+          {result?.nextToken ? (
+            <Link
+              className="market-more"
+              href={shopHref({ q: query, category: categorySlug, price: bandKey, after: result.nextToken })}
+            >
+              Show 30 more
+            </Link>
+          ) : null}
+        </section>
+      ) : null}
+
+      {/* Under the catalogue, not above it: a person browsing a department is
+          not pasting a link, and the field had been taking a button's worth of
+          the first screen from the products (IPD 36). */}
+      <MarketLinkLookup value={link || undefined} />
+
+      {linkFailure ? (
+        <p className="notice" role="status">
+          {linkFailure}
+        </p>
+      ) : null}
+
+      <p className="market-source">{SOURCING}</p>
     </Page>
   );
 }
 
-function MarketCard({ product }: { product: MarketProduct }) {
-  const cheapest = cheapestInStock(product.offers);
-  const spread = offerSpread(product.offers);
-  if (!cheapest) return null;
+/**
+ * What an empty page says.
+ *
+ * Products without an in-stock USD offer are dropped before display, so "no
+ * results" can mean "nothing came back" or "nothing came back that this page
+ * could price". The sentence has to be true of both.
+ */
+function emptySentence(query: string, categoryTitle: string, bandKey: string): string {
+  const band = priceBand(bandKey);
 
-  const retailers = product.offers.filter((offer) => offer.availability === "InStock").length;
-
-  return (
-    <li className="market-card">
-      <Link className="market-card-link" href={`/product/${marketSlug(product.id)}`}>
-        {product.image ? (
-          // The catalogue's own image, at the size it is shown. A plain <img>
-          // keeps the catalogue's CDN out of the build's image pipeline.
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className="market-thumb"
-            src={product.image.url}
-            alt={product.image.alt}
-            width={96}
-            height={96}
-            loading="lazy"
-          />
-        ) : (
-          <span className="market-thumb market-thumb-empty" aria-hidden="true" />
-        )}
-
-        <span className="market-card-body">
-          {product.brand ? <span className="market-brand">{product.brand}</span> : null}
-          <span className="market-title">{product.title}</span>
-          <span className="market-price">
-            From {formatMoney(cheapest.price)} at {cheapest.domain}
-          </span>
-          <span className="market-note">
-            {retailers} retailer{retailers === 1 ? "" : "s"} in these results
-            {spread ? `, ${formatMoney(spread)} apart` : ""}
-          </span>
-        </span>
-      </Link>
-    </li>
-  );
+  if (query) {
+    return `Nothing for “${query}” with a price someone can pay.`;
+  }
+  if (band.key !== "any") {
+    return `Nothing in ${categoryTitle} ${band.label.toLowerCase()} has a price someone can pay.`;
+  }
+  return `Nothing in ${categoryTitle} came back with a price someone can pay.`;
 }
