@@ -1417,13 +1417,25 @@ catalogue, not from impression.
       browsed department opened on a paragraph and two forms with the first tile
       below the fold (now ~710px, inside the first screen), and the page ran two
       rhythm systems so every boundary cost 64px.
-- [ ] **The subscriptions shelf, deferred from R3 and waiting on R1.** IPD 33
-      refuses it for a stated reason: the shop cannot tell a subscription from a
-      one-time purchase until R1 can read a term out of any listing, so a
-      "Subscriptions" shelf today would be a shelf of four curated ids wearing a
-      category's name. **Do this first after R1 lands** — the catalogue already
-      surfaces six subscriptions in one search, and the shelf is the screen that
-      makes the product's own subject browsable.
+- [x] **The subscriptions shelf — built 2026-11-12.** Deferred from R3 and
+      waiting on R1, which is why IPD 33 refused it: the shop could not tell a
+      subscription from a one-time purchase. **`docs/subscriptions-shelf/`**:
+      IPD 41 (a tile is evidence, not a verdict — a listing is on the shelf
+      because its own words say it repeats, and the tile quotes them; nothing
+      stronger is claimed), IPD 42 (a screen of its own at `/shop/subscriptions`,
+      one line under the departments and one on the front door), ITD 36 (the
+      reader's own vocabulary, applied to sentences of the listing's text, with
+      no model call). `repeatingWords` sits beside the vocabulary it uses in
+      `lib/commitment/published-term.ts`, so a term rule cannot be added without
+      the shelf seeing it; `readRepeatingShelf` owns two catalogue searches,
+      dedupe and a one-page cap; `MarketCard` gained an optional `evidence` line;
+      the shop's failure sentences moved to `lib/market/shop-words.ts` rather
+      than being written twice. Live: **22 tiles**, every one a product that
+      charges again — the wall calendars, the two Total Care protection plans,
+      the books and the tax forms all refused. Two defects the live read found:
+      quotes cut at *Dr.* were fragments, and comma-splitting produced *"…five
+      curated"*, so quotes are now sentences, joined across abbreviations and
+      abridged at a word boundary. Suite 595 → **614**, `tsc` and `lint` clean.
 - [ ] **R4 — In-page checkout with `@paypal/react-paypal-js`.** Create the order
       server-side as today, render PayPal's own button and amount, capture in
       `onApprove`, then land on the receipt. **Why:** judges recognise a real PayPal

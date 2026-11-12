@@ -1664,6 +1664,34 @@ html[data-text-scale="larger"] {
   font-size: var(--text-sm);
 }
 
+/*
+ * The seller's words on a shelf tile (IPD 41). Quoted, so it is set as a quote
+ * rather than as a caption this page wrote: quieter than the price, marked off
+ * by a rule, and allowed to wrap rather than truncated — a phrase cut in the
+ * middle is not the seller's sentence any more.
+ */
+.market-evidence {
+  margin-top: var(--space-2);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--line);
+  color: var(--ink-muted);
+  font-size: var(--text-sm);
+  font-style: italic;
+}
+
+/* The one line under the departments that leads to the shelf (IPD 42). */
+.market-shelf-link {
+  margin: var(--space-4) 0 0;
+}
+
+.market-shelf-link a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--ink);
+  text-underline-offset: 3px;
+}
+
 .market-more {
   align-self: flex-start;
   display: inline-flex;

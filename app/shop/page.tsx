@@ -21,6 +21,7 @@ import {
   type MarketProduct,
 } from "@/lib/market/channel3";
 import { shopHref } from "@/lib/market/links";
+import { SOURCING, catalogueFailure } from "@/lib/market/shop-words";
 
 /** Prices are live, so what is on the screen is read rather than built. */
 export const dynamic = "force-dynamic";
@@ -35,12 +36,6 @@ type PageProps = {
   }>;
 };
 
-const SOURCING =
-  "Prices, photos and retailer links are the retailers' own, read live when this page opened.";
-
-const UNREACHABLE = "The live product catalogue could not be reached just now. Try again in a moment.";
-const NO_KEY =
-  "This deployment has no product catalogue key configured, so there is nothing live to show. See the README for the one variable it needs.";
 const STOPPED =
   "The catalogue shows at most 150 of these. Choose a narrower category, or search for the thing by name.";
 
@@ -139,7 +134,7 @@ function resultLine(count: number, matched: number, query: string): string {
 
 function failureSentence(error: unknown, deep: boolean): string {
   if (deep && error instanceof MarketError && error.status === 422) return STOPPED;
-  return process.env.CHANNEL3_API_KEY?.trim() ? UNREACHABLE : NO_KEY;
+  return catalogueFailure();
 }
 
 /* ------------------------------------------------------------------ */
@@ -219,12 +214,23 @@ export default async function Shop({ searchParams }: PageProps) {
       }
       wide
     >
-      {browsing ? null : shelfFailure ? (
-        <p className="notice" role="status">
-          {failureSentence(new MarketError("unreachable"), false)}
-        </p>
-      ) : (
-        <CategoryShelf categories={roots ?? []} />
+      {browsing ? null : (
+        <>
+          {shelfFailure ? (
+            <p className="notice" role="status">
+              {catalogueFailure()}
+            </p>
+          ) : (
+            <CategoryShelf categories={roots ?? []} />
+          )}
+
+          {/* One line beneath the departments (IPD 42): the shop asks which
+              department, the shelf asks which commitment, and a screen that
+              asks both at once is the thing IPD 33 was written to avoid. */}
+          <p className="market-shelf-link">
+            <Link href="/shop/subscriptions">See what charges more than once</Link>
+          </p>
+        </>
       )}
 
       <MarketSearch query={query || undefined} />

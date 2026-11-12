@@ -267,6 +267,12 @@ async function ProofHome({ canSignIn }: { canSignIn: boolean }) {
             <Link href="/read">Or paste a document someone sent you</Link> — a bill, a contract, a
             renewal notice.
           </p>
+          {/* IPD 42: the worry this page names has a screen that answers it,
+              one link away, in the words a person would have used for it. */}
+          <p className="scope-note">
+            <Link href="/shop/subscriptions">Or browse what charges more than once</Link> — the
+            catalogue&apos;s own listings, quoted in the seller&apos;s words.
+          </p>
         </section>
       </section>
     </Page>

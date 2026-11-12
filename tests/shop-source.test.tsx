@@ -129,6 +129,16 @@ describe("the shop opens on the catalogue's own shelf (IPD 33)", () => {
     expect(screen.queryByRole("link", { name: "headphones" })).toBeNull();
   });
 
+  it("offers the shelf of things that repeat from beside the departments", async () => {
+    // IPD 42: one line under the shelf, not a second grid on the same screen.
+    render(await shop());
+
+    expect(screen.getByRole("link", { name: /charges more than once/i })).toHaveAttribute(
+      "href",
+      "/shop/subscriptions",
+    );
+  });
+
   it("says so rather than showing an empty shelf when the catalogue cannot answer", async () => {
     process.env.CHANNEL3_API_KEY = "test-key";
     vi.mocked(readCategories).mockRejectedValue(new MarketError("boom", 500));

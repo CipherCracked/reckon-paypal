@@ -195,6 +195,16 @@ describe("the front door", () => {
 
     expect(screen.getByRole("search")).toHaveAttribute("action", "/shop");
   });
+
+  it("offers the shelf of things that repeat, beside the search for a name", async () => {
+    // IPD 42: the worry the front door names has a screen that answers it.
+    render(await Home());
+
+    expect(screen.getByRole("link", { name: /charges more than once/i })).toHaveAttribute(
+      "href",
+      "/shop/subscriptions",
+    );
+  });
 });
 
 // The front door is the one screen reached without choosing anything, and it

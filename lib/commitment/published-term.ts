@@ -84,8 +84,7 @@ export function termFromSpans(
   spans: ModelQuotation[],
   /** Must already have been through `normaliseText`. */
   normalisedSource: string,
-): TermFinding {
-  const offered = spans.filter(
+): TermFinding {  const offered = spans.filter(
     (span) => TERM_FIELDS.has(span.field) || CADENCE_FIELDS.has(span.field),
   );
   if (offered.length === 0) return { kind: "silent" };
@@ -121,4 +120,84 @@ export function termFromSpans(
 
   if (cadence) return { kind: "ongoing", quote: cadence.quote };
   return { kind: "silent" };
+}
+
+/* ------------------------------------------------------------------ */
+/* The same vocabulary, without a reader                               */
+/* ------------------------------------------------------------------ */
+
+/** Where one sentence ends. A merchant's copy is sentences, and so is a title. */
+const SENTENCE = /[.!?\n]+/;
+
+/** A word a full stop belongs to, rather than ending the sentence it is in. */
+const ABBREVIATION = /\b(?:Dr|Mr|Mrs|Ms|St|Jr|Sr|Inc|Ltd|Co|Corp|vs|etc)$/;
+
+/** Long enough to be the seller's sentence, short enough to sit on a tile. */
+const QUOTE_MAX = 140;
+
+/**
+ * A clause cut to a readable length — cut only, never rewritten: every word a
+ * shopper sees is the seller's, in the seller's order, and the ellipsis says
+ * there was more.
+ */
+function abridge(clause: string): string {
+  if (clause.length <= QUOTE_MAX) return clause;
+  const cut = clause.slice(0, QUOTE_MAX);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
+}
+
+/**
+ * The sentences of a listing's text, with a merchant's abbreviations put back.
+ *
+ * Splitting at a full stop is how a quote stays a sentence, but *Dr. Squatch* is
+ * not the end of one: read live, a tile said *"A quarterly subscription from Dr"*
+ * because the splitter stopped at the abbreviation. The join restores the full
+ * stop and the space, so the quote is the seller's text character for character.
+ */
+function sentencesOf(text: string): string[] {
+  const sentences: string[] = [];
+
+  for (const chunk of text.split(SENTENCE)) {
+    const words = chunk.trim();
+    if (!words) continue;
+
+    const previous = sentences[sentences.length - 1];
+    if (previous !== undefined && ABBREVIATION.test(previous)) {
+      sentences[sentences.length - 1] = `${previous}. ${words}`;
+      continue;
+    }
+
+    sentences.push(words);
+  }
+
+  return sentences;
+}
+
+/**
+ * The words that make a listing a candidate for the shelf of things that repeat
+ * (IPD 41, ITD 36).
+ *
+ * This is the shelf's screen, and it is deliberately the reader's own: the same
+ * `AGREEMENT`, `NOT_AN_AGREEMENT` and `BILLING_OR_DELIVERY` checks and the same
+ * two parsers that `termFromSpans` applies to a model's quotations, applied here
+ * to the listing's text directly. A shelf with its own keyword list would admit
+ * a wall calendar for saying "monthly" and a service plan for saying "2-Year" —
+ * and the product page would then refuse what the shelf had just offered.
+ *
+ * What it answers is narrower than a reading: not *what is the term*, but *does
+ * this listing's own copy name a period in a way that is about an agreement*. A
+ * sentence that passes is printed on the tile; the term itself is still read, by
+ * the model, when the tile is opened.
+ *
+ * The text is split into sentences because a tile quotes one, and because a
+ * meaning check over a whole paragraph would read a calendar's "monthly" and a
+ * repair plan's "two years" in the same breath. A sentence longer than a tile is
+ * abridged at a word boundary, never truncated mid-word and never paraphrased.
+ */
+export function repeatingWords(text: string): string | null {
+  for (const sentence of sentencesOf(text)) {
+    if (asTerm(sentence) || asCadence(sentence)) return abridge(sentence);
+  }
+  return null;
 }
