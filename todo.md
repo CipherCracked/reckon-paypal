@@ -1308,6 +1308,36 @@ catalogue, not from impression.
       new field. Tests: the four curated listings still resolve, plus two
       catalogue-found subscriptions that were never curated, plus one listing whose
       term sentence has been rewritten (must stay one-time).
+      **Decomposed 2026-11-12** — `docs/the-term-in-any-listing/intro.md`, five
+      root questions, no decisions yet. The decomposition changed the shape of the
+      problem twice over, from live evidence gathered first: the catalogue has **no
+      cadence field, no subscription category and no term attribute** (the term is
+      only ever merchant prose in `title`/`description`), and the word *subscription*
+      is **not** a signal — 30 search results for it contained books, warranties,
+      wall calendars and tax forms, while the genuine boxes are filed under Dog
+      Supplies and Personal Care Gift Sets. So the question is no longer "how do we
+      detect subscriptions" but "where does this listing state its term, and can that
+      statement honestly become a schedule". Also found: `zHpJR9Q` is curated and
+      `zm8tw4C` is the same BARK family uncurated and read as a one-time purchase —
+      the map was never the catalogue's shape, it was a sample of four.
+      **Decided 2026-11-12** — `docs/the-term-in-any-listing/`, 4 IPDs + 3 ITDs,
+      nothing built. **IPD 37** the merchant's stated term decides, and no statement
+      means no schedule. **IPD 38** a term in whole months becomes monthly payments;
+      a stated cadence that is not monthly (quarterly, annually, per year) or a
+      cadence with no end is shown as the merchant stated it and *not* scheduled —
+      the money path can only express `count × month|year`, `ensurePlan` refuses a
+      plan with no end, and one search measured only 1 listing in 30 stating both a
+      count and a cadence, which is why the term alone must suffice. **IPD 39** the
+      product page opens with the catalogue's answer and streams the commitment
+      panel while the seller's words are read. **IPD 40** five states, one sentence
+      each, and only two of them offer the commitment — an unread listing is not
+      sold rather than sold as one-time. **ITD 33** one reading per listing
+      returning `termLength`/`period`/exit spans, with a meaning gate so a warranty
+      or a wall calendar cannot become a term. **ITD 34** resolution reads the
+      listing, `terms` becomes nullable with a named state, and the four curated ids
+      survive only as a checked fixture for the front door. **ITD 35** the reading
+      is cached by text and streamed into the page. The tests to write are named in
+      ITD 34.
 - [ ] **R2 — Make PayPal the authority on what has actually happened.** Read
       `/v1/reporting/transactions` (or the subscription's transactions) and state
       *Taken so far · 3 of 6 · $74.97*, computed from PayPal's records rather than
