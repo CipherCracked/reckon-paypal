@@ -1,13 +1,14 @@
 import { computeCommitment } from "@/lib/commitment/compute";
 import { presentFigures } from "@/lib/commitment/present";
 import { describeSchedule } from "@/lib/commitment/schedule";
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import {
   EXIT_UNREADABLE_NOTE,
   resolveExitTerm,
   type ExitOutcome,
 } from "@/lib/commitment/published-exit";
 import { MARKET_EXIT_NOTE } from "@/lib/market/channel3";
+import { MODEL_READ_DEADLINE_MS, withBudget } from "@/lib/deadline";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 
 type RouteContext = { params: Promise<{ orderId: string }> };
@@ -35,11 +36,26 @@ export async function GET(request: Request, context: RouteContext) {
   // One resolver for every screen (IPD 20). The figure's provenance is part of
   // the payload, not something the screen infers, so the screen cannot claim a
   // source the route did not read.
-  const resolved = slug ? await resolveProduct(slug) : null;
+  //
+  // The two ways a lookup can fail are answered separately: a listing the
+  // catalogue no longer carries is an unknown product (404), while a catalogue
+  // that did not answer is not. Reporting the second as "unknown product" would
+  // tell the shopper a real listing does not exist.
+  const outcome = slug ? await resolveProductOutcome(slug) : ({ kind: "absent" } as const);
 
-  if (!resolved) {
-    return Response.json({ error: "Unknown product for this order." }, { status: 404 });
+  if (outcome.kind !== "found") {
+    const unreadable = outcome.kind === "unreadable";
+    return Response.json(
+      {
+        error: unreadable
+          ? "The catalogue could not be read just now, so this purchase cannot be shown. Nothing has been charged."
+          : "Unknown product for this order.",
+      },
+      { status: unreadable ? 503 : 404 },
+    );
   }
+
+  const resolved = outcome.product;
 
   const { name, description, descriptionLabel, sources } = resolved;
 
@@ -102,20 +118,30 @@ export async function GET(request: Request, context: RouteContext) {
 /**
  * The exit figure, or the reason there is none. A failed read may not fail the
  * screen: a missing exit leaves the third line saying why (IPD 19, ITD 18).
+ *
+ * It carries the same page budget every other screen gives this reading. This
+ * was the only model path without one, so it inherited the client's own timeout
+ * — on the screen immediately before the money.
  */
 async function readExit(
   exit: CommitmentTerms["exit"],
   description: string,
   descriptionLabel: string,
 ): Promise<ExitOutcome> {
+  const unreadable: ExitOutcome = {
+    kind: "unreadable",
+    exit: { kind: "unknown" },
+    note: EXIT_UNREADABLE_NOTE,
+    quoted: null,
+  };
+
   try {
-    return await resolveExitTerm(exit, description, descriptionLabel);
+    return await withBudget(
+      resolveExitTerm(exit, description, descriptionLabel, { retries: 0 }),
+      MODEL_READ_DEADLINE_MS,
+      unreadable,
+    );
   } catch {
-    return {
-      kind: "unreadable",
-      exit: { kind: "unknown" },
-      note: EXIT_UNREADABLE_NOTE,
-      quoted: null,
-    };
+    return unreadable;
   }
 }

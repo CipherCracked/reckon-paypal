@@ -1,4 +1,4 @@
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import type { CommitmentTerms } from "@/lib/commitment/types";
 import { addMoney, zeroMoney, type Money } from "@/lib/money";
 import { PayPalError } from "@/lib/paypal/client";
@@ -52,11 +52,24 @@ export async function POST(request: Request) {
   // PayPal first, the file second — the same resolution the consent screen
   // used to show the figures. Building the plan from the file while the screen
   // read PayPal is how a shopper agrees to one number and is charged another.
-  const product = slug ? await resolveProduct(slug) : null;
+  //
+  // A catalogue that did not answer is not an unknown product: saying so would
+  // tell the shopper a real listing does not exist, on the screen before money.
+  const outcome = slug ? await resolveProductOutcome(slug) : ({ kind: "absent" } as const);
 
-  if (!product) {
-    return Response.json({ error: "Unknown product." }, { status: 404 });
+  if (outcome.kind !== "found") {
+    const unreadable = outcome.kind === "unreadable";
+    return Response.json(
+      {
+        error: unreadable
+          ? "The catalogue could not be read just now, so this purchase cannot be started. Nothing has been charged."
+          : "Unknown product.",
+      },
+      { status: unreadable ? 503 : 404 },
+    );
   }
+
+  const product = outcome.product;
 
   const plan = planFor(product.terms);
   if (!plan) {
@@ -106,6 +119,14 @@ export async function POST(request: Request) {
       approveUrl: subscription.approveUrl,
     });
   } catch (error) {
+    // Logged because a 502 with no reason makes every failure look the same: a
+    // bad credential, a cut-off description and a rejected plan all answer with
+    // the same sentence, and only the error carries the issue code.
+    console.warn(
+      "POST /api/paypal/subscriptions — subscription failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
+
     const message =
       error instanceof PayPalError
         ? `PayPal could not start this subscription (${error.issue ?? error.status}).`

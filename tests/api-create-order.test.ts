@@ -80,4 +80,35 @@ describe("POST /api/paypal/orders", () => {
     expect(body.translation).toBeUndefined();
     expect(body.error).toMatch(/paypal/i);
   });
+
+  it("says the catalogue could not be read, rather than calling a real listing unknown", async () => {
+    vi.mocked(readMarketProduct).mockRejectedValueOnce(new Error("fetch failed"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await post({ slug: "ch3-YyLUjLT" });
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error).toMatch(/could not be read/i);
+    expect(createPayPalOrder).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("logs the amount PayPal disagreed about, the check this product exists to enforce", async () => {
+    // The route answers 502 either way, so without a log a drifted amount and a
+    // bad credential look identical to the operator. The numbers are the point.
+    vi.mocked(createPayPalOrder).mockRejectedValueOnce(
+      new Error("PayPal returned $58.95, but $59.00 was requested."),
+    );
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await post({ slug: "noise-cancelling-headphones" });
+
+    expect(response.status).toBe(502);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("POST /api/paypal/orders"),
+      expect.stringContaining("$58.95, but $59.00 was requested"),
+    );
+    warn.mockRestore();
+  });
 });

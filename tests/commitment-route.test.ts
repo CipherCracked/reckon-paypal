@@ -3,6 +3,7 @@ import { GET } from "@/app/api/commitment/[orderId]/route";
 import { readProductCardFromPayPal, readProductFromPayPal } from "@/lib/paypal/catalog";
 import { readMarketProduct } from "@/lib/market/channel3";
 import { EXIT_SILENT_NOTE, EXIT_UNREADABLE_NOTE, resolveExitTerm } from "@/lib/commitment/published-exit";
+import { MODEL_READ_DEADLINE_MS } from "@/lib/deadline";
 import { money } from "@/lib/money";
 import { recordedProduct } from "./fixtures/channel3-listings";
 
@@ -110,6 +111,20 @@ describe("where the commitment route reads its terms (ITD 17)", () => {
     const { status } = await get("not-a-product");
     expect(status).toBe(404);
   });
+
+  it("says the catalogue could not be read, rather than throwing a 500", async () => {
+    // A missing key, a non-OK reply or a fired deadline all arrive as a throw
+    // from the catalogue read. Answering that with "unknown product" would say
+    // the listing does not exist; the truth is that we could not look.
+    vi.mocked(readMarketProduct).mockRejectedValueOnce(new Error("fetch failed"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const { status, body } = await get("ch3-YyLUjLT");
+
+    expect(status).toBe(503);
+    expect(body.error).toMatch(/could not be read/i);
+    warn.mockRestore();
+  });
 });
 
 describe("the exit figure the seller publishes (IPD 19)", () => {
@@ -122,6 +137,9 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
       { kind: "unknown" },
       expect.stringContaining("recurring subscription"),
       "the description Channel3 lists for this product",
+      // One attempt: the page has a budget, so a retry would run behind a
+      // screen that has already given up (same as the receipt and product pages).
+      { retries: 0 },
     );
   });
 
@@ -191,6 +209,28 @@ describe("the exit figure the seller publishes (IPD 19)", () => {
     // The figures are still computed from terms that were read; only the third
     // line is missing, and the summary is unaffected.
     expect(body.degraded).toBe(false);
+  });
+
+  it("does not let a slow exit reading hold the screen before the money", async () => {
+    // This route was the only model path with no page budget. It inherits the
+    // client's own timeout, and it joins an in-flight reading for the same text,
+    // so one hung request could stall every consent screen for that listing.
+    vi.mocked(resolveExitTerm).mockImplementationOnce(
+      () => new Promise<never>(() => {}),
+    );
+    vi.useFakeTimers();
+
+    try {
+      const pending = get("ch3-YyLUjLT");
+      await vi.advanceTimersByTimeAsync(MODEL_READ_DEADLINE_MS);
+      const { status, body } = await pending;
+
+      expect(status).toBe(200);
+      expect(body.translation.exit).toBeNull();
+      expect(body.exitNote).toBe(EXIT_UNREADABLE_NOTE);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
 

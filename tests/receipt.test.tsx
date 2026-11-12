@@ -20,27 +20,32 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 // resolution is fixed to a recurring listing.
 vi.mock("@/lib/catalog/resolve", async () => {
   const { money: amount } = await import("@/lib/money");
+  const resolve = async (slug: string) =>
+    slug === "ch3-YyLUjLT"
+      ? {
+          slug,
+          name: "BARK 6 Month Subscription",
+          description: "A subscription box for dogs.",
+          terms: {
+            shape: "recurring" as const,
+            itemPrice: amount(2499),
+            shipping: null,
+            tax: null,
+            recurrence: { count: 6, period: "month" as const },
+            exit: { kind: "unknown" as const },
+          },
+          sources: { paypal: null, published: "the price Channel3 lists at bark.co" },
+          descriptionLabel: "the description Channel3 lists for this product",
+          listed: true,
+        }
+      : null;
+
   return {
-    resolveProduct: vi.fn(async (slug: string) =>
-      slug === "ch3-YyLUjLT"
-        ? {
-            slug,
-            name: "BARK 6 Month Subscription",
-            description: "A subscription box for dogs.",
-            terms: {
-              shape: "recurring" as const,
-              itemPrice: amount(2499),
-              shipping: null,
-              tax: null,
-              recurrence: { count: 6, period: "month" as const },
-              exit: { kind: "unknown" as const },
-            },
-            sources: { paypal: null, published: "the price Channel3 lists at bark.co" },
-            descriptionLabel: "the description Channel3 lists for this product",
-            listed: true,
-          }
-        : null,
-    ),
+    resolveProduct: vi.fn(resolve),
+    resolveProductOutcome: vi.fn(async (slug: string) => {
+      const product = await resolve(slug);
+      return product ? { kind: "found", product } : { kind: "absent" };
+    }),
   };
 });
 
@@ -344,6 +349,22 @@ describe("GET /api/receipt/:id/calendar", () => {
     });
 
     expect(response.status).toBe(502);
+  });
+
+  it("says the catalogue could not be read, instead of refusing a reminder", async () => {
+    // "This purchase has no next charge" is a fact about the commitment. A
+    // catalogue that did not answer supports no fact at all.
+    const { resolveProductOutcome } = await import("@/lib/catalog/resolve");
+    vi.mocked(resolveProductOutcome).mockResolvedValueOnce({ kind: "unreadable" });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const response = await calendarGET(request(), {
+      params: Promise.resolve({ orderId: "I-SUB-1" }),
+    });
+
+    expect(response.status).toBe(503);
+    expect(await response.text()).toMatch(/could not be read/i);
+    warn.mockRestore();
   });
 });
 

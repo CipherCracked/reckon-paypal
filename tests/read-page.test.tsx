@@ -198,6 +198,19 @@ describe("reading a document", () => {
   });
 });
 
+describe("the note under the box", () => {
+  it("says how long a paste is kept, because it is kept", () => {
+    // The reading cache holds the normalised text as a map key for ten minutes,
+    // in process memory. "Nothing you paste is stored" was absolute and untrue,
+    // and this is the one place where the honesty claim outran the behaviour.
+    render(<ReadPage />);
+
+    const hint = screen.getByText(/sent once to the model/i);
+    expect(hint).toHaveTextContent(/ten minutes/i);
+    expect(hint).not.toHaveTextContent(/nothing you paste is stored/i);
+  });
+});
+
 describe("the bill line", () => {
   it("asks PayPal for a bill and opens the screen it produces", async () => {
     const fetchMock = stubFetch({ invoiceId: "INV2-1" });

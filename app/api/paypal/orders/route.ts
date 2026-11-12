@@ -1,5 +1,5 @@
 import { computeCommitment } from "@/lib/commitment/compute";
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import { createPayPalOrder } from "@/lib/paypal/orders";
 import { PayPalError } from "@/lib/paypal/client";
 
@@ -21,11 +21,24 @@ export async function POST(request: Request) {
   // first, the file second. Creating the order from the file alone while the
   // screen read PayPal's plan is how a shopper is shown one number and charged
   // another — the one failure this product exists to prevent.
-  const product = slug ? await resolveProduct(slug) : null;
+  //
+  // A catalogue that did not answer is not an unknown product: saying so would
+  // tell the shopper a real listing does not exist, on the screen before money.
+  const outcome = slug ? await resolveProductOutcome(slug) : ({ kind: "absent" } as const);
 
-  if (!product) {
-    return Response.json({ error: "Unknown product." }, { status: 404 });
+  if (outcome.kind !== "found") {
+    const unreadable = outcome.kind === "unreadable";
+    return Response.json(
+      {
+        error: unreadable
+          ? "The catalogue could not be read just now, so this purchase cannot be charged. Nothing has been charged."
+          : "Unknown product.",
+      },
+      { status: unreadable ? 503 : 404 },
+    );
   }
+
+  const product = outcome.product;
 
   // A commitment paid over time is a subscription, not an order: capturing it
   // as a one-time payment would charge one period and call it the whole term.
@@ -70,6 +83,15 @@ export async function POST(request: Request) {
       productText: product.description,
     });
   } catch (error) {
+    // Logged because a 502 with no reason makes every failure look the same:
+    // the amount-mismatch check — the one this product exists to enforce — is
+    // indistinguishable from bad credentials, and its message is the only place
+    // the two numbers appear.
+    console.warn(
+      "POST /api/paypal/orders — order failed:",
+      error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+    );
+
     // No translation is returned on failure: a figure the processor never
     // agreed to is worse than no figure at all.
     const message =

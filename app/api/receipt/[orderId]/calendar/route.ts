@@ -1,4 +1,4 @@
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import { formatMoney } from "@/lib/money";
 import { buildCalendar } from "@/lib/receipt/calendar";
@@ -15,7 +15,19 @@ export async function GET(request: Request, context: RouteContext) {
   // or from a live catalogue listing, and the calendar has no business knowing
   // which. Reading only the file would refuse to remind anyone about a real
   // subscription.
-  const product = slug ? await resolveProduct(slug) : null;
+  //
+  // A catalogue that did not answer is not a commitment with no next charge —
+  // that sentence is a fact about the purchase, and this read supports none.
+  const outcome = slug ? await resolveProductOutcome(slug) : ({ kind: "absent" } as const);
+
+  if (outcome.kind === "unreadable") {
+    return new Response(
+      "The catalogue could not be read just now, so there is no reminder to make from it.",
+      { status: 503 },
+    );
+  }
+
+  const product = outcome.kind === "found" ? outcome.product : null;
 
   // A financed purchase is scheduled monthly too, so it has a next charge.
   // Anything paid once has none.

@@ -4,9 +4,15 @@ import { readPublishedExit } from "@/lib/commitment/published-exit";
 import { warmPublishedExits } from "@/lib/commitment/warm";
 import { bills } from "@/lib/catalog/bills";
 import { products } from "@/lib/catalog/products";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { recordedProduct } from "./fixtures/channel3-listings";
 
 vi.mock("@/lib/ai/client", () => ({ isModelConfigured: vi.fn() }));
 vi.mock("@/lib/commitment/published-exit", () => ({ readPublishedExit: vi.fn() }));
+vi.mock("@/lib/market/channel3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/market/channel3")>()),
+  readMarketProduct: vi.fn(),
+}));
 
 const unknownExitTexts = new Set(
   [...bills, ...products]
@@ -18,6 +24,8 @@ beforeEach(() => {
   vi.mocked(isModelConfigured).mockReset();
   vi.mocked(readPublishedExit).mockReset();
   vi.mocked(readPublishedExit).mockResolvedValue({ kind: "silent" });
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(null);
 });
 
 describe("warming the exit readings at start-up", () => {
@@ -49,9 +57,9 @@ describe("warming the exit readings at start-up", () => {
     });
 
     const warming = warmPublishedExits();
-    // Let the first call start and settle into its await.
-    await Promise.resolve();
-    await Promise.resolve();
+    // The listings are read from the catalogue first, so wait for those to
+    // settle and for the first model call to begin. The gate holds it there.
+    await new Promise((resolve) => setTimeout(resolve, 10));
     expect(readPublishedExit).toHaveBeenCalledTimes(1);
 
     release();
@@ -77,5 +85,45 @@ describe("warming the exit readings at start-up", () => {
     warmPublishedExits();
 
     expect(readPublishedExit).not.toHaveBeenCalled();
+  });
+});
+
+describe("warming the listings the front door leads to", () => {
+  it("reads the live catalogue's description, not only the ones in the file", async () => {
+    // The curated listings are not in lib/catalog — they are read live from the
+    // catalogue. Without this the front door's own listing was never warmed, and
+    // the first shopper to open it paid the model's forty seconds out of the one
+    // screen that has to be quick.
+    vi.mocked(isModelConfigured).mockReturnValue(true);
+    const listing = recordedProduct("YyLUjLT");
+    vi.mocked(readMarketProduct).mockImplementation(async (slug: string) =>
+      slug === "ch3-YyLUjLT" ? listing : null,
+    );
+
+    await warmPublishedExits();
+
+    expect(readMarketProduct).toHaveBeenCalledWith("ch3-YyLUjLT");
+    expect(readPublishedExit).toHaveBeenCalledWith(listing.description);
+  });
+
+  it("reads the front door's listing before the file's, because order is what decides", async () => {
+    // In sequence, so whichever is read first is the one ready when someone
+    // opens the app. The front door listing is YyLUjLT.
+    vi.mocked(isModelConfigured).mockReturnValue(true);
+    const listing = recordedProduct("YyLUjLT");
+    vi.mocked(readMarketProduct).mockResolvedValue(listing);
+
+    await warmPublishedExits();
+
+    expect(vi.mocked(readPublishedExit).mock.calls[0][0]).toBe(listing.description);
+  });
+
+  it("still warms the file's texts when the catalogue does not answer", async () => {
+    vi.mocked(isModelConfigured).mockReturnValue(true);
+    vi.mocked(readMarketProduct).mockRejectedValue(new Error("fetch failed"));
+
+    await expect(warmPublishedExits()).resolves.toBeUndefined();
+
+    expect(readPublishedExit).toHaveBeenCalledTimes(unknownExitTexts.size);
   });
 });

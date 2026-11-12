@@ -1,7 +1,7 @@
 import { CommitmentRecord, type AgreementKind, type RecordStanding } from "@/components/CommitmentRecord";
 import { ExitNav, RECORD_EXITS } from "@/components/ExitNav";
 import { Page } from "@/components/Page";
-import { resolveProduct } from "@/lib/catalog/resolve";
+import { resolveProductOutcome } from "@/lib/catalog/resolve";
 import { computeCommitment } from "@/lib/commitment/compute";
 import {
   EXIT_UNREADABLE_NOTE,
@@ -33,6 +33,14 @@ type PageProps = {
 const NO_LISTING_EXIT_NOTE =
   "This record was opened without its listing, so what the seller says about leaving was not read.";
 
+/** The listing id was supplied, and the catalogue no longer carries it. */
+const LISTING_GONE_EXIT_NOTE =
+  "This listing is no longer in the catalogue, so what the seller says about leaving was not read.";
+
+/** The listing id was supplied, and the catalogue did not answer. */
+const CATALOGUE_UNREADABLE_EXIT_NOTE =
+  "The catalogue could not be read just now, so what the seller says about leaving was not read.";
+
 function manageUrl(): string {
   const sandbox = paypalBaseUrl().includes("sandbox");
   return `https://www.${sandbox ? "sandbox." : ""}paypal.com/myaccount/autopay/`;
@@ -56,7 +64,18 @@ function manageUrl(): string {
 export default async function ReceiptPage({ params, searchParams }: PageProps) {
   const { orderId } = await params;
   const { slug } = await searchParams;
-  const resolved = slug ? await resolveProduct(slug) : null;
+
+  // The record survives a catalogue that does not. It is the one screen a
+  // shopper keeps, and everything below it can be read from PayPal; only the
+  // name and the seller's sentence are lost, and which nothing that is is
+  // stated rather than guessed.
+  const lookup = slug ? await resolveProductOutcome(slug) : null;
+  const resolved = lookup?.kind === "found" ? lookup.product : null;
+  const listingNote = !slug
+    ? NO_LISTING_EXIT_NOTE
+    : lookup?.kind === "unreadable"
+      ? CATALOGUE_UNREADABLE_EXIT_NOTE
+      : LISTING_GONE_EXIT_NOTE;
 
   let scheduled: boolean;
   let status: string;
@@ -136,7 +155,7 @@ export default async function ReceiptPage({ params, searchParams }: PageProps) {
           quoted: null,
         } satisfies ExitOutcome,
       )
-    : { kind: "unreadable", exit: { kind: "unknown" }, note: NO_LISTING_EXIT_NOTE, quoted: null };
+    : { kind: "unreadable", exit: { kind: "unknown" }, note: listingNote, quoted: null };
   const exit = exitOutcome.exit;
 
   // What was charged is PayPal's own amount. What it adds up to is our

@@ -201,8 +201,9 @@ export default function ReadPage() {
           aria-describedby="document-hint"
         />
         <p id="document-hint" className="field-hint">
-          Sent once to the model, which may only copy sentences — never write a figure. Nothing
-          you paste is stored.
+          Sent once to the model, which may only copy sentences — never write a figure. The reading
+          is kept in memory for ten minutes so the same words are not sent twice. Nothing is
+          written to a database.
         </p>
         <button type="submit" className="button-primary" disabled={status === "reading"}>
           {status === "reading" ? "Reading…" : "Read this document"}

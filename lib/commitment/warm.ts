@@ -2,6 +2,35 @@ import { isModelConfigured } from "@/lib/ai/client";
 import { bills } from "@/lib/catalog/bills";
 import { products } from "@/lib/catalog/products";
 import { readPublishedExit } from "@/lib/commitment/published-exit";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { LISTED_TERMS } from "@/lib/market/subscriptions";
+
+/**
+ * The descriptions behind the curated listings, read from the live catalogue.
+ *
+ * These are not in `lib/catalog/`: a live listing's words belong to the merchant
+ * and change without notice, so the file only records which ids are offered and
+ * the sentence a term was read from. The description has to be fetched, which
+ * means a listing's exit reading could not be warmed until now — including the
+ * front door's, the one screen a shopper sees first.
+ *
+ * A catalogue that does not answer is not an error here: the page's own read
+ * will say so when someone asks, and a warm-up that threw would take the
+ * file's texts down with it.
+ */
+async function listedTexts(): Promise<string[]> {
+  const texts: string[] = [];
+  for (const id of Object.keys(LISTED_TERMS)) {
+    try {
+      const record = await readMarketProduct(`ch3-${id}`);
+      if (record) texts.push(record.description);
+    } catch {
+      // No key, or the catalogue is down. The next listing is still worth
+      // trying, and the page reports the failure itself.
+    }
+  }
+  return texts;
+}
 
 /**
  * Reads the sellers' exit terms before anyone asks for them.
@@ -19,21 +48,26 @@ import { readPublishedExit } from "@/lib/commitment/published-exit";
  * itself, and a reading that lands late is still worth having — the cache keeps
  * it (`readPublishedExit`).
  *
+ * The listings come first, because in a sequence the order is what decides
+ * which reading is ready first. YyLUjLT is the front door's listing.
+ *
  * The results land in `readPublishedExit`'s cache, so the first view of a bill
  * is as fast as the tenth. Nothing about a person is involved: the inputs are
- * the seller texts in `lib/catalog/`.
+ * the seller texts in `lib/catalog/` and the descriptions the catalogue lists.
  */
 export async function warmPublishedExits(): Promise<void> {
   // With no model configured every reading would be "could not be read", and
   // remembering that would keep the figure hidden for the cache's lifetime.
   if (!isModelConfigured()) return;
 
+  const marketTexts = await listedTexts();
   const texts = [
-    ...new Set(
-      [...bills, ...products]
+    ...new Set([
+      ...marketTexts,
+      ...[...bills, ...products]
         .filter((entry) => entry.terms.exit.kind === "unknown")
         .map((entry) => entry.description),
-    ),
+    ]),
   ];
 
   for (const text of texts) {

@@ -16,52 +16,58 @@ vi.mock("@/lib/catalog/resolve", async () => {
   const { recordedProduct } = await import("./fixtures/channel3-listings");
   const listed = recordedProduct("YyLUjLT");
 
-  return {
-    resolveProduct: vi.fn(async (slug: string) => {
-      if (slug === "ch3-YyLUjLT") {
-        return {
-          slug,
-          name: listed.title,
-          description: listed.description,
-          terms: subscriptionTerms(listed.offers[0], curatedTerm("YyLUjLT")!),
-          sources: {
-            paypal: null,
-            published:
-              "the price Channel3 lists at bark.co and the term the listing states (“6 month BarkBox plan”)",
-          },
-          descriptionLabel: "the description Channel3 lists for this product",
-          listed: true,
-        };
-      }
-
-      // No catalogue entry has the financed shape today. The route still has a
-      // branch for it, and this term is what that branch is handed.
-      if (slug === "financed-example") {
-        return {
-          slug,
-          name: "A financed example",
-          description: "Twelve instalments and one opening fee.",
-          terms: {
-            shape: "financed",
-            itemPrice: amount(10500),
-            shipping: amount(0),
-            tax: amount(0),
-            installment: { count: 12, amount: amount(10500) },
-            openingFee: amount(6000),
-            exit: { kind: "unknown" },
-          },
-          sources: { paypal: null, published: "the terms shown on this page" },
-          descriptionLabel: "the description shown on this page",
-        };
-      }
-
-      const product = findProduct(slug);
-      if (!product) return null;
+  const resolve = async (slug: string) => {
+    if (slug === "ch3-YyLUjLT") {
       return {
-        ...product,
+        slug,
+        name: listed.title,
+        description: listed.description,
+        terms: subscriptionTerms(listed.offers[0], curatedTerm("YyLUjLT")!),
+        sources: {
+          paypal: null,
+          published:
+            "the price Channel3 lists at bark.co and the term the listing states (“6 month BarkBox plan”)",
+        },
+        descriptionLabel: "the description Channel3 lists for this product",
+        listed: true,
+      };
+    }
+
+    // No catalogue entry has the financed shape today. The route still has a
+    // branch for it, and this term is what that branch is handed.
+    if (slug === "financed-example") {
+      return {
+        slug,
+        name: "A financed example",
+        description: "Twelve instalments and one opening fee.",
+        terms: {
+          shape: "financed",
+          itemPrice: amount(10500),
+          shipping: amount(0),
+          tax: amount(0),
+          installment: { count: 12, amount: amount(10500) },
+          openingFee: amount(6000),
+          exit: { kind: "unknown" },
+        },
         sources: { paypal: null, published: "the terms shown on this page" },
         descriptionLabel: "the description shown on this page",
       };
+    }
+
+    const product = findProduct(slug);
+    if (!product) return null;
+    return {
+      ...product,
+      sources: { paypal: null, published: "the terms shown on this page" },
+      descriptionLabel: "the description shown on this page",
+    };
+  };
+
+  return {
+    resolveProduct: vi.fn(resolve),
+    resolveProductOutcome: vi.fn(async (slug: string) => {
+      const product = await resolve(slug);
+      return product ? { kind: "found", product } : { kind: "absent" };
     }),
   };
 });
@@ -422,6 +428,51 @@ describe("POST /api/paypal/subscriptions", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("says the catalogue could not be read, rather than calling a real listing unknown", async () => {
+    const { resolveProductOutcome } = await import("@/lib/catalog/resolve");
+    vi.mocked(resolveProductOutcome).mockResolvedValueOnce({ kind: "unreadable" });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(503);
+    expect(body.error).toMatch(/could not be read/i);
+    expect(fetchMock).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("logs why PayPal refused, so a 502 is not one indistinguishable message", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValueOnce(json({ access_token: "tok", expires_in: 3600 })).mockResolvedValueOnce(
+        json({ name: "UNPROCESSABLE_ENTITY", details: [{ issue: "INVALID_REQUEST" }] }, false, 422),
+      ),
+    );
+
+    const response = await POST(
+      new Request("http://localhost/api/paypal/subscriptions", {
+        method: "POST",
+        body: JSON.stringify({ slug: "ch3-YyLUjLT" }),
+      }),
+    );
+
+    expect(response.status).toBe(502);
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("POST /api/paypal/subscriptions"),
+      expect.stringContaining("INVALID_REQUEST"),
+    );
+    warn.mockRestore();
   });
 
   it("creates the plan for the term the screen states", async () => {

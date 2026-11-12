@@ -1,0 +1,80 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import ReceiptPage from "@/app/receipt/[orderId]/page";
+import { readMarketProduct } from "@/lib/market/channel3";
+import { retrieveSubscription } from "@/lib/paypal/retrieve";
+import { money } from "@/lib/money";
+import { recordedProduct } from "./fixtures/channel3-listings";
+import { clearPublishedExitCache } from "@/lib/commitment/published-exit";
+
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+
+vi.mock("@/lib/paypal/retrieve", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/paypal/retrieve")>();
+  return { ...actual, retrieveSubscription: vi.fn(), retrieveOrder: vi.fn() };
+});
+
+vi.mock("@/lib/market/channel3", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/market/channel3")>()),
+  readMarketProduct: vi.fn(),
+}));
+
+// The record's third figure is read from the seller's words. This suite is
+// about how the page reports a listing it could not read, so the reading is
+// fixed to the seller's silence (the read itself is tested where it lives).
+vi.mock("@/lib/commitment/published-exit", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/commitment/published-exit")>()),
+  resolveExitTerm: vi.fn(async () => ({
+    kind: "silent" as const,
+    exit: { kind: "unknown" as const },
+    note: "The seller's words don't say what leaving costs.",
+    quoted: null,
+  })),
+}));
+
+const renderReceipt = () =>
+  ReceiptPage({
+    params: Promise.resolve({ orderId: "I-SUB-1" }),
+    searchParams: Promise.resolve({ slug: "ch3-YyLUjLT" }),
+  });
+
+beforeEach(() => {
+  clearPublishedExitCache();
+  vi.mocked(readMarketProduct).mockReset();
+  vi.mocked(readMarketProduct).mockResolvedValue(recordedProduct("YyLUjLT"));
+  vi.mocked(retrieveSubscription).mockReset();
+  vi.mocked(retrieveSubscription).mockResolvedValue({
+    id: "I-SUB-1",
+    status: "ACTIVE",
+    nextBillingTime: "2026-12-07T00:00:00Z",
+    statusChangeTime: null,
+    amount: money(2499),
+    terms: {
+      shape: "recurring",
+      itemPrice: money(2499),
+      shipping: null,
+      tax: null,
+      recurrence: { count: 6, period: "month" },
+      exit: { kind: "unknown" },
+    },
+  });
+});
+
+describe("a record opened when the catalogue did not answer", () => {
+  it("still shows what PayPal holds, and says the seller's words were not read", async () => {
+    // The record is the one screen a shopper keeps. A catalogue outage must not
+    // take it away — and it must not claim the listing does not exist either.
+    vi.mocked(readMarketProduct).mockRejectedValueOnce(new Error("fetch failed"));
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    render(await renderReceipt());
+
+    expect(screen.getByText(/\$149\.94/)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /the catalogue could not be read just now, so what the seller says about leaving was not read/i,
+      ),
+    ).toBeInTheDocument();
+    warn.mockRestore();
+  });
+});
