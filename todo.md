@@ -1486,6 +1486,58 @@ catalogue, not from impression.
       `onApprove`, then land on the receipt. **Why:** judges recognise a real PayPal
       integration by its UI, and the redirect is the thing that reads as 2010.
       **Effort ~½ day, medium risk** (sandbox quirks).
+      **Decomposed 2026-11-12 — `docs/in-page-checkout/intro.md`, five root
+      questions, nothing decided.** The tree is the checkpoint. What the
+      measurement found, and what the §19 one-liner did not know:
+      the path today is **three presses and one departure** for a one-time
+      purchase (button → disabled → a *link* inside a notice → PayPal → capture →
+      *Keep a record*) and **two presses and one departure** for a subscription.
+      The one-liner describes only the Orders half, but the flagship path is a
+      **subscription**, which is approved and never captured — a different SDK
+      method. `@paypal/react-paypal-js` is **10.6.1** with React 19 in its peer
+      range, and its `createSubscription` prop is
+      `() => Promise<{ subscriptionId: string }>`, so **our own route can create
+      the subscription and hand PayPal the id** — the plan and the amount
+      agreement can stay server-side. Also recorded, and not in the audit: the
+      button would be the repo's **first third-party script and first
+      third-party interface on the money screen**, while the product's whole
+      argument is that the screen answers to the reader (text size, pacing,
+      read-aloud). Q5 asks what that costs and what a jsdom test can prove about
+      a control it cannot render.
+      **Decided 2026-11-12 — `docs/in-page-checkout/`, 4 IPDs + 2 ITDs, nothing
+      built.**
+      IPD 47 — **build it, and give PayPal's button the slot the primary button
+      had**: one press, no link on screen. The cost argument is a rejection
+      written into the tradeoffs, not a mitigation: the third-party script is
+      accepted as the price of a recognisable act, and the button's inability to
+      answer to the reader's text size or pacing is stated rather than dressed
+      up.
+      IPD 48 — **one control for all three shapes**, with a sentence in the
+      product's own words above it saying what approval does (one-time captures;
+      repeating and financed plans only approve and are never captured).
+      IPD 49 — **the recognition check stays optional and its acknowledgement
+      stays true**; *yes* moves focus to the button's container when it can and
+      is exactly as true when it cannot. Making it a gate is rejected — it
+      reverses the check's own contract.
+      IPD 50 — **a sentence per state** (*Preparing PayPal's button*, cancelled,
+      declined, SDK error, created-but-unapproved), and the old link returns
+      **only** when the script cannot load — so a blocked script is not a
+      dead end, and a decline is never answered with the same page again.
+      ITD 39 — **our routes still make the agreement**: the callbacks call the
+      existing `/api/paypal/orders` and `/api/paypal/subscriptions`, only
+      `PAYPAL_CLIENT_ID` reaches the browser as a prop, and approval is verified
+      by the receipt re-reading PayPal (`isSettled`) — never by trusting
+      `onApprove`.
+      ITD 40 — **one `components/PayPalButton.tsx` owns the provider and the
+      button**, imported via `next/dynamic` with `ssr: false`; the suite stubs
+      that one module and asserts the screen's wiring, and the depth of
+      behaviour that leaves untested is written down. On *unavailable* the
+      screen calls the existing `pay()`, so the fallback is today's path rather
+      than a second implementation.
+      Still open (implementation-time, not decision-time): whether
+      `createSubscription`'s hand-our-own-id shape holds in the sandbox; what
+      amount PayPal's button prints beside ours; how long `ACTIVE` takes after
+      approval; and whether the hours are worth it before the video exists.
 - [ ] **R5 — Webhooks, filmed with the sandbox simulator.** A signature-verified
       `/api/paypal/webhooks`, keeping only `{subscription_id, event_type, at}` in a
       bounded in-memory map — the same lifetime class as the reading cache — and
