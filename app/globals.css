@@ -895,6 +895,18 @@ mark,
   font-style: normal;
 }
 
+/* What the sentence above it is, and what was done with it (IPD 43). Inside the
+   quotation's block because the claim is about that sentence; muted, because the
+   sentence is the evidence and this line is the provenance; never italic, and no
+   smaller than the quote, because the reader this product is for does not read a
+   faded line by choice. */
+.commitment-check {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--ink-muted);
+  font-style: normal;
+}
+
 /* The verb beside the cost-to-leave figure (IPD 23). Two presses: the first
    opens a warning that says what will happen, the second sends it. */
 .cancel-open,

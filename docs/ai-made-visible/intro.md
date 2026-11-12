@@ -1,6 +1,6 @@
 # Made Visible — Problem Decomposition
 
-**Status:** In progress (2026-11-12)
+**Status:** Answered (2026-11-12) — Q4 was re-opened and closed by IPD 44
 **Date:** 2026-11-12
 **Raised by:** the product owner — *"so ai coverage is pretty weak here? I think the task was basically integrate ai with paypal?"* — and a blind review commissioned to answer it.
 
@@ -99,15 +99,20 @@ The problem is not that the AI does too little. It is that **nothing on a screen
 
 **Scope chosen 2026-11-12:** the two changes that make the AI's work visible — naming the absence states, and showing what the reader checked — and nothing else. No new model capability, no new route, no new PayPal surface, and no trap corpus: `lib/catalog/examples.ts` already holds a document the reader refuses, so a second corpus would buy a demonstration the build already has. Q2 is answered by sequencing the video rather than by software, and Q5 is answered by the IPDs' tradeoffs.
 
+**Scope re-opened 2026-11-12 (R6):** IPD 32's build note recorded that the disclosure had never fired on a live document — six documents posted, `rejected: 0` each time — so the pass had shown the checking but not the catch. Q4 was therefore reopened: the panel needed a document that reaches its second state, and a refused answer needed a sentence of its own instead of being rendered as the seller's silence. IPD 44 answers both; the trap corpus is still refused, because the fifth example is one paste artefact and not a corpus.
+
 | # | Question | Document |
 |---|---|---|
 | IPD 31 | Q1, Q3 — what an absence is allowed to look like on a screen | [`ipds/say-what-is-not-there.md`](ipds/say-what-is-not-there.md) |
 | IPD 32 | Q1, Q2, Q3 — how much of the model's checking a reader sees, and where | [`ipds/the-checking-is-shown.md`](ipds/the-checking-is-shown.md) |
+| IPD 43 | Q1, Q3 — how a reader can tell that a model read the sentence, not a table | [`ipds/the-mark-on-the-figure.md`](ipds/the-mark-on-the-figure.md) |
+| IPD 44 | Q4 — what the document that makes the check fire has to be | [`ipds/a-refusal-you-can-see.md`](ipds/a-refusal-you-can-see.md) |
 | ITD 29 | Q1 — what may be carried and shown of a span the server refused | [`itds/a-refused-span-is-still-the-models.md`](itds/a-refused-span-is-still-the-models.md) |
+| ITD 37 | Q3 — how the mark reaches the figure without being inferred from a quotation | [`itds/the-mark-is-the-screens-claim.md`](itds/the-mark-is-the-screens-claim.md) |
 
 ## Open questions
 
 - **Where the visibility lives.** `/read` is the screen where the AI is the product; `/` is the screen a judge meets first. IPD 32 keeps the mechanism on `/read` and accepts that the first screen cannot demonstrate it — so the video's opening order carries the argument instead, and no software answers this question.
-- **Whether an authored trap document is an honest demonstration.** Left open, and now out of scope: the existing example corpus already contains a document the reader refuses, and nothing in the product says which examples are authored. If the recording uses one, the narration has to.
+- **Whether an authored trap document is an honest demonstration.** Answered for the fifth example by IPD 44: a word broken across a line by a PDF paste is what the artefact does, the note describes the document and promises nothing about the reading, and the page never has to admit to a trap because it never set one. The residual question is not in the product — the button does not say we wrote the text, only where it says it came from, so the narration carries that, as it already does for the refused example.
 - **What "checked 2 sentences" means to someone with dyscalculia.** IPD 32 keeps the count on the closed line and names it as a compromise; the alternative loses the detail that makes the check feel real. Revisit if the screen is ever tested with the audience it is for.
 - **Repeated spans are verified, not located.** Verification is a literal substring check, so a span that occurs twice in a document can be marked at the first occurrence. ITD 29 records it as unaffordable this pass; it becomes a real question the first time a document with a repeated fee table is demonstrated.

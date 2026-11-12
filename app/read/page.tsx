@@ -286,6 +286,10 @@ function ReadResultPanel({
         schedule={schedule}
         figureNotes={result.notes}
         progressive={progressive}
+        // Every quotation on this answer was cut out of the text the reader
+        // pasted, by a model, and checked against it — so the figures say so
+        // (IPD 43). No other screen may claim this: its quotes may be curated.
+        modelRead
         sourceNote={describeSources({
           published: "the sentence beside each figure, which is quoted from your document",
           absent: absentFigureNote(result.figures),

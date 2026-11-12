@@ -95,6 +95,27 @@ describe("POST /api/read", () => {
     expect(JSON.stringify(body)).not.toContain("420.00");
   });
 
+  it("does not say the document is silent about a sentence the check refused (IPD 44)", async () => {
+    // Measured live on 2026-11-12: a membership pasted from a PDF with one word
+    // broken across two lines, and the model copied the sentence with the word
+    // joined. The copy is not in the document, so it is refused — and the exit
+    // figure has to say that, not that the document never mentioned leaving.
+    modelReturns([
+      { field: "amountPerPeriod", quote: "Monthly plan: $35.00 per month for 12 months." },
+      { field: "paymentCount", quote: "for 12 months" },
+      { field: "exitFee", quote: "Cancelling before the end of the subscription costs $95.00" },
+    ]);
+
+    const response = await POST(request({ text: document }));
+    const body = await response.json();
+
+    expect(body.mode).toBe("read");
+    expect(body.rejected).toBe(1);
+    expect(body.notes.exit).toMatch(/not in your text/i);
+    expect(body.notes.exit).not.toMatch(/does not say/i);
+    expect(body.refused[0].text).toMatch(/Cancelling before the end/);
+  });
+
   it("never computes a figure from a span it could not verify", async () => {
     modelReturns([{ field: "totalDue", quote: "Amount due: $999.00" }]);
 

@@ -1,5 +1,6 @@
 import { formatMoney } from "@/lib/money";
 import type { RenderedFigure } from "@/lib/commitment/present";
+import { READ_BY_MODEL } from "@/lib/commitment/provenance";
 
 /**
  * The three figures, in one place (ITD 25).
@@ -25,6 +26,7 @@ export function FigureGrid({
   figureNotes,
   figureExtras,
   heldFrom,
+  modelRead = false,
 }: {
   figures: RenderedFigure[];
   variant?: "full" | "compact";
@@ -39,6 +41,13 @@ export function FigureGrid({
   figureExtras?: Partial<Record<RenderedFigure["id"], React.ReactNode>>;
   /** From this index on, hold the figure back visually (never remove it). */
   heldFrom?: number;
+  /**
+   * Whether this screen's sentences were read by the model (IPD 43). Off by
+   * default, and the caller has to say it: a quotation rendered here looks the
+   * same whether a model produced it or a person transcribed it, so the mark
+   * may never be inferred from the presence of one (ITD 37).
+   */
+  modelRead?: boolean;
 }) {
   const compact = variant === "compact";
 
@@ -95,6 +104,14 @@ export function FigureGrid({
               <span className="commitment-quote">
                 <q>{figure.source.span}</q>{" "}
                 <span className="commitment-quote-source">— {figure.source.label}</span>
+                {/* Inside the quotation's own block, because that is what the
+                    line is about: this sentence was not in a table, a model
+                    pointed at it, and the check found it word for word. One
+                    mark per figure that was read, in the same words each time,
+                    so it is learned once (IPD 43). */}
+                {modelRead ? (
+                  <span className="commitment-check">{READ_BY_MODEL}</span>
+                ) : null}
               </span>
             ) : null}
             {figureExtras?.[figure.id] ?? null}

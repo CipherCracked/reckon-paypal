@@ -11,6 +11,12 @@ import {
 import { describeSchedule } from "../commitment/schedule";
 import type { FieldName } from "./fields";
 import { parseAmount, parseCount, parseDate, parsePeriod } from "./parse";
+import {
+  EXIT_ANSWER_FIELDS,
+  TERM_ANSWER_FIELDS,
+  UNMATCHED_LEAVING,
+  UNMATCHED_TERM,
+} from "./unmatched";
 
 /** A span of the shopper's own document, offered by the model and already verified. */
 export type Quotation = { field: FieldName; quote: string };
@@ -277,8 +283,18 @@ const TERM_UNSTATED =
  * Projects a reading into the three figures. Everything is computed by
  * `computeCommitment`; the only edit here is replacing a figure the document
  * cannot support with an absence, never with an estimate.
+ *
+ * `refused` is what the check threw away, and it changes one thing: the sentence
+ * under an absent figure. A document that states what leaving costs, whose
+ * sentence the model copied wrongly, must not be reported as a document that
+ * says nothing about leaving — the disclosure below the figures quotes the
+ * refused sentence, and the two would contradict each other on one screen
+ * (IPD 44).
  */
-export function presentReading(reading: Reading): ReadingView {
+export function presentReading(
+  reading: Reading,
+  options: { refused?: readonly { field: string }[] } = {},
+): ReadingView {
   const translation = computeCommitment(reading.terms);
   // Every verified span the document gave up travels on the figure it produced,
   // so the screen shows a sentence beside its figure rather than joining two
@@ -293,11 +309,19 @@ export function presentReading(reading: Reading): ReadingView {
     sources,
   });
 
+  /** Whether the model offered something about this question and it was refused. */
+  const refusedAbout = (fields: ReadonlySet<string>) =>
+    (options.refused ?? []).some((span) => fields.has(span.field));
+
   // An absence is only announced where there is an absence. A note under a
   // figure the document did state would contradict the figure above it.
   const notes: Partial<Record<FigureId, string>> = {};
-  if (reading.terms.exit.kind === "unknown") notes.exit = EXIT_UNSTATED;
-  if (reading.countUnstated) notes.acrossTerm = TERM_UNSTATED;
+  if (reading.terms.exit.kind === "unknown") {
+    notes.exit = refusedAbout(EXIT_ANSWER_FIELDS) ? UNMATCHED_LEAVING : EXIT_UNSTATED;
+  }
+  if (reading.countUnstated) {
+    notes.acrossTerm = refusedAbout(TERM_ANSWER_FIELDS) ? UNMATCHED_TERM : TERM_UNSTATED;
+  }
 
   return {
     figures: figures.map((figure) =>

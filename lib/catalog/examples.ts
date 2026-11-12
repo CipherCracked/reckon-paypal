@@ -51,6 +51,25 @@ This membership runs for 12 months at $45.00 a month. A joining fee of $30.00 is
 The agreed total for the work is $1,860.00, payable by 30 November 2026. This is the whole amount: nothing further is charged. If you cancel the booking, a call-out fee of $95.00 is charged.`,
   },
   {
+    slug: "pdf-membership",
+    label: "Read a membership sent as a PDF",
+    /**
+     * The document exists because the check had no live demonstration (IPD 44).
+     * A word broken across a line by a paste from a PDF is the one artefact
+     * measured to make the model mis-copy: it joins the two halves, and the
+     * joined sentence is not in the document, so the check refuses it. The note
+     * says what the document is and promises nothing about the outcome — if the
+     * model copies it correctly one day, the page is still telling the truth.
+     */
+    note: "Copied out of a PDF, where words break across the lines.",
+    text: `Gym membership — Rowantree Fitness
+
+Your member-
+ship runs for 12 months. The monthly fee is $39.00, billed on the 1st. A join-
+ing fee of $25.00 is charged once. Cancelling before the end of the subscrip-
+tion costs $95.00.`,
+  },
+  {
     slug: "fee-schedule",
     label: "Try a page of fees",
     note: "It states amounts and never says what is owed in total, so this page refuses it and shows you the amounts it found.",

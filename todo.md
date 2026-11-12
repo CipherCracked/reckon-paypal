@@ -635,9 +635,15 @@ asserted. Only new findings are listed here.
       takes **123.6 s** to answer a real reading (six spans, all correct) versus the
       route's 60 s budget, so the page gave up every time and reported the timeout. The
       same reading measured through three models on the same key: gpt-4o-mini **2.6 s**,
-      gemini-2.5-flash **3.6 s**, the free Nemotron **123.6 s**. `AI_MODEL` now names
+      gemini-2.5-flash **3.6 s**, the free Nemotron **123.6 s**. `AI_MODEL` was set to
       `openai/gpt-4o-mini`, and a live `/api/read` returns `mode: read`, `rejected: 0`,
-      figures $783.00 / $180.00 / $47.00 in 7 s. Restarting the server is not enough on
+      figures $783.00 / $180.00 / $47.00 in 7 s.
+      **Corrected 2026-11-12:** that is not what the variable names today.
+      `npm run check-model` resolves it to **`nvidia/nemotron-3.5-lightning:free`** through
+      `https://openrouter.ai/api/v1/chat/completions`. The swap back was never needed: with
+      `AI_REASONING_EFFORT` unset (→ `none`, see below) real `/api/read` round-trips measure
+      **3.0–15.7 s cold, 3–6 s warm**, and the reading is correct. The earlier "cheap model"
+      tell was latency from thinking tokens, not capability. Restarting the server is not enough on
       its own — `TaskStop` leaves the `next-server` child holding port 3001, so a second
       start exits with `EADDRINUSE` while the old process keeps serving the old env.
       **Open:** `MODEL_READ_DEADLINE_MS` is 60 s while the client allows 45 s × 3
@@ -1068,12 +1074,17 @@ AI is load-bearing and that nothing on a screen **shows** it. Judge's blunt vers
 - [x] Verified on `/read` at 1440 and 390, light and dark: closed line one sentence,
       body absent until opened, three items under *The sentence behind each figure*,
       no overflow, no console errors.
-- [ ] **A refused span cannot be produced on demand.** Six documents posted to
+- [x] **A refused span cannot be produced on demand.** Six documents posted to
       `/api/read` — two misspellings, typographic apostrophes, an ambiguous fee —
       and the model copied every span verbatim (`rejected: 0` each time). The
       panel's most convincing state therefore has no live demonstration yet. If the
       video is to show the model being caught, it needs a document the model
       actually misreads; drafting one is the open work here.
+      **Closed 2026-11-12 (R6).** The document was found, and it is not a trap: a
+      PDF paste with words hyphenated across line breaks. The model joins the
+      halves and the joined sentence is not in the text, so the check refuses it —
+      five of seven runs with one broken word, every recent run with three. The
+      fifth example on `/read` is that document (IPD 44).
 - [ ] **The video.** Unchanged, still the biggest unfilled item, still has to be
       recorded signed out. The judge's order: publish the repo, record the video,
       make the AI legible, one person's impact quote. Cut test counts and process
@@ -1446,10 +1457,31 @@ catalogue, not from impression.
       bounded in-memory map — the same lifetime class as the reading cache — and
       saying so, because the product's promise is that nothing is stored. Film
       `BILLING.SUBSCRIPTION.PAYMENT.FAILED` changing the record. **Effort ~4 h.**
-- [ ] **R6 — Use a real model for the demo, and show the check.** `AI_MODEL` is
-      config, not code. Pair it with the refusal panel being reachable on screen
-      (the gap already recorded in §16) and one visible *read by the model, checked
-      against the text* mark on the figure it produced. **Effort ~2 h.**
+- [x] **R6 — Use a real model for the demo, and show the check** (2026-11-12).
+      `AI_MODEL` is config, not code, and the config already names a model that
+      works: `nvidia/nemotron-3.5-lightning:free`, 3–6 s warm per real read with
+      reasoning off. Nothing was swapped, because the earlier "cheap model" tell
+      was latency, not capability — measured, recorded above.
+      **The check is now reachable on screen**, which §16 recorded as impossible:
+      a fifth example, `pdf-membership`, is a membership pasted out of a PDF with
+      three words broken across line breaks. The model joins the halves, the joined
+      sentence is not in the document, and literal verification refuses it — one
+      broken word refused in five of seven runs, three broken words in every recent
+      run (first live read of the final text: `quoted 5, rejected 1`, refusing
+      *"Your membership runs for 12 months."*). The note says what the document is
+      and promises nothing about the outcome, so a model that copies it correctly
+      leaves the page still true.
+      **A contradiction the build found and closed:** a refused answer about
+      leaving rendered *"The document does not say…"* while the disclosure beside
+      it quoted the refused sentence. `lib/document/unmatched.ts` adds a fourth
+      state — *"The sentence about leaving was not in your text, so no figure is
+      shown."* — chosen by the fields the model answered, not by which figure came
+      out empty.
+      **The mark:** *Read by the model, checked against your text.* on every figure
+      that carries a sentence on `/read`, passed down as an explicit prop because
+      curated `LISTED_TERMS` quotations render identically (IPD 43, ITD 37).
+      Docs: IPD 43, IPD 44, ITD 37 under `docs/ai-made-visible/`; Q4 of that tree
+      re-opened and closed. Suite 614 → **623**, `tsc` and `lint` clean.
 - [ ] **R7 — Let the document be asked a question.** "Can I cancel in month 3?" →
       an answer built only from a verified span, or *not stated*. **Why:** turns the
       AI from an extraction step into an interface, and the audience has follow-up

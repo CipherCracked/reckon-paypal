@@ -33,6 +33,12 @@ export type CommitmentViewProps = {
    * stated". Optional so a caller that cannot know says nothing clever.
    */
   unstatedAt?: "checkout" | null;
+  /**
+   * Whether this screen's quoted sentences were read by the model (IPD 43).
+   * A claim about the screen, so the screen makes it: `/read` passes it, and a
+   * page showing a curated quote passes nothing.
+   */
+  modelRead?: boolean;
 };
 
 export function CommitmentView({
@@ -45,6 +51,7 @@ export function CommitmentView({
   sourceNote,
   progressive = false,
   unstatedAt = null,
+  modelRead = false,
 }: CommitmentViewProps) {
   const unstated = unstatedAt === "checkout" ? "At checkout" : "Not stated";
   // A payload built by an older version of this server can lack the fee row
@@ -72,7 +79,12 @@ export function CommitmentView({
         </p>
       ) : null}
 
-      <FigureGrid figures={figures} figureNotes={figureNotes} heldFrom={more ? revealed : undefined} />
+      <FigureGrid
+        figures={figures}
+        figureNotes={figureNotes}
+        heldFrom={more ? revealed : undefined}
+        modelRead={modelRead}
+      />
 
       {more ? (
         <button

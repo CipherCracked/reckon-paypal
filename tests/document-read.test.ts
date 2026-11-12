@@ -256,3 +256,47 @@ First payment due 21 November 2026`;
     expect(candidates.dates).toEqual(["21 November 2026"]);
   });
 });
+
+describe("an absent figure when the check refused the sentence (IPD 44)", () => {
+  const monthly: Quotation[] = [
+    { field: "amountPerPeriod", quote: "$39.00 per month" },
+    { field: "paymentCount", quote: "for 12 months" },
+  ];
+
+  function notesFor(quotations: Quotation[], refused: Array<{ field: string; text: string }>) {
+    const reading = readQuotations(quotations);
+    if (!reading) throw new Error("expected the spans to describe a commitment");
+    return presentReading(reading, { refused }).notes;
+  }
+
+  it("does not blame the document for a sentence the check threw away", () => {
+    const notes = notesFor(monthly, [
+      { field: "exitFee", text: "Cancelling before the end of the subscription costs $95.00" },
+    ]);
+
+    // The document does say what leaving costs. Saying it does not would
+    // contradict the panel one line below, which quotes the sentence.
+    expect(notes.exit).toMatch(/not in your text/i);
+    expect(notes.exit).not.toMatch(/does not say/i);
+  });
+
+  it("still blames the document when nothing about leaving was offered", () => {
+    const notes = notesFor(monthly, []);
+    expect(notes.exit).toMatch(/does not say/i);
+  });
+
+  it("says the same about a payment count the check refused", () => {
+    const notes = notesFor(
+      [{ field: "amountPerPeriod", quote: "$39.00 per month" }],
+      [{ field: "paymentCount", text: "twelve months" }],
+    );
+
+    expect(notes.acrossTerm).toMatch(/not in your text/i);
+    expect(notes.acrossTerm).not.toMatch(/does not say/i);
+  });
+
+  it("leaves the note alone when the refused sentence was about something else", () => {
+    const notes = notesFor(monthly, [{ field: "dueDate", text: "by the end of the first week" }]);
+    expect(notes.exit).toMatch(/does not say/i);
+  });
+});

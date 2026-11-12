@@ -103,7 +103,11 @@ export async function answerReading(text: string): Promise<Attempt> {
     };
   }
 
-  const view = presentReading(parsed);
+  // The spans themselves, not only how many there were: a count is a claim
+  // that something was thrown away, and the sentence makes it visible
+  // (IPD 32). Capped in `refused.ts`, and shown by one component only.
+  const refused = refusedSpans(reading.quotations, accepted);
+  const view = presentReading(parsed, { refused });
 
   return {
     answer: {
@@ -117,10 +121,7 @@ export async function answerReading(text: string): Promise<Attempt> {
       stated: parsed.stated,
       quotationCount: accepted.length,
       rejected,
-      // The spans themselves, not only how many there were: a count is a claim
-      // that something was thrown away, and the sentence makes it visible
-      // (IPD 32). Capped in `refused.ts`, and shown by one component only.
-      refused: refusedSpans(reading.quotations, accepted),
+      refused,
     },
     keep: true,
   };

@@ -74,6 +74,36 @@ describe("reading a document", () => {
     expect(screen.getByText(/does not say what it costs to cancel/i)).toBeInTheDocument();
   });
 
+  it("marks each sentence the model read, on the figure it produced (IPD 43)", async () => {
+    stubFetch({
+      mode: "read",
+      summary: "A monthly plan running for a year.",
+      figures: [
+        { id: "acrossTerm", label: "Across the term", amount: money(42000), arithmetic: "12 × $35.00", source: { label: "your document", span: "$35.00 per month" } },
+        { id: "exit", label: "Cost to leave", amount: null, arithmetic: null, source: null },
+        { id: "today", label: "Charged today", amount: money(3500), arithmetic: "$35.00", source: { label: "your document", span: "$35.00 per month" } },
+      ],
+      breakdown: { item: money(3500), shipping: money(0), tax: money(0), fee: null },
+      notes: { exit: "The document does not say what it costs to cancel or leave early." },
+      schedule: "12 payments of $35.00, one a month.",
+      dueDate: null,
+      quotationCount: 2,
+      rejected: 0,
+    });
+
+    render(<ReadPage />);
+    await submit();
+
+    // The two figures that were read from a sentence say so, in the same words,
+    // under the sentence itself. The absent figure carries no mark: nothing was
+    // read to produce it.
+    const marks = await screen.findAllByText(/read by the model/i);
+    expect(marks).toHaveLength(2);
+    expect(marks[0]).toHaveTextContent(/checked against your text/i);
+    expect(screen.getByText(/does not say what it costs to cancel/i)).toBeInTheDocument();
+    expect(globalThis.document.querySelectorAll(".commitment-check")).toHaveLength(2);
+  });
+
   it("shows the sentence the model offered and the check refused (IPD 32, ITD 29)", async () => {
     stubFetch({
       mode: "read",
@@ -186,6 +216,18 @@ describe("reading a document", () => {
     expect(refused).toBeDefined();
     expect(screen.getByRole("button", { name: refused?.label })).toBeInTheDocument();
     expect(screen.getByText(refused?.note ?? "")).toBeInTheDocument();
+  });
+
+  it("offers a document pasted with a word broken across two lines (IPD 44)", () => {
+    // The check has no live demonstration without a document the model
+    // misreads, and a word hyphenated across a line break is the artefact that
+    // produces one: the model joins the word, and the joined sentence is not in
+    // the document. The note says what the document is, so the click is not a
+    // gamble — it does not promise that the model will get it wrong.
+    const broken = exampleDocuments.find((example) => /-\n/.test(example.text));
+    expect(broken).toBeDefined();
+    expect(broken?.note).toMatch(/pdf/i);
+    expect(broken?.refused).toBeUndefined();
   });
 
   it("shows the reason when the document is refused", async () => {

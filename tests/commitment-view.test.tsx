@@ -144,6 +144,45 @@ describe("CommitmentView", () => {
     expect(state).not.toHaveClass("commitment-hint");
   });
 
+  it("claims the model read a sentence only when the screen says so (IPD 43, ITD 37)", () => {
+    // A curated quote and a read one look identical on screen — both are the
+    // seller's words, verified. The mark is the screen's statement that a model
+    // produced this sentence, so a screen that never read with a model must not
+    // carry it, and the day a curated quote renders beside a read one the mark
+    // stays with the read one only because the caller said which.
+    const withSource = presentFigures(knownTerms, computeCommitment(knownTerms), {
+      sources: { today: { label: "the seller's words", span: "$11.00 per month" } },
+    });
+
+    const silent = render(
+      <CommitmentView
+        figures={withSource}
+        breakdown={computeCommitment(knownTerms).breakdown}
+        labels={labels}
+        summary=""
+        sourceNote="Computed from the terms in this test."
+      />,
+    );
+    expect(silent.container.querySelector(".commitment-check")).toBeNull();
+    expect(screen.queryByText(/read by the model/i)).toBeNull();
+    silent.unmount();
+
+    render(
+      <CommitmentView
+        figures={withSource}
+        breakdown={computeCommitment(knownTerms).breakdown}
+        labels={labels}
+        summary=""
+        sourceNote="Computed from the terms in this test."
+        modelRead
+      />,
+    );
+    // One mark, on the one figure that was read out of a sentence — not on the
+    // two whose figures are arithmetic over the terms.
+    expect(globalThis.document.querySelectorAll(".commitment-check")).toHaveLength(1);
+    expect(screen.getByText(/read by the model, checked against your text/i)).toBeInTheDocument();
+  });
+
   it("renders a breakdown from an older server that has no fee key at all", () => {
     // The reading cache lives on `globalThis` and outlives a recompile, so a
     // payload built by this morning's build can still arrive this afternoon.
